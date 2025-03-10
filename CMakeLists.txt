@@ -1,0 +1,75 @@
+cmake_minimum_required(VERSION 3.24)
+project(rhs C)
+set(CMAKE_C_STANDARD 11)
+
+add_library(${PROJECT_NAME} STATIC
+        rhs.c
+        core/mutex.c
+        core/memmgr.c
+        core/kernel.c
+        core/message_queue.c
+        core/timer.c
+        core/event_flag.c
+        core/check.c
+        core/log.c
+        core/thread.c
+)
+target_sources(${PROJECT_NAME} PUBLIC ${CMAKE_BINARY_DIR}/applications.c)
+
+target_include_directories(
+        ${PROJECT_NAME} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+)
+
+if(NOT TARGET freertos_kernel)
+        message(FATAL_ERROR
+                "freertos_kernel target is not found. Please add freertos_kernel as a submodule (https://github.com/FreeRTOS/FreeRTOS-Kernel.git) to thyrdparty directory.
+In CMakeLists.txt of thyrdparty directory add:
+add_library(freertos_config INTERFACE)
+target_include_directories(freertos_config SYSTEM
+        INTERFACE
+        ../Core/Inc
+)
+target_compile_definitions(freertos_config
+        INTERFACE
+        projCOVERAGE_TEST=0
+)
+set(FREERTOS_HEAP \"4\" CACHE STRING \"\" FORCE)
+set(FREERTOS_PORT \"GCC_ARM_CM7\" CACHE STRING \"\" FORCE)
+add_subdirectory(freertos)"
+        )
+endif()
+
+if(NOT TARGET RTT)
+        message(FATAL_ERROR
+                "RTT target is not found. Please add RTT as a submodule (https://github.com/SEGGERMicro/RTT.git) to thyrdparty directory.
+In CMakeLists.txt of thyrdparty directory add:
+add_library(RTT STATIC
+        RTT/RTT/SEGGER_RTT_ASM_ARMv7M.S
+        RTT/RTT/SEGGER_RTT_printf.c
+        RTT/RTT/SEGGER_RTT.c
+)
+
+target_compile_definitions(RTT PUBLIC -DBUFFER_SIZE_DOWN=64)
+
+target_include_directories(RTT
+        PUBLIC
+        $<BUILD_INTERFACE:\${CMAKE_CURRENT_SOURCE_DIR}/RTT/RTT>
+        $<BUILD_INTERFACE:\${CMAKE_CURRENT_SOURCE_DIR}/RTT/Config>
+)"
+        )
+
+endif()
+
+
+target_link_libraries(${PROJECT_NAME}
+        PUBLIC
+        freertos_kernel
+        RTT
+        PRIVATE
+        rhs_hal_cortex
+        rhs_hal_power
+)
+
+add_subdirectory(hal)
+add_subdirectory(applications)

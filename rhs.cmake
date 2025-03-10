@@ -40,18 +40,18 @@ set(START_UP_COUNT "const short RHS_START_UP_COUNT = (sizeof(RHS_START_UP) / siz
 
 file(APPEND "${OUTPUT_FILE}" "${START_UP_BEGIN}\n${START_UP_END}\n${START_UP_COUNT}")
 
-function(test test_start_func)
-    if (NOT test_start_func)
-        message(FATAL_ERROR "add_freertos_test_definition: Missing required arguments.")
+function(start_up start_func)
+    if (NOT start_func)
+        message(FATAL_ERROR "Missing required arguments.")
     endif ()
 
     file(READ "${OUTPUT_FILE}" FILE_CONTENT)
 
-    set(test_definition "extern void ${test_start_func}(void);\n")
-    string(REPLACE "${START_UP_BEGIN}" "${test_definition}\n${START_UP_BEGIN}" FILE_CONTENT "${FILE_CONTENT}")
+    set(start_up_definition "extern void ${start_func}(void);\n")
+    string(REPLACE "${START_UP_BEGIN}" "${start_up_definition}\n${START_UP_BEGIN}" FILE_CONTENT "${FILE_CONTENT}")
 
-    set(test_definition_code "${test_start_func},\n")
-    string(REPLACE "${START_UP_END}" "${test_definition_code}\n${START_UP_END}" FILE_CONTENT "${FILE_CONTENT}")
+    set(start_up_definition_code "${start_func},\n")
+    string(REPLACE "${START_UP_END}" "${start_up_definition_code}\n${START_UP_END}" FILE_CONTENT "${FILE_CONTENT}")
 
     file(WRITE "${OUTPUT_FILE}" "${FILE_CONTENT}")
     target_link_libraries(rhs PUBLIC ${PROJECT_NAME})

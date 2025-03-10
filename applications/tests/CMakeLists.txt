@@ -16,4 +16,4 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 
-test(test_rhs_memmgr_up)
+start_up(test_rhs_memmgr_start_up)

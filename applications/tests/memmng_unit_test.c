@@ -70,7 +70,7 @@ void test_rhs_memmgr(char* args, void* context)
     RHS_LOG_D(TAG, "test mem OK\r\n");
 }
 
-void test_rhs_memmgr_up(void)
+void test_rhs_memmgr_start_up(void)
 {
     cli_add_command("test_mem", test_rhs_memmgr, NULL);
 }

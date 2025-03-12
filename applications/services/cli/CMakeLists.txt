@@ -16,4 +16,4 @@ target_link_libraries(
         RTT
 )
 
-service(cli_service "cli" 1024)
+service(cli_service "cli" 4096)

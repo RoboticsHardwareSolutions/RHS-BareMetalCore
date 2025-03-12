@@ -16,5 +16,4 @@ target_link_libraries(
         mt25ql128aba
 )
 
-
 add_subdirectory(mt25ql128aba)

@@ -14,7 +14,7 @@ int rhs_hal_flash_ex_init(void);
  * @param size
  * @return 0 - if success
  */
-int rhs_hal_flash_ex_read(uint32_t addr, uint8_t *p_data, uint32_t size);
+int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size);
 
 /**
  * @brief write data
@@ -23,7 +23,7 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t *p_data, uint32_t size);
  * @param size
  * @return 0 - if success
  */
-int rhs_hal_flash_ex_write(uint32_t addr, uint8_t *p_data, uint32_t size);
+int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size);
 
 /**
  * @brief erase full flash

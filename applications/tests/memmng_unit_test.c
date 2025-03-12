@@ -5,9 +5,9 @@
 #include "rhs.h"
 #include "cli.h"
 
-#define TAG "test_mem"
+#define TAG "mem_test"
 
-void test_rhs_memmgr(char* args, void* context)
+void rhs_memmgr_test(char* args, void* context)
 {
     void* ptr;
 
@@ -70,7 +70,7 @@ void test_rhs_memmgr(char* args, void* context)
     RHS_LOG_D(TAG, "test mem OK\r\n");
 }
 
-void test_rhs_memmgr_start_up(void)
+void rhs_memmgr_test_start_up(void)
 {
-    cli_add_command("test_mem", test_rhs_memmgr, NULL);
+    cli_add_command("mem_test", rhs_memmgr_test, NULL);
 }

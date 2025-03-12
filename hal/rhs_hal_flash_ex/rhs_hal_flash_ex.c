@@ -7,6 +7,10 @@ static RHSMutex* rhs_hal_flash_ex_mutex = NULL;
 int rhs_hal_flash_ex_init(void)
 {
     mt25ql128aba_init(&hqspi);
+    if (rhs_hal_flash_ex_mutex != NULL)
+    {
+        rhs_mutex_free(rhs_hal_flash_ex_mutex);
+    }
     rhs_hal_flash_ex_mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
     return 0;
 }
@@ -14,6 +18,7 @@ int rhs_hal_flash_ex_init(void)
 int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
 {
     int error = 0;
+    rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
     rhs_mutex_acquire(rhs_hal_flash_ex_mutex, RHSWaitForever);
     if (mt25ql128aba_read(&hqspi, MT25QL128ABA_QPI_MODE, p_data, addr, size) != 0)
     {
@@ -28,7 +33,7 @@ int rhs_hal_flash_ex_erase_chip(void)
     int error = 0;
     rhs_mutex_acquire(rhs_hal_flash_ex_mutex, RHSWaitForever);
     /* Check Flash busy ? */
-    if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
+    if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
     {
         error = -1;
     } /* Enable write operations */
@@ -45,6 +50,10 @@ int rhs_hal_flash_ex_erase_chip(void)
         }
     }
 
+    if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, MT25QL128ABA_BULK_ERASE_MAX_TIME) != 0)
+    {
+        error = -1;
+    }
     rhs_mutex_release(rhs_hal_flash_ex_mutex);
     /* Return BSP status */
     return error;
@@ -55,6 +64,7 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
     uint32_t end_addr, current_size, current_addr;
     uint8_t* write_data;
     int      error = 0;
+    rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
     rhs_mutex_acquire(rhs_hal_flash_ex_mutex, RHSWaitForever);
     /* Calculation of the size between the write address and the end of the page */
@@ -73,7 +83,7 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
 
     do
     {
-        if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
+        if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
         {
             error = -1;
             break;
@@ -88,7 +98,7 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
             error = -1;
             break;
         }
-        if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
+        if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
         {
             error = -1;
             break;
@@ -108,23 +118,32 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
 {
     int      error = 0;
     uint32_t current_size, current_addr;
+    rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
     rhs_mutex_acquire(rhs_hal_flash_ex_mutex, RHSWaitForever);
     /* Check Flash busy ? */
-    if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
-    {
-        error = -1;
-    } /* Enable write operations */
-    else if (mt25ql128aba_write_enable(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
+    if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
     {
         error = -1;
     }
     else
     {
         current_addr = addr - (addr % MT25QL128ABA_SUBSECTOR_4K);
-        current_size = MT25QL128ABA_SUBSECTOR_4K - (size % MT25QL128ABA_SUBSECTOR_4K);
+        current_size = size;
         do
         {
+            if (mt25ql128aba_write_enable(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
+            {
+                error = -1;
+                break;
+            }
             if (mt25ql128aba_block_erase(&hqspi, MT25QL128ABA_QPI_MODE, current_addr, MT25QL128ABA_ERASE_4K))
+            {
+                error = -1;
+                break;
+            }
+            if (mt25ql128aba_auto_polling_mem_ready(&hqspi,
+                                                    MT25QL128ABA_QPI_MODE,
+                                                    MT25QL128ABA_SUBSECTOR_4K_ERASE_MAX_TIME) != 0)
             {
                 error = -1;
                 break;

@@ -7,7 +7,12 @@
 #include "hal_rs232.h"
 #include "hal_rs485.h"
 
-#include "stm32f7xx_ll_usart.h"
+#if defined(RPLC_XL) || defined(RPLC_L)
+#    include "stm32f7xx_ll_usart.h"
+#else
+#    error "Not implemented Serial for this platform"
+#endif
+
 #include "rhs_hal_serial_types.h"
 
 static RHSHalSerial rhs_hal_serial[RHSHalSerialIdMax] = {0};
@@ -23,7 +28,7 @@ void rhs_hal_serial_init(RHSHalSerialId id, uint32_t baud)
     case RHSHalSerialIdRS232:
         rhs_hal_rs232_init();
         rserial_open(&rhs_hal_serial[RHSHalSerialIdRS232].rserial, "UART3", (int) baud, "8N1", FLOW_CTRL_NONE, 4000);
-        rhs_hal_serial[id].enabled = true;
+        rhs_hal_serial[RHSHalSerialIdRS232].enabled = true;
         break;
     case RHSHalSerialIdRS485:
         rhs_hal_rs485_init();

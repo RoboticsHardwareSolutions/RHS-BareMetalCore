@@ -12,9 +12,9 @@ set(SERVICE_COUNT "const short RHS_SERVICES_COUNT = (sizeof(RHS_SERVICES) / size
 file(APPEND "${OUTPUT_FILE}" "${SERVICE_BEGIN}\n${SERVICE_END}\n${SERVICE_COUNT}")
 
 function(service service_handler service_name stack_size)
-    if (NOT service_handler OR NOT service_name OR NOT stack_size)
+    if(NOT service_handler OR NOT service_name OR NOT stack_size)
         message(FATAL_ERROR "add_freertos_service_definition: Missing required arguments.")
-    endif ()
+    endif()
 
     file(READ "${OUTPUT_FILE}" FILE_CONTENT)
 
@@ -22,7 +22,7 @@ function(service service_handler service_name stack_size)
     string(REPLACE "${SERVICE_BEGIN}" "${service_definition}\n${SERVICE_BEGIN}" FILE_CONTENT "${FILE_CONTENT}")
 
     set(service_definition_code
-            "    {
+        "{
         .app = ${service_handler},
         .name = \"${service_name}\",
         .stack_size = ${stack_size},
@@ -41,9 +41,9 @@ set(START_UP_COUNT "const short RHS_START_UP_COUNT = (sizeof(RHS_START_UP) / siz
 file(APPEND "${OUTPUT_FILE}" "${START_UP_BEGIN}\n${START_UP_END}\n${START_UP_COUNT}")
 
 function(start_up start_func)
-    if (NOT start_func)
+    if(NOT start_func)
         message(FATAL_ERROR "Missing required arguments.")
-    endif ()
+    endif()
 
     file(READ "${OUTPUT_FILE}" FILE_CONTENT)
 
@@ -56,3 +56,87 @@ function(start_up start_func)
     file(WRITE "${OUTPUT_FILE}" "${FILE_CONTENT}")
     target_link_libraries(rhs PUBLIC ${PROJECT_NAME})
 endfunction()
+
+
+################################## CHECH RPLC ##################################
+
+if(RPLC_XL)
+
+    if(NOT LINKER_SCRIPT_NAME)
+        message(FATAL_ERROR "LINKER_SCRIPT_NAME is not defined.")
+    endif()
+
+    set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/${LINKER_SCRIPT_NAME})
+
+    #Uncomment for hardware floating point
+    add_compile_definitions(ARM_MATH_CM7;ARM_MATH_MATRIX_CHECK;ARM_MATH_ROUNDING)
+    add_compile_options(-mfloat-abi=hard -mfpu=fpv4-sp-d16)
+    add_link_options(-mfloat-abi=hard -mfpu=fpv4-sp-d16)
+    add_link_options(-Wl,-gc-sections,--print-memory-usage)
+    add_link_options(-mcpu=cortex-m7 -mthumb -mthumb-interwork)
+    #add_link_options(-T ${LINKER_SCRIPT})
+
+    #Uncomment for software floating point
+    #add_compile_options(-mfloat-abi=soft)
+
+    add_compile_options(-mcpu=cortex-m7 -mthumb -mthumb-interwork)
+    add_compile_options(-ffunction-sections -fdata-sections -fno-common -fmessage-length=0)
+
+    # uncomment to mitigate c++17 absolute addresses warnings
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
+
+    include_directories(
+        thirdparty/stm32f7_hal/Inc
+        thirdparty/stm32f7_hal/Inc/Legacy
+        thirdparty/stm32f7_cmsis/Include
+        thirdparty/cmsis/CMSIS/Core/Include
+    )
+
+    add_definitions(-DUSE_HAL_DRIVER -DSTM32F765xx)
+
+    file(GLOB_RECURSE SOURCES "Core/*.*" "thirdparty/stm32f7_hal/*.*" "thirdparty/stm32f7_cmsis/Source/Templates/gcc/startup_stm32f765xx.s")
+    list(FILTER SOURCES EXCLUDE REGEX "_template[.]c$")
+
+elseif(RPLC_L)
+
+    if(NOT LINKER_SCRIPT_NAME)
+        message(FATAL_ERROR "LINKER_SCRIPT_NAME is not defined.")
+    endif()
+
+    set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/${LINKER_SCRIPT_NAME})
+
+    add_compile_definitions(ARM_MATH_CM7;ARM_MATH_MATRIX_CHECK;ARM_MATH_ROUNDING)
+    add_compile_options(-mfloat-abi=hard -mfpu=fpv4-sp-d16)
+    add_link_options(-mfloat-abi=hard -mfpu=fpv4-sp-d16)
+    add_link_options(-Wl,-gc-sections,--print-memory-usage)
+    add_link_options(-mcpu=cortex-m7 -mthumb -mthumb-interwork)
+    #add_link_options(-T ${LINKER_SCRIPT})
+
+    #Uncomment for software floating point
+    #add_compile_options(-mfloat-abi=soft)
+
+    add_compile_options(-mcpu=cortex-m7 -mthumb -mthumb-interwork)
+    add_compile_options(-ffunction-sections -fdata-sections -fno-common -fmessage-length=0)
+
+    # uncomment to mitigate c++17 absolute addresses warnings
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
+
+    include_directories(
+        thirdparty/stm32f7_hal/Inc
+        thirdparty/stm32f7_hal/Inc/Legacy
+        thirdparty/stm32f7_cmsis/Include
+        thirdparty/cmsis/CMSIS/Core/Include
+    )
+
+    add_definitions(-DUSE_HAL_DRIVER -DSTM32F765xx)
+
+    file(GLOB_RECURSE SOURCES "Core/*.*" "thirdparty/stm32f7_hal/*.*" "thirdparty/stm32f7_cmsis/Source/Templates/gcc/startup_stm32f765xx.s")
+    list(FILTER SOURCES EXCLUDE REGEX "_template[.]c$")
+
+elseif(RPLC_M)
+
+else()
+
+    message("You use custom BareMetal configuration. Good luck!")
+
+endif()

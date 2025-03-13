@@ -1,19 +1,89 @@
 #include "rhs_hal_speaker.h"
 #include "rhs.h"
-#include "tim.h"
 #include "stdbool.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-static TIM_HandleTypeDef* tim_handler;
+static RHSMutex *rhs_hal_speaker_mutex = NULL;
 
-static RHSMutex* rhs_hal_speaker_mutex = NULL;
+#if defined(RPLC_XL) || defined(RPLC_L)
+#include "stm32f7xx_hal.h"
+TIM_HandleTypeDef htim;
+
+void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *tim_baseHandle)
+{
+    if (tim_baseHandle->Instance == TIM9)
+    {
+        __HAL_RCC_TIM9_CLK_ENABLE();
+    }
+}
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *timHandle)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    if (timHandle->Instance == TIM9)
+    {
+        __HAL_RCC_GPIOE_CLK_ENABLE();
+        GPIO_InitStruct.Pin = GPIO_PIN_5;
+        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Alternate = GPIO_AF3_TIM9;
+        HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+    }
+}
+
+void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef *tim_baseHandle)
+{
+    if (tim_baseHandle->Instance == TIM9)
+    {
+        __HAL_RCC_TIM9_CLK_DISABLE();
+    }
+}
+
+static void tim9_init(void)
+{
+    TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+    TIM_OC_InitTypeDef sConfigOC = {0};
+
+    htim.Instance = TIM9;
+    htim.Init.Prescaler = 215;
+    htim.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim.Init.Period = 376;
+    htim.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    htim.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    if (HAL_TIM_Base_Init(&htim) != HAL_OK)
+    {
+        rhs_crash("Speaker init failed");
+    }
+    sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+    if (HAL_TIM_ConfigClockSource(&htim, &sClockSourceConfig) != HAL_OK)
+    {
+        rhs_crash("Speaker init failed");
+    }
+    if (HAL_TIM_PWM_Init(&htim) != HAL_OK)
+    {
+        rhs_crash("Speaker init failed");
+    }
+    sConfigOC.OCMode = TIM_OCMODE_PWM1;
+    sConfigOC.Pulse = 0;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+    if (HAL_TIM_PWM_ConfigChannel(&htim, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+    {
+        rhs_crash("Speaker init failed");
+    }
+    HAL_TIM_MspPostInit(&htim);
+}
+#else
+#    error "Not implement Speaker for this platform"
+#endif
 
 void rhs_hal_speaker_init(void)
 {
     rhs_assert(rhs_hal_speaker_mutex == NULL);
+    tim9_init();
     rhs_hal_speaker_mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
-    tim_handler           = &htim9;
 }
 
 void rhs_hal_speaker_deinit(void)
@@ -25,7 +95,7 @@ void rhs_hal_speaker_deinit(void)
 
 static inline uint32_t rhs_hal_speaker_calculate_autoreload(float frequency)
 {
-    uint32_t autoreload = (SystemCoreClock / tim_handler->Init.Prescaler / frequency) - 1;
+    uint32_t autoreload = (SystemCoreClock / htim.Init.Prescaler / frequency) - 1;
     if (autoreload < 2)
     {
         autoreload = 2;
@@ -46,7 +116,7 @@ static inline uint32_t rhs_hal_speaker_calculate_compare(float volume)
         volume = 1;
     volume = volume * volume * volume;
 
-    uint32_t compare_value = volume * tim_handler->Instance->ARR / 2;
+    uint32_t compare_value = volume * htim.Instance->ARR / 2;
 
     if (compare_value == 0)
     {
@@ -89,14 +159,14 @@ bool rhs_hal_speaker_is_mine(void)
 
 void rhs_hal_speaker_start(float frequency, float volume)
 {
-    htim9.Init.Period           = rhs_hal_speaker_calculate_autoreload(frequency);
-    tim_handler->Instance->ARR  = htim9.Init.Period;
-    tim_handler->Instance->CCR1 = rhs_hal_speaker_calculate_compare(volume);
+    htim.Init.Period = rhs_hal_speaker_calculate_autoreload(frequency);
+    htim.Instance->ARR = htim.Init.Period;
+    htim.Instance->CCR1 = rhs_hal_speaker_calculate_compare(volume);
 
-    HAL_TIM_PWM_Start(tim_handler, TIM_CHANNEL_1);
+    HAL_TIM_PWM_Start(&htim, TIM_CHANNEL_1);
 }
 
 void rhs_hal_speaker_stop(void)
 {
-    HAL_TIM_PWM_Stop(tim_handler, TIM_CHANNEL_1);
+    HAL_TIM_PWM_Stop(&htim, TIM_CHANNEL_1);
 }

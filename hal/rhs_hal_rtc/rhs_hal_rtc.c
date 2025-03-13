@@ -1,7 +1,79 @@
 #include "rhs_hal_rtc.h"
-#include "rtc.h"
 
-void rhs_hal_rtc_init(void) {}
+#if defined(RPLC_XL) || defined(RPLC_L)
+#    include "stm32f7xx_ll_rtc.h"
+
+RTC_HandleTypeDef hrtc;
+
+static void rtc_init(void)
+{
+    RTC_TimeTypeDef sTime = {0};
+    RTC_DateTypeDef sDate = {0};
+
+    hrtc.Instance            = RTC;
+    hrtc.Init.HourFormat     = RTC_HOURFORMAT_24;
+    hrtc.Init.AsynchPrediv   = 127;
+    hrtc.Init.SynchPrediv    = 255;
+    hrtc.Init.OutPut         = RTC_OUTPUT_DISABLE;
+    hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+    hrtc.Init.OutPutType     = RTC_OUTPUT_TYPE_OPENDRAIN;
+    if (HAL_RTC_Init(&hrtc) != HAL_OK)
+    {
+        rhs_crash("RTC init failed");
+    }
+
+    if (LL_RTC_IsActiveFlag_INITS(hrtc.Instance) == 0)
+    {
+        sTime.Hours   = 0x12;
+        sTime.Minutes = 0x0;
+        sTime.Seconds = 0x0;
+        if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
+        {
+            rhs_crash("RTC init failed");
+        }
+        sDate.WeekDay = RTC_WEEKDAY_MONDAY;
+        sDate.Month   = RTC_MONTH_JANUARY;
+        sDate.Date    = 0x1;
+        sDate.Year    = 0x24;
+
+        if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
+        {
+            rhs_crash("RTC init failed");
+        }
+    }
+}
+
+void HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)
+{
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+    if (rtcHandle->Instance == RTC)
+    {
+        PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC;
+        PeriphClkInitStruct.RTCClockSelection    = RCC_RTCCLKSOURCE_LSE;
+        if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+        {
+            rhs_crash("RTC init failed");
+        }
+
+        __HAL_RCC_RTC_ENABLE();
+    }
+}
+
+void HAL_RTC_MspDeInit(RTC_HandleTypeDef* rtcHandle)
+{
+    if (rtcHandle->Instance == RTC)
+    {
+        __HAL_RCC_RTC_DISABLE();
+    }
+}
+#else
+#    error "Not implement RTC for this platform"
+#endif
+
+void rhs_hal_rtc_init(void)
+{
+    rtc_init();
+}
 
 void rhs_hal_rtc_set_datetime(datetime_t* datetime)
 {
@@ -22,11 +94,11 @@ void rhs_hal_rtc_set_datetime(datetime_t* datetime)
 
     if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
     {
-        Error_Handler();
+        rhs_crash("RTC init failed");
     }
     if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
     {
-        Error_Handler();
+        rhs_crash("RTC init failed");
     }
 }
 
@@ -37,12 +109,12 @@ void rhs_hal_rtc_get_datetime(datetime_t* out_datetime)
 
     if (HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
     {
-        Error_Handler();
+        rhs_crash("RTC init failed");
     }
 
     if (HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
     {
-        Error_Handler();
+        rhs_crash("RTC init failed");
     }
 
     out_datetime->year    = sDate.Year + 2000;

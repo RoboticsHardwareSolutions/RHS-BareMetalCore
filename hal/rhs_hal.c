@@ -9,11 +9,13 @@ void rhs_hal_init(void)
     rhs_hal_flash_ex_init();
     rhs_hal_speaker_init();
     rhs_hal_random_init();
-    #elif RPLC_L
+    rhs_hal_rtc_init();
+#elif RPLC_L
     rhs_hal_io_init();
     rhs_hal_flash_ex_init();
     rhs_hal_speaker_init();
     rhs_hal_random_init();
+    rhs_hal_rtc_init();
 #elif RPLC_M
 
 #else

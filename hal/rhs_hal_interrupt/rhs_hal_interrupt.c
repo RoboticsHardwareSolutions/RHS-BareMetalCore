@@ -36,11 +36,11 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
     [RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
     [RHSHalInterruptIdCAN1Tx]  = CAN1_TX_IRQn,
-#if defined(RPLC_XL) || defined(RPLC_L)
+#    if defined(RPLC_XL) || defined(RPLC_L)
     [RHSHalInterruptIdCAN2Rx0] = CAN2_RX0_IRQn,
     [RHSHalInterruptIdCAN2SCE] = CAN2_SCE_IRQn,
     [RHSHalInterruptIdCAN2Tx]  = CAN2_TX_IRQn,
-#endif
+#    endif
     /* UART */
     [RHSHalInterruptIdUsart3] = USART3_IRQn,
     [RHSHalInterruptIdUart5]  = UART5_IRQn,
@@ -98,7 +98,11 @@ __attribute__((always_inline)) inline static void rhs_hal_interrupt_disable(RHSH
     NVIC_DisableIRQ(rhs_hal_interrupt_irqn[index]);
 }
 
-void rhs_hal_interrupt_init(void) {}
+void rhs_hal_interrupt_init(void)
+{
+    NVIC_SetPriority(SVCall_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+    NVIC_SetPriority(PendSV_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+}
 
 void rhs_hal_interrupt_set_isr(RHSHalInterruptId index, RHSHalInterruptISR isr, void* context)
 {
@@ -161,6 +165,8 @@ void CAN1_TX_IRQHandler(void)
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
 }
 
+#    if defined(RPLC_XL) || defined(RPLC_L)
+
 /* CAN 2 RX0 */
 void CAN2_RX0_IRQHandler(void)
 {
@@ -176,6 +182,8 @@ void CAN2_TX_IRQHandler(void)
 {
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
 }
+
+#    endif
 
 /* USART 3 */
 void USART3_IRQHandler(void)

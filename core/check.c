@@ -12,6 +12,8 @@
 #    include "stm32f7xx.h"
 #elif STM32F407xx
 #    include "stm32f4xx.h"
+#elif STM32F103xE
+#    include "stm32f1xx.h"
 #endif
 
 typedef struct __attribute__((packed))

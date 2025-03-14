@@ -6,6 +6,9 @@
 #elif STM32F407xx
 #    include "stm32f407xx.h"
 #    include "stm32f4xx_ll_rcc.h"
+#elif STM32F103xE
+#    include "stm32f103xe.h"
+#    include "stm32f1xx_ll_rcc.h"
 #endif
 #include "rhs.h"
 
@@ -36,7 +39,7 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
     [RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
     [RHSHalInterruptIdCAN1Tx]  = CAN1_TX_IRQn,
-#    if defined(RPLC_XL) || defined(RPLC_L)
+#    if !defined(RPLC_XL) && !defined(RPLC_L)
     [RHSHalInterruptIdCAN2Rx0] = CAN2_RX0_IRQn,
     [RHSHalInterruptIdCAN2SCE] = CAN2_SCE_IRQn,
     [RHSHalInterruptIdCAN2Tx]  = CAN2_TX_IRQn,
@@ -303,10 +306,12 @@ const char* rhs_hal_interrupt_get_name(uint8_t exception_number)
         return "WWDG";
     case PVD_IRQn:
         return "PVD";
+#if !defined(STM32F103xE)
     case TAMP_STAMP_IRQn:
         return "TAMP_STAMP";
     case RTC_WKUP_IRQn:
         return "RTC_WKUP";
+#endif
     case FLASH_IRQn:
         return "FLASH";
     case RCC_IRQn:

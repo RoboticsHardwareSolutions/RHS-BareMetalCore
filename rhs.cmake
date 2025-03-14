@@ -63,7 +63,7 @@ endfunction()
 if(RPLC_XL)
 
     if(NOT LINKER_SCRIPT_NAME)
-        message(FATAL_ERROR "LINKER_SCRIPT_NAME is not defined.")
+        set(LINKER_SCRIPT_NAME STM32F765ZGTX_FLASH.ld)
     endif()
 
     set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/${LINKER_SCRIPT_NAME})
@@ -86,21 +86,25 @@ if(RPLC_XL)
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
 
     include_directories(
+        core/inc/f7
         thirdparty/stm32f7_hal/Inc
         thirdparty/stm32f7_hal/Inc/Legacy
         thirdparty/stm32f7_cmsis/Include
         thirdparty/cmsis/CMSIS/Core/Include
     )
 
-    add_definitions(-DUSE_HAL_DRIVER -DSTM32F765xx)
+    add_definitions(-DUSE_HAL_DRIVER -DSTM32F765xx -DRPLC_XL)
 
-    file(GLOB_RECURSE SOURCES "Core/*.*" "thirdparty/stm32f7_hal/*.*" "thirdparty/stm32f7_cmsis/Source/Templates/gcc/startup_stm32f765xx.s")
+    file(GLOB_RECURSE SOURCES "core/src/syscalls.c" "core/src/sysmem.c" "core/src/f7/*.*" "thirdparty/stm32f7_hal/*.*" "thirdparty/stm32f7_cmsis/Source/Templates/gcc/startup_stm32f765xx.s")
     list(FILTER SOURCES EXCLUDE REGEX "_template[.]c$")
+
+    set(FREERTOS_HEAP "4" CACHE STRING "" FORCE)
+    set(FREERTOS_PORT "GCC_ARM_CM7" CACHE STRING "" FORCE)
 
 elseif(RPLC_L)
 
     if(NOT LINKER_SCRIPT_NAME)
-        message(FATAL_ERROR "LINKER_SCRIPT_NAME is not defined.")
+        set(LINKER_SCRIPT_NAME STM32F765ZGTX_FLASH.ld)
     endif()
 
     set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/${LINKER_SCRIPT_NAME})
@@ -122,18 +126,60 @@ elseif(RPLC_L)
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
 
     include_directories(
+        core/inc/f7
         thirdparty/stm32f7_hal/Inc
         thirdparty/stm32f7_hal/Inc/Legacy
         thirdparty/stm32f7_cmsis/Include
         thirdparty/cmsis/CMSIS/Core/Include
     )
 
-    add_definitions(-DUSE_HAL_DRIVER -DSTM32F765xx)
+    add_definitions(-DUSE_HAL_DRIVER -DSTM32F765xx -DRPLC_L)
 
-    file(GLOB_RECURSE SOURCES "Core/*.*" "thirdparty/stm32f7_hal/*.*" "thirdparty/stm32f7_cmsis/Source/Templates/gcc/startup_stm32f765xx.s")
+    file(GLOB_RECURSE SOURCES "core/src/syscalls.c" "core/src/sysmem.c" "core/src/f7/*.*" "thirdparty/stm32f7_hal/*.*" "thirdparty/stm32f7_cmsis/Source/Templates/gcc/startup_stm32f765xx.s")
     list(FILTER SOURCES EXCLUDE REGEX "_template[.]c$")
 
+    set(FREERTOS_HEAP "4" CACHE STRING "" FORCE)
+    set(FREERTOS_PORT "GCC_ARM_CM7" CACHE STRING "" FORCE)
+
 elseif(RPLC_M)
+
+    if(NOT LINKER_SCRIPT_NAME)
+        set(LINKER_SCRIPT_NAME STM32F103RETX_FLASH.ld)
+    endif()
+
+    set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/${LINKER_SCRIPT_NAME})
+
+    add_compile_definitions(ARM_MATH_CM3;ARM_MATH_MATRIX_CHECK;ARM_MATH_ROUNDING)
+    #add_compile_options(-mfloat-abi=hard -mfpu=fpv4-sp-d16)
+    #add_link_options(-mfloat-abi=hard -mfpu=fpv4-sp-d16)
+    add_link_options(-Wl,-gc-sections,--print-memory-usage)
+    add_link_options(-mcpu=cortex-m3 -mthumb -mthumb-interwork)
+    #add_link_options(-T ${LINKER_SCRIPT})
+
+    #Uncomment for software floating point
+    #add_compile_options(-mfloat-abi=soft)
+
+    add_compile_options(-mcpu=cortex-m3 -mthumb -mthumb-interwork)
+    add_compile_options(-ffunction-sections -fdata-sections -fno-common -fmessage-length=0)
+
+    # uncomment to mitigate c++17 absolute addresses warnings
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
+
+    include_directories(
+        core/inc/f1
+        thirdparty/stm32f1_hal/Inc
+        thirdparty/stm32f1_hal/Inc/Legacy
+        thirdparty/stm32f1_cmsis/Include
+        thirdparty/cmsis/CMSIS/Core/Include
+    )
+
+    add_definitions(-DUSE_HAL_DRIVER -DSTM32F103xE -DRPLC_M)
+
+    file(GLOB_RECURSE SOURCES "core/src/syscalls.c" "core/src/sysmem.c" "core/src/f1/*.*" "thirdparty/stm32f1_hal/*.*" "thirdparty/stm32f1_cmsis/Source/Templates/gcc/startup_stm32f103xe.s")
+    list(FILTER SOURCES EXCLUDE REGEX "_template[.]c$")
+
+    set(FREERTOS_HEAP "4" CACHE STRING "" FORCE)
+    set(FREERTOS_PORT "GCC_ARM_CM3" CACHE STRING "" FORCE)
 
 else()
 

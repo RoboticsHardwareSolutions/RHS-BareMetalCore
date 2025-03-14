@@ -3,8 +3,8 @@
 #include "stm32f765xx.h"
 #elif defined(STM32F407xx)
 #include "stm32f407xx.h"
-#elif defined(STM32F103xx)
-#include "stm32f103xx.h"
+#elif defined(STM32F103xE)
+#include "stm32f103xe.h"
 #endif
 
 const uint8_t* rhs_hal_version_uid(void)

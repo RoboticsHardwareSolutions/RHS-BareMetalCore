@@ -22,6 +22,7 @@
 #    include "rhs_hal_can.h"
 #    include "rhs_hal_random.h"
 #elif RPLC_M
+#    include "rhs_hal_speaker.h"
 #else
 #    if RHS_HAL_SPEAKER
 #        include "rhs_hal_speaker.h"

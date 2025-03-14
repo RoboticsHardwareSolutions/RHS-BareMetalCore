@@ -4,7 +4,8 @@
 #    include "stm32f7xx.h"
 #elif STM32F407xx
 #    include "stm32f4xx.h"
-#elif STM32F103xx
+#elif STM32F103xE
+#    include "stm32f103xe.h"
 #else
 #endif
 
@@ -12,12 +13,13 @@
 
 void rhs_hal_cortex_init_early(void)
 {
+#ifdef STM32F765xx
+    SCB_EnableICache();
+    SCB_EnableDCache();
+#endif
     CoreDebug->DEMCR |= (CoreDebug_DEMCR_TRCENA_Msk | CoreDebug_DEMCR_MON_EN_Msk);
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
     DWT->CYCCNT = 0U;
-
-    /* Enable instruction prefetch */
-    SET_BIT(FLASH->ACR, FLASH_ACR_PRFTEN);
 }
 
 void rhs_hal_cortex_delay_us(uint32_t microseconds)

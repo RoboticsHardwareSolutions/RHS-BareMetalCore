@@ -17,7 +17,7 @@ void rhs_hal_init(void)
     rhs_hal_random_init();
     rhs_hal_rtc_init();
 #elif RPLC_M
-
+    rhs_hal_speaker_init();
 #else
 #    if RHS_HAL_SPEAKER
     rhs_hal_speaker_init();

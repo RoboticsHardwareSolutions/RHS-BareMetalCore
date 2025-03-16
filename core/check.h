@@ -7,6 +7,8 @@ typedef struct
     int         line;
 } CallContext;
 
+void rhs_log_save(char* str, ...);
+
 _Noreturn void __rhs_crash_implementation(CallContext context, char* m);
 
 #define rhs_assert(x)                                  \

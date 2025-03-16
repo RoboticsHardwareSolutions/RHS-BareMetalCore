@@ -112,6 +112,10 @@ save_log_t __attribute__((section("MB_MEM_LOG"))) save_log;
 
 void rhs_log_save(char* str, ...)
 {
+    char buffer[MAX_LOG_LENGTH];
+    char* p = buffer;
+    const char* s = str;
+    
     if (save_log.MAGIC_KEY != LOG_MAGIC_KEY || save_log.count >= MAX_LOG_COUNT)
     {
         rhs_erase_saved_log();
@@ -119,7 +123,24 @@ void rhs_log_save(char* str, ...)
     }
     va_list ParamList;
     va_start(ParamList, str);
-    vsnprintf(save_log.str[save_log.count], MAX_LOG_LENGTH, str, ParamList);
+    while (*s && (p - buffer) < (MAX_LOG_LENGTH - 1))
+    {
+        if (*s == '%' && *(s + 1) == 's')
+        {
+            s += 2;
+            char* arg = va_arg(ParamList, char*);
+            while (*arg && (p - buffer) < (MAX_LOG_LENGTH - 1))
+            {
+                *p++ = *arg++;
+            }
+        }
+        else
+        {
+            *p++ = *s++;
+        }
+    }
+    *p = '\0';
+    strncpy(save_log.str[save_log.count], buffer, MAX_LOG_LENGTH);
     va_end(ParamList);
     save_log.count++;
 }

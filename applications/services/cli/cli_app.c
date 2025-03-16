@@ -8,7 +8,7 @@
 
 #define MAX_LINE_LENGTH 64
 
-static Cli* s_cli = NULL;  // TODO create records!!!
+static Cli* s_cli = NULL;
 
 Cli* cli_alloc(void)
 {
@@ -198,6 +198,20 @@ void cli_command_log(char* args, void* context)
         {
             rhs_log_unexclude_tag(separator + 1);
             RHS_LOG_I(TAG, "TAG %s was unexcluded\r\n", separator + 1);
+            return;
+        }
+        else if (strstr(args, "-s") == args)
+        {
+            rhs_log_save(separator + 1);
+            return;
+        }
+        else if (strstr(args, "-l") == args)
+        {
+            uint16_t s = rhs_count_saved_log();
+            for(int i = 0; i < s; i++)
+            {
+                SEGGER_RTT_printf(0, "%s\r\n", rhs_read_saved_log(i));
+            }
             return;
         }
         

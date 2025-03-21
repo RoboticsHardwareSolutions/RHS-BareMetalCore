@@ -125,7 +125,7 @@ void rhs_hal_rtc_get_datetime(datetime_t* out_datetime)
     out_datetime->hours    = sTime.Hours;
     out_datetime->minutes  = sTime.Minutes;
     out_datetime->seconds  = sTime.Seconds;
-    out_datetime->mseconds = ((uint64_t) (sTime.SecondFraction - sTime.SubSeconds) * 1000 / (sTime.SecondFraction + 1));
+    out_datetime->mseconds = ((uint64_t) (sTime.SecondFraction - sTime.SubSeconds) * 1000 / (sTime.SecondFraction));
 }
 
 void rhs_hal_rtc_set_timestamp(uint64_t seconds, uint32_t mseconds)

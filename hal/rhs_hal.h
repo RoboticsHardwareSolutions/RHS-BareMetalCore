@@ -2,13 +2,13 @@
 #include "rhs_hal_interrupt.h"
 #include "rhs_hal_cortex.h"
 #include "rhs_hal_version.h"
+#include "rhs_hal_power.h"
 
 #ifdef RPLC_XL
 #    include "rhs_hal_serial.h"
 #    include "rhs_hal_io.h"
 #    include "rhs_hal_flash_ex.h"
 #    include "rhs_hal_rtc.h"
-#    include "rhs_hal_power.h"
 #    include "rhs_hal_speaker.h"
 #    include "rhs_hal_can.h"
 #    include "rhs_hal_random.h"
@@ -17,7 +17,6 @@
 #    include "rhs_hal_io.h"
 #    include "rhs_hal_flash_ex.h"
 #    include "rhs_hal_rtc.h"
-#    include "rhs_hal_power.h"
 #    include "rhs_hal_speaker.h"
 #    include "rhs_hal_can.h"
 #    include "rhs_hal_random.h"

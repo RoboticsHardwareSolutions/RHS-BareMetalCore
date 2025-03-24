@@ -13,6 +13,7 @@ target_link_libraries(
         ${PROJECT_NAME}
         PRIVATE
         rhs
+        rhs_hal
         RTT
 )
 

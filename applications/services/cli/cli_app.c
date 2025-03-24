@@ -1,6 +1,7 @@
 #include "cli.h"
 #include "cli_app.h"
 #include "rhs.h"
+#include "rhs_hal.h"
 #include <stddef.h>
 #include "SEGGER_RTT.h"
 
@@ -219,6 +220,11 @@ void cli_command_log(char* args, void* context)
     }
 }
 
+void cli_command_reset(char* args, void* context)
+{
+    rhs_hal_power_reset();
+}
+
 int32_t cli_service(void* context)
 {
     Cli* cli = cli_alloc();
@@ -227,6 +233,7 @@ int32_t cli_service(void* context)
     cli_add_command("free", cli_command_free, NULL);
     cli_add_command("?", cli_commands, NULL);
     cli_add_command("log", cli_command_log, NULL);
+    cli_add_command("reset", cli_command_reset, NULL);
 
     for (;;)
     {

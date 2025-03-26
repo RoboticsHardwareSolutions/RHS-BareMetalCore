@@ -107,15 +107,17 @@ void rhs_hal_rtc_get_datetime(datetime_t* out_datetime)
     RTC_TimeTypeDef sTime;
     RTC_DateTypeDef sDate;
 
+    vPortEnterCritical();
     if (HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
     {
         rhs_crash("RTC init failed");
     }
-
+    
     if (HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
     {
         rhs_crash("RTC init failed");
     }
+    vPortExitCritical();
 
     out_datetime->year    = sDate.Year + 2000;
     out_datetime->month   = sDate.Month;

@@ -7,6 +7,24 @@
 #include "mutex.h"
 #include "common.h"
 
+
+#define _RHS_LOG_CLR(clr) "\033[0;" clr "m"
+#define _RHS_LOG_CLR_RESET "\033[0m"
+
+#define _RHS_LOG_CLR_BLACK "30"
+#define _RHS_LOG_CLR_RED "31"
+#define _RHS_LOG_CLR_GREEN "32"
+#define _RHS_LOG_CLR_BROWN "33"
+#define _RHS_LOG_CLR_BLUE "34"
+#define _RHS_LOG_CLR_PURPLE "35"
+
+#define _RHS_LOG_CLR_E _RHS_LOG_CLR(_RHS_LOG_CLR_RED)
+#define _RHS_LOG_CLR_W _RHS_LOG_CLR(_RHS_LOG_CLR_BROWN)
+#define _RHS_LOG_CLR_I _RHS_LOG_CLR(_RHS_LOG_CLR_GREEN)
+#define _RHS_LOG_CLR_D _RHS_LOG_CLR(_RHS_LOG_CLR_BLUE)
+#define _RHS_LOG_CLR_T _RHS_LOG_CLR(_RHS_LOG_CLR_PURPLE)
+
+
 #define RHS_LOG_LEVEL_DEFAULT RHSLogLevelDebug
 #define MAX_LOG_COUNT 16
 #define MAX_LOG_LENGTH 120
@@ -48,11 +66,41 @@ void rhs_log_print_format(RHSLogLevel level, const char* tag, const char* format
         if (rhs_mutex_get_owner(mutex))
             return;
     }
-    SEGGER_RTT_printf(0, "%d:\t[%s]:\t", rhs_get_tick(), tag);
+
+    const char* color      = _RHS_LOG_CLR_RESET;
+    const char* log_letter = " ";
+    switch (level)
+    {
+    case RHSLogLevelError:
+        color      = _RHS_LOG_CLR_E;
+        log_letter = "E";
+        break;
+    case RHSLogLevelWarn:
+        color      = _RHS_LOG_CLR_W;
+        log_letter = "W";
+        break;
+    case RHSLogLevelInfo:
+        color      = _RHS_LOG_CLR_I;
+        log_letter = "I";
+        break;
+    case RHSLogLevelDebug:
+        color      = _RHS_LOG_CLR_D;
+        log_letter = "D";
+        break;
+    case RHSLogLevelTrace:
+        color      = _RHS_LOG_CLR_T;
+        log_letter = "T";
+        break;
+    default:
+        break;
+    }
+
+    SEGGER_RTT_printf(0, "%s%d:\t[%s][%s]:\t", color, rhs_get_tick(), log_letter, tag);
     va_list ParamList;
     va_start(ParamList, format);
     SEGGER_RTT_vprintf(0, format, &ParamList);
     va_end(ParamList);
+    SEGGER_RTT_printf(0, "%s\n", _RHS_LOG_CLR_RESET);
     rhs_mutex_release(mutex);
 }
 
@@ -112,10 +160,10 @@ save_log_t __attribute__((section("MB_MEM_LOG"))) save_log;
 
 void rhs_log_save(char* str, ...)
 {
-    char buffer[MAX_LOG_LENGTH];
-    char* p = buffer;
+    char        buffer[MAX_LOG_LENGTH];
+    char*       p = buffer;
     const char* s = str;
-    
+
     if (save_log.MAGIC_KEY != LOG_MAGIC_KEY || save_log.count >= MAX_LOG_COUNT)
     {
         rhs_erase_saved_log();

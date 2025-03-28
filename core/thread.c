@@ -410,6 +410,6 @@ void rhs_thread_scrub(void)
 
         // Deliver thread stopped callback
         rhs_thread_set_state(thread_to_scrub, RHSThreadStateStopped);
-        RHS_LOG_D(TAG, "task deleted\r\n");
+        RHS_LOG_D(TAG, "task deleted");
     }
 }

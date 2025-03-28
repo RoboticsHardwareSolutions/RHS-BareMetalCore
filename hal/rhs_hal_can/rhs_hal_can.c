@@ -142,7 +142,7 @@ static uint8_t get_can_num_interface(CAN_TypeDef* can)
 #endif
     else
     {
-        rhs_crash("No CAN interface\r\n");
+        rhs_crash("No CAN interface");
     }
 }
 
@@ -161,26 +161,26 @@ static void print_ecr(CAN_TypeDef* can)
 
     if (lec == 0b001)
     {
-        CAN_LOG_E("CAN%d Stuff error\r\n", can_num);
+        CAN_LOG_E("CAN%d Stuff error", can_num);
         /* Following the bit stuffing process, if more than five consecutive bits of
     the same level occur on the Bus, a "Stuff Error" is signalled. */
     }
     if (lec == 0b010)
     {
-        CAN_LOG_E("CAN%d Form error\r\n", can_num);
+        CAN_LOG_E("CAN%d Form error", can_num);
         /* Form check checks the CAN frame sent/received for a standard
     format. Violation of fixed bit format results in a Form Error. */
     }
     if (lec == 0b011)
     {
-        CAN_LOG_E("CAN%d Acknowledgment error\r\n", can_num);
+        CAN_LOG_E("CAN%d Acknowledgment error", can_num);
         /* An acknowledgment error happens when the transmitter
     doesn’t receive an Acknowledgment (ACK) bit from other nodes
     after transmitting a data frame. */
     }
     if (lec == 0b100)
     {
-        RHS_LOG_E(TAG, "CAN%d Bit recessive error\r\n", can_num);
+        RHS_LOG_E(TAG, "CAN%d Bit recessive error", can_num);
         /* This occurs when the transmitter sends a dominant bit (logic ‘0’), but
     sees a recessive bit (logic ‘1’) on the bus. In CAN, a dominant bit
     “overwrites” a recessive one. So, if a transmitter trying to send ‘0’
@@ -189,7 +189,7 @@ static void print_ecr(CAN_TypeDef* can)
     }
     if (lec == 0b101)
     {
-        CAN_LOG_E("CAN%d Bit dominant error\r\n", can_num);
+        CAN_LOG_E("CAN%d Bit dominant error", can_num);
         /* This happens when the transmitter sends a recessive bit
     (logic ‘1’), but sees a dominant bit (logic ‘0’) on the bus. This
     means another node is simultaneously transmitting a ‘0’ (which
@@ -197,18 +197,18 @@ static void print_ecr(CAN_TypeDef* can)
     }
     if (lec == 0b110)
     {
-        CAN_LOG_E("CAN%d CRC error\r\n", can_num);
+        CAN_LOG_E("CAN%d CRC error", can_num);
         /*  A Cyclic Redundancy Check (CRC) error. */
     }
     if (lec == 0b111)
     {
-        CAN_LOG_E("CAN%d Set by software\r\n", can_num);
+        CAN_LOG_E("CAN%d Set by software", can_num);
         /* This error isn’t a hardware error detected by the CAN controller
     itself. It’s set by the software for purposes like debugging, testing,
     or handling user-defined exception situations. For instance, it might
     signal invalid data, a timeout, or other software problems. */
     }
-    CAN_LOG_E("CAN%d rec: %d, tec: %d\r\n", can_num, rec, tec);
+    CAN_LOG_E("CAN%d rec: %d, tec: %d", can_num, rec, tec);
 }
 
 static void can_sce_callback(void* context)
@@ -221,27 +221,27 @@ static void can_sce_callback(void* context)
 
     if (can_handle->MSR & CAN_MSR_ERRI)
     {
-        CAN_LOG_E("CAN%d ERRI\r\n", can_num);
+        CAN_LOG_E("CAN%d ERRI", can_num);
         can_handle->MSR = CAN_MSR_ERRI;
         event |= RHSHalCANSCEEventError;
     }
     if (can_handle->MSR & CAN_MSR_WKUI)
     {
-        CAN_LOG_E("CAN%d WKUI\r\n", can_num);
+        CAN_LOG_E("CAN%d WKUI", can_num);
         can_handle->MSR = CAN_MSR_WKUI;
     }
     if (can_handle->ESR & CAN_ESR_BOFF)
     {
-        CAN_LOG_E("CAN%d BOFF\r\n", can_num);
+        CAN_LOG_E("CAN%d BOFF", can_num);
         event |= RHSHalCANSCEEventBusOff;
     }
     if (can_handle->TSR & CAN_TSR_ALST0 || can_handle->TSR & CAN_TSR_ALST1 || can_handle->TSR & CAN_TSR_ALST2)
     {
-        CAN_LOG_E("CAN%d Arbitration lost\r\n", can_num);
+        CAN_LOG_E("CAN%d Arbitration lost", can_num);
     }
     if (can_handle->TSR & CAN_TSR_TERR0 || can_handle->TSR & CAN_TSR_TERR1 || can_handle->TSR & CAN_TSR_TERR2)
     {
-        CAN_LOG_E("CAN%d Transmition error\r\n", can_num);
+        CAN_LOG_E("CAN%d Transmition error", can_num);
         if (can->tec >= 0x80)
         {
             // can_handle->TSR = CAN_TSR_ABRQ0;

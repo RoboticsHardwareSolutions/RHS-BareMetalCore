@@ -20,7 +20,7 @@ void flash_ex_test(char* args, void* context)
 
     if (rhs_hal_flash_ex_block_erase(FLASH_START_ADDRESS, FLASH_DATA_SIZE * FLASH_COUNT_BLOCKS) != 0)
     {
-        RHS_LOG_D(TAG, "Flash ERASE fault!!!\r\n");
+        RHS_LOG_D(TAG, "Flash ERASE fault!!!");
         return;
     }
 
@@ -28,20 +28,20 @@ void flash_ex_test(char* args, void* context)
     {
         if (rhs_hal_flash_ex_read(FLASH_START_ADDRESS + i * FLASH_COUNT_BLOCKS, data_pulled, sizeof(data_pulled)) != 0)
         {
-            RHS_LOG_D(TAG, "Flash READ fault!!!\r\n");
+            RHS_LOG_D(TAG, "Flash READ fault!!!");
             return;
         }
         for (int j = 0; j < sizeof(data_pulled); j++)
         {
             if (data_pulled[j] != 0xFF)
             {
-                RHS_LOG_D(TAG, "Not erased data at index %d of record %d\r\n", j, i);
+                RHS_LOG_D(TAG, "Not erased data at index %d of record %d", j, i);
                 return;
             }
         }
     }
 
-    RHS_LOG_D(TAG, "Flash ERASE test completed successfully.\r\n");
+    RHS_LOG_D(TAG, "Flash ERASE test completed successfully.");
 
     for (int i = 0; i < FLASH_COUNT_BLOCKS; i++)
     {
@@ -49,12 +49,12 @@ void flash_ex_test(char* args, void* context)
 
         if (rhs_hal_flash_ex_write(FLASH_START_ADDRESS + i * FLASH_COUNT_BLOCKS, data, sizeof(data)) != 0)
         {
-            RHS_LOG_D(TAG, "Flash WRITE fault!!!\r\n");
+            RHS_LOG_D(TAG, "Flash WRITE fault!!!");
             return;
         }
         if (rhs_hal_flash_ex_read(FLASH_START_ADDRESS + i * FLASH_COUNT_BLOCKS, data_pulled, sizeof(data_pulled)) != 0)
         {
-            RHS_LOG_D(TAG, "Flash READ fault!!!\r\n");
+            RHS_LOG_D(TAG, "Flash READ fault!!!");
             return;
         }
 
@@ -62,14 +62,14 @@ void flash_ex_test(char* args, void* context)
         {
             if (data_pulled[j] != data[j])
             {
-                RHS_LOG_D(TAG, "Data mismatch at index %d of record %d\r\n", j, i);
+                RHS_LOG_D(TAG, "Data mismatch at index %d of record %d", j, i);
                 return;
             }
         }
-        RHS_LOG_D(TAG, "Flash WRITE test %d OK\r\n", i);
+        RHS_LOG_D(TAG, "Flash WRITE test %d OK", i);
     }
 
-    RHS_LOG_D(TAG, "Flash WRITE test completed successfully.\r\n");
+    RHS_LOG_D(TAG, "Flash WRITE test completed successfully.");
 }
 
 void flash_ex_test_start_up(void)

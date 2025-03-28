@@ -39,7 +39,7 @@ void cli_add_command(const char* name, CliCallback callback, void* context)
         }
         if (strcmp(command->name, name) == 0)
         {
-            RHS_LOG_E(TAG, "Cammand already exists\r\n");
+            RHS_LOG_E(TAG, "Cammand already exists");
             rhs_assert(rhs_mutex_release(s_cli->mutex) == RHSStatusOk);
             return;
         }
@@ -96,7 +96,7 @@ void cli_handle_enter(Cli* cli)
     }
     if (*cli->line != 0)
     {
-        SEGGER_RTT_printf(0, "Unknown command\r\n");
+        RHS_LOG_I(TAG, "Unknown command");
     }
     cli_reset(cli);
 }
@@ -109,27 +109,27 @@ void cli_process_input(Cli* cli)
 
     if (in_chr == CliSymbolAsciiTab)
     {
-        RHS_LOG_D(TAG, "CliSymbolAsciiTab\r\n");
+        RHS_LOG_D(TAG, "CliSymbolAsciiTab");
     }
     else if (in_chr == CliSymbolAsciiSOH)
     {
-        RHS_LOG_D(TAG, "CliSymbolAsciiSOH\r\n");
+        RHS_LOG_D(TAG, "CliSymbolAsciiSOH");
     }
     else if (in_chr == CliSymbolAsciiETX)
     {
-        RHS_LOG_D(TAG, "CliSymbolAsciiETX\r\n");
+        RHS_LOG_D(TAG, "CliSymbolAsciiETX");
     }
     else if (in_chr == CliSymbolAsciiEOT)
     {
-        RHS_LOG_D(TAG, "CliSymbolAsciiEOT\r\n");
+        RHS_LOG_D(TAG, "CliSymbolAsciiEOT");
     }
     else if (in_chr == CliSymbolAsciiEsc)
     {
-        RHS_LOG_D(TAG, "CliSymbolAsciiEsc\r\n");
+        RHS_LOG_D(TAG, "CliSymbolAsciiEsc");
     }
     else if (in_chr == CliSymbolAsciiBackspace || in_chr == CliSymbolAsciiDel)
     {
-        RHS_LOG_D(TAG, "CliSymbolAsciiDel\r\n");
+        RHS_LOG_D(TAG, "CliSymbolAsciiDel");
     }
     else if (in_chr == CliSymbolAsciiCR)
     {
@@ -174,31 +174,31 @@ void cli_command_log(char* args, void* context)
 {
     if (args == NULL)
     {
-        RHS_LOG_I(TAG, "log level is %d\r\n", rhs_log_get_level());
+        RHS_LOG_I(TAG, "log level is %d", rhs_log_get_level());
     }
     else if (strlen(args) == 1 && args[0] >= '0' && args[0] <= '6')
     {
         rhs_log_set_level(args[0] - '0');
-        RHS_LOG_I(TAG, "log level is %d\r\n", rhs_log_get_level());
+        RHS_LOG_I(TAG, "log level is %d", rhs_log_get_level());
     }
     else
     {
         char* separator = strchr(args, ' ');
         if (separator == NULL || *(separator + 1) == 0)
         {
-            RHS_LOG_E(TAG, "Invalid argument\r\n");
+            RHS_LOG_E(TAG, "Invalid argument");
             return;
         }
         else if (strstr(args, "-e") == args)
         {
             rhs_log_exclude_tag(separator + 1);
-            RHS_LOG_I(TAG, "TAG %s was excluded\r\n", separator + 1);
+            RHS_LOG_I(TAG, "TAG %s was excluded", separator + 1);
             return;
         }
         else if (strstr(args, "-ue") == args)
         {
             rhs_log_unexclude_tag(separator + 1);
-            RHS_LOG_I(TAG, "TAG %s was unexcluded\r\n", separator + 1);
+            RHS_LOG_I(TAG, "TAG %s was unexcluded", separator + 1);
             return;
         }
         else if (strstr(args, "-s") == args)
@@ -209,20 +209,35 @@ void cli_command_log(char* args, void* context)
         else if (strstr(args, "-l") == args)
         {
             uint16_t s = rhs_count_saved_log();
-            for(int i = 0; i < s; i++)
+            for (int i = 0; i < s; i++)
             {
                 SEGGER_RTT_printf(0, "%s\r\n", rhs_read_saved_log(i));
             }
             return;
         }
-        
-        RHS_LOG_E(TAG, "Invalid argument\r\n");
+
+        RHS_LOG_E(TAG, "Invalid argument");
     }
 }
 
 void cli_command_reset(char* args, void* context)
 {
     rhs_hal_power_reset();
+}
+
+void cli_command_uid(char* args, void* context)
+{
+    const uint8_t* uid = rhs_hal_version_uid();
+    RHS_LOG_I(TAG,
+              "%02X%02X%02X%02X%02X%02X%02X%02X",
+              uid[0],
+              uid[1],
+              uid[2],
+              uid[3],
+              uid[4],
+              uid[5],
+              uid[6],
+              uid[7]);
 }
 
 int32_t cli_service(void* context)
@@ -234,6 +249,7 @@ int32_t cli_service(void* context)
     cli_add_command("?", cli_commands, NULL);
     cli_add_command("log", cli_command_log, NULL);
     cli_add_command("reset", cli_command_reset, NULL);
+    cli_add_command("uid", cli_command_uid, NULL);
 
     for (;;)
     {

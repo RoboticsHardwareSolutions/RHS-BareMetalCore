@@ -15,7 +15,7 @@ void rhs_memmgr_test(char* args, void* context)
     ptr = malloc(100);
     if (ptr == NULL)
     {
-        RHS_LOG_D(TAG, "fault\r\n");
+        RHS_LOG_D(TAG, "fault");
         return;
     }
     // test that memory is zero-initialized after allocation
@@ -23,7 +23,7 @@ void rhs_memmgr_test(char* args, void* context)
     {
         if (0 != ((uint8_t*) ptr)[i])
         {
-        RHS_LOG_D(TAG, "fault\r\n");
+        RHS_LOG_D(TAG, "fault");
         return;
         }
     }
@@ -35,7 +35,7 @@ void rhs_memmgr_test(char* args, void* context)
     ptr = realloc(ptr, 200);
     if (ptr == NULL)
     {
-        RHS_LOG_D(TAG, "fault\r\n");
+        RHS_LOG_D(TAG, "fault");
         return;
     }
 
@@ -44,7 +44,7 @@ void rhs_memmgr_test(char* args, void* context)
     {
         if (66 != ((uint8_t*) ptr)[i])
         {
-        RHS_LOG_D(TAG, "fault\r\n");
+        RHS_LOG_D(TAG, "fault");
         return;
         }
     }
@@ -55,19 +55,19 @@ void rhs_memmgr_test(char* args, void* context)
     ptr = calloc(100, 2);
     if (ptr == NULL)
     {
-        RHS_LOG_D(TAG, "fault\r\n");
+        RHS_LOG_D(TAG, "fault");
         return;
     }
     for (int i = 0; i < 100 * 2; i++)
     {
         if (0 != ((uint8_t*) ptr)[i])
         {
-        RHS_LOG_D(TAG, "fault\r\n");
+        RHS_LOG_D(TAG, "fault");
         return;
         }
     }
     free(ptr);
-    RHS_LOG_D(TAG, "test mem OK\r\n");
+    RHS_LOG_D(TAG, "test mem OK");
 }
 
 void rhs_memmgr_test_start_up(void)

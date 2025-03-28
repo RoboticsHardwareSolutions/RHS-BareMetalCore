@@ -82,25 +82,25 @@ void rhs_hal_rs485_rx_irq_callback(void* context)
     // Error flags
     if (USART6->ISR & USART_ISR_ORE)
     {
-        RHS_LOG_T(TAG, "RxOverrun\r\n");
+        RHS_LOG_T(TAG, "RxOverrun");
         USART6->ICR = USART_ICR_ORECF;
         event |= RHSHalSerialRxEventOverrunError;
     }
     if (USART6->ISR & USART_ISR_NE)
     {
-        RHS_LOG_T(TAG, "RxNoise\r\n");
+        RHS_LOG_T(TAG, "RxNoise");
         USART6->ICR = USART_ICR_NCF;
         event |= RHSHalSerialRxEventNoiseError;
     }
     if (USART6->ISR & USART_ISR_FE)
     {
-        RHS_LOG_T(TAG, "RxFrameError\r\n");
+        RHS_LOG_T(TAG, "RxFrameError");
         USART6->ICR = USART_ICR_FECF;
         event |= RHSHalSerialRxEventFrameError;
     }
     if (USART6->ISR & USART_ISR_PE)
     {
-        RHS_LOG_T(TAG, "RxFrameErrorP\r\n");
+        RHS_LOG_T(TAG, "RxFrameErrorP");
         USART6->ICR = USART_ICR_PECF;
         event |= RHSHalSerialRxEventFrameError;
     }

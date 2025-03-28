@@ -68,25 +68,25 @@ void rhs_hal_rs422_irq_callback(void* context)
     // Error flags
     if (USART5->ISR & USART_ISR_ORE)
     {
-        RHS_LOG_T(TAG, "RxOverrun\r\n");
+        RHS_LOG_T(TAG, "RxOverrun");
         USART5->ICR = USART_ICR_ORECF;
         event |= RHSHalSerialRxEventOverrunError;
     }
     if (USART5->ISR & USART_ISR_NE)
     {
-        RHS_LOG_T(TAG, "RxNoise\r\n");
+        RHS_LOG_T(TAG, "RxNoise");
         USART5->ICR = USART_ICR_NCF;
         event |= RHSHalSerialRxEventNoiseError;
     }
     if (USART5->ISR & USART_ISR_FE)
     {
-        RHS_LOG_T(TAG, "RxFrameError\r\n");
+        RHS_LOG_T(TAG, "RxFrameError");
         USART5->ICR = USART_ICR_FECF;
         event |= RHSHalSerialRxEventFrameError;
     }
     if (USART5->ISR & USART_ISR_PE)
     {
-        RHS_LOG_T(TAG, "RxFrameErrorP\r\n");
+        RHS_LOG_T(TAG, "RxFrameErrorP");
         USART5->ICR = USART_ICR_PECF;
         event |= RHSHalSerialRxEventFrameError;
     }

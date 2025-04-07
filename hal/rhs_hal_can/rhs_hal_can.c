@@ -242,7 +242,7 @@ static void can_sce_callback(void* context)
     if (can_handle->TSR & CAN_TSR_TERR0 || can_handle->TSR & CAN_TSR_TERR1 || can_handle->TSR & CAN_TSR_TERR2)
     {
         CAN_LOG_E("CAN%d Transmition error", can_num);
-        if (can->tec >= 0x80)
+        if (((can_handle->ESR >> 16) & 0xFF) >= 0x80)
         {
             // can_handle->TSR = CAN_TSR_ABRQ0;
             // can_handle->TSR = CAN_TSR_ABRQ1;
@@ -398,7 +398,6 @@ bool rhs_hal_can_tx(RHSHalCANId id, RHSHalCANFrameType* frame)
         print_ecr(rhs_hal_can[id].rcan.handle.Instance);
         rhs_hal_can[id].tec = tec;
     }
-
     rcan_frame rcan_frame = {0};
 
     rcan_frame.id   = frame->id;

@@ -81,6 +81,7 @@ static void rhs_thread_body(void* context)
     rhs_thread_set_state(thread, RHSThreadStateRunning);
 
     thread->ret = thread->callback(thread->context);
+    rhs_assert(!thread->is_service);
 
     rhs_assert(thread->state == RHSThreadStateRunning);
 
@@ -109,24 +110,36 @@ void rhs_thread_set_name(RHSThread* thread, const char* name)
     thread->name = name ? strdup(name) : NULL;
 }
 
+RHSThread* rhs_thread_alloc(const char* name, uint32_t stack_size, RHSThreadCallback callback, void* context)
+{
+    RHSThread* thread    = calloc(1, sizeof(RHSThread));
+    thread->stack_buffer = malloc(stack_size);
+    thread->stack_size   = stack_size;
+    thread->callback     = callback;
+    thread->context      = context;
+    thread->priority     = RHSThreadPriorityNormal;
+    thread->is_service   = false;
+    rhs_thread_set_name(thread, name);
+    return thread;
+}
+
 RHSThread* rhs_thread_alloc_service(const char* name, uint32_t stack_size, RHSThreadCallback callback, void* context)
 {
     RHSThread* thread    = calloc(1, sizeof(RHSThread));
     thread->stack_buffer = malloc(stack_size);
     thread->stack_size   = stack_size;
+    thread->context      = context;
+    thread->callback     = callback;
+    thread->priority     = RHSThreadPriorityNormal;
     thread->is_service   = true;
-
     rhs_thread_set_name(thread, name);
-    thread->callback = callback;
-    thread->context  = context;
-    thread->priority = RHSThreadPriorityNormal;
-
     return thread;
 }
 
 void rhs_thread_free(RHSThread* thread)
 {
     rhs_assert(thread);
+    rhs_assert(!thread->is_service);
 
     rhs_thread_set_name(thread, NULL);
 
@@ -161,6 +174,7 @@ void rhs_thread_start(RHSThread* thread)
 bool rhs_thread_join(RHSThread* thread)
 {
     rhs_assert(thread);
+    rhs_assert(!thread->is_service);
     // Cannot join a thread to itself
     rhs_assert(rhs_thread_get_current() != thread);
 

@@ -85,9 +85,10 @@ void cli_handle_enter(Cli* cli)
         {
             break;
         }
-        char* separator = strchr(cli->line, ' ');
-        char* command   = strstr(cli->line, cli->commands[i].name);
-        if (command != NULL && command == cli->line)
+        char*  separator      = strchr(cli->line, ' ');
+        size_t command_length = separator ? (size_t) (separator - cli->line) : strlen(cli->line);
+        if (strncmp(cli->line, cli->commands[i].name, command_length) == 0 &&
+            strlen(cli->commands[i].name) == command_length)
         {
             cli->commands[i].callback(separator ? separator + 1 : NULL, cli->commands[i].context);
             cli_reset(cli);
@@ -186,6 +187,15 @@ void cli_command_log(char* args, void* context)
         char* separator = strchr(args, ' ');
         if (separator == NULL || *(separator + 1) == 0)
         {
+            if (strstr(args, "-l") == args)
+            {
+                uint16_t s = rhs_count_saved_log();
+                for (int i = 0; i < s; i++)
+                {
+                    SEGGER_RTT_printf(0, "%s\r\n", rhs_read_saved_log(i));
+                }
+                return;
+            }
             RHS_LOG_E(TAG, "Invalid argument");
             return;
         }
@@ -204,15 +214,6 @@ void cli_command_log(char* args, void* context)
         else if (strstr(args, "-s") == args)
         {
             rhs_log_save(separator + 1);
-            return;
-        }
-        else if (strstr(args, "-l") == args)
-        {
-            uint16_t s = rhs_count_saved_log();
-            for (int i = 0; i < s; i++)
-            {
-                SEGGER_RTT_printf(0, "%s\r\n", rhs_read_saved_log(i));
-            }
             return;
         }
 

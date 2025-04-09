@@ -33,3 +33,24 @@ void rhs_hal_cortex_delay_us(uint32_t microseconds)
     {
     }
 }
+
+__attribute__((warn_unused_result)) RHSHalCortexTimer rhs_hal_cortex_timer_get(uint32_t timeout_us)
+{
+    rhs_assert(timeout_us < (UINT32_MAX / RHS_HAL_CORTEX_INSTRUCTIONS_PER_MICROSECOND));
+
+    RHSHalCortexTimer cortex_timer = {0};
+    cortex_timer.start             = DWT->CYCCNT;
+    cortex_timer.value             = RHS_HAL_CORTEX_INSTRUCTIONS_PER_MICROSECOND * timeout_us;
+    return cortex_timer;
+}
+
+bool rhs_hal_cortex_timer_is_expired(RHSHalCortexTimer cortex_timer)
+{
+    return !((DWT->CYCCNT - cortex_timer.start) < cortex_timer.value);
+}
+
+void rhs_hal_cortex_timer_wait(RHSHalCortexTimer cortex_timer)
+{
+    while (!rhs_hal_cortex_timer_is_expired(cortex_timer))
+        ;
+}

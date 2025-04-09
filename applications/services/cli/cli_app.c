@@ -85,9 +85,10 @@ void cli_handle_enter(Cli* cli)
         {
             break;
         }
-        char* separator = strchr(cli->line, ' ');
-        char* command   = strstr(cli->line, cli->commands[i].name);
-        if (command != NULL && command == cli->line)
+        char*  separator      = strchr(cli->line, ' ');
+        size_t command_length = separator ? (size_t) (separator - cli->line) : strlen(cli->line);
+        if (strncmp(cli->line, cli->commands[i].name, command_length) == 0 &&
+            strlen(cli->commands[i].name) == command_length)
         {
             cli->commands[i].callback(separator ? separator + 1 : NULL, cli->commands[i].context);
             cli_reset(cli);
@@ -186,6 +187,15 @@ void cli_command_log(char* args, void* context)
         char* separator = strchr(args, ' ');
         if (separator == NULL || *(separator + 1) == 0)
         {
+            if (strstr(args, "-l") == args)
+            {
+                uint16_t s = rhs_count_saved_log();
+                for (int i = 0; i < s; i++)
+                {
+                    SEGGER_RTT_printf(0, "%s\r\n", rhs_read_saved_log(i));
+                }
+                return;
+            }
             RHS_LOG_E(TAG, "Invalid argument");
             return;
         }
@@ -206,15 +216,6 @@ void cli_command_log(char* args, void* context)
             rhs_log_save(separator + 1);
             return;
         }
-        else if (strstr(args, "-l") == args)
-        {
-            uint16_t s = rhs_count_saved_log();
-            for (int i = 0; i < s; i++)
-            {
-                SEGGER_RTT_printf(0, "%s\r\n", rhs_read_saved_log(i));
-            }
-            return;
-        }
 
         RHS_LOG_E(TAG, "Invalid argument");
     }
@@ -229,15 +230,20 @@ void cli_command_uid(char* args, void* context)
 {
     const uint8_t* uid = rhs_hal_version_uid();
     RHS_LOG_I(TAG,
-              "%02X%02X%02X%02X%02X%02X%02X%02X",
+              "UID %02X%02X-%02X%02X-%02X%02X%02X%02X-%02X%02X%02X%02X",
               uid[0],
-              uid[1],
+              uid[1],  // 16 - bit
               uid[2],
-              uid[3],
+              uid[3],  // 16 - bit
               uid[4],
               uid[5],
               uid[6],
-              uid[7]);
+              uid[7],  // 32 - bits
+              uid[8],
+              uid[9],
+              uid[10],
+              uid[11]  // 32 - bits
+    );
 }
 
 int32_t cli_service(void* context)

@@ -368,11 +368,11 @@ void rhs_hal_can_async_sce(RHSHalCANId id, RHSHalCANAsyncSCECallback callback, v
     switch (id)
     {
     case RHSHalCANId1:
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN1SCE, can_sce_callback, &rhs_hal_can[id]);
+        rhs_hal_interrupt_set_isr_ex(RHSHalInterruptIdCAN1SCE, RHSHalInterruptPriorityLow, can_sce_callback, &rhs_hal_can[id]);
         break;
 #if !defined(RPLC_XL) && !defined(RPLC_L) && !defined(RPLC_M)
     case RHSHalCANId2:
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN2SCE, can_sce_callback, &rhs_hal_can[id]);
+        rhs_hal_interrupt_set_isr_ex(RHSHalInterruptIdCAN2SCE, RHSHalInterruptPriorityLow, can_sce_callback, &rhs_hal_can[id]);
         break;
 #endif
     case RHSHalCANIdMax:

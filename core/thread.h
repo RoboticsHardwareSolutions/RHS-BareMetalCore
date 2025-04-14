@@ -47,6 +47,12 @@ typedef int32_t (*RHSThreadCallback)(void* context);
 
 void rhs_thread_init(void);
 
+RHSThread* rhs_thread_alloc(
+    const char* name,
+    uint32_t stack_size,
+    RHSThreadCallback callback,
+    void* context);
+
 /**
  * @brief Create a RHSThread instance (service mode).
  *

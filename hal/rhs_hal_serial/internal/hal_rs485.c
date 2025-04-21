@@ -1,15 +1,16 @@
+#include "rhs.h"
 #include "hal_rs485.h"
 #include "rhs_hal_serial.h"
 #include "rhs_hal_serial_types.h"
+
+#define TAG "rs485"
+
+#if defined(RPLC_XL) || defined(RPLC_L)
 
 #include "stm32f7xx_ll_rcc.h"
 #include "stm32f7xx_ll_dma.h"
 #include "stm32f7xx_ll_usart.h"
 #include "stm32f7xx_ll_bus.h"
-
-#include "rhs.h"
-
-#define TAG "rs485"
 
 static uint32_t dma_bytes_available(RHSHalSerial* serial)
 {
@@ -250,3 +251,50 @@ void rhs_hal_rs485_async_rx_dma_stop(void)
     LL_DMA_DisableIT_TC(DMA2, LL_DMA_STREAM_1);
     NVIC_DisableIRQ(DMA2_Stream1_IRQn);
 }
+
+#elif defined(RPLC_M)
+#include "stm32f1xx_ll_rcc.h"
+#include "stm32f1xx_ll_dma.h"
+#include "stm32f1xx_ll_usart.h"
+#include "stm32f1xx_ll_bus.h"
+
+static uint32_t dma_bytes_available(RHSHalSerial* serial)
+{
+}
+
+void rhs_hal_rs485_init(void)
+{
+}
+
+void rhs_hal_rs485_rx_irq_callback(void* context)
+{
+}
+
+void rhs_hal_rs485_tx_irq_callback(void* context)
+{
+}
+
+void rhs_hal_rs485_async_tx_dma_start(const uint8_t* buffer, uint16_t buffer_size)
+{
+}
+
+void rhs_hal_rs485_async_tx_dma_stop(void)
+{
+}
+
+void rhs_hal_rs485_async_tx_dma_configure(void)
+{
+}
+
+void rhs_hal_rs485_async_rx_dma_configure(void)
+{
+}
+
+void rhs_hal_rs485_async_rx_dma_start(const uint8_t* buffer, uint16_t buffer_size)
+{
+}
+
+void rhs_hal_rs485_async_rx_dma_stop(void)
+{
+}
+#endif

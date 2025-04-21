@@ -1,15 +1,14 @@
+#include "rhs.h"
 #include "hal_rs422.h"
 #include "rhs_hal_serial.h"
 #include "rhs_hal_serial_types.h"
+
+#define TAG "rs422"
 
 #include "stm32f7xx_ll_rcc.h"
 #include "stm32f7xx_ll_dma.h"
 #include "stm32f7xx_ll_usart.h"
 #include "stm32f7xx_ll_bus.h"
-
-#include "rhs.h"
-
-#define TAG "rs422"
 
 static uint32_t dma_bytes_available(RHSHalSerial* serial)
 {

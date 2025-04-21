@@ -9,6 +9,34 @@
 
 #if defined(RPLC_XL) || defined(RPLC_L)
 #    include "stm32f7xx_ll_usart.h"
+#    define RHS_INTERFACE_RS232 USART3
+#    define RHS_INTERRUPT_RS232 RHSHalInterruptIdUsart3
+#    define RHS_DMA_TX_RS232 RHSHalInterruptIdDMA1Stream3
+// #    define RHS_DMA_RX_RS232 RHSHalInterruptIdUsart3 // TODO
+#    define RHS_INTERFACE_RS485 USART6
+#    define RHS_INTERRUPT_RS485 RHSHalInterruptIdUsart6
+#    define RHS_DMA_TX_RS485 RHSHalInterruptIdDMA2Stream6
+#    define RHS_DMA_RX_RS485 RHSHalInterruptIdDMA2Stream1
+#    if !defined(RPLC_XL)
+#        define RHS_INTERFACE_RS422 USART5
+#        define RHS_INTERRUPT_RS422 RHSHalInterruptIdUart5
+// #        define RHS_DMA_TX_RS422 RHSHalInterruptIdDMA1Stream3 // TODO
+// #        define RHS_DMA_RX_RS422 RHSHalInterruptIdUsart3 // TODO
+#    endif
+#elif defined(RPLC_M)
+#    include "stm32f1xx_ll_usart.h"
+#    define RHS_INTERFACE_RS232 USART3
+#    define RHS_INTERRUPT_RS232 RHSHalInterruptIdUsart3
+#    define RHS_DMA_TX_RS232 RHSHalInterruptIdDMA1Channel2
+#    define RHS_DMA_RX_RS232 RHSHalInterruptIdDMA1Channel3
+#    define RHS_INTERFACE_RS485 UART5
+#    define RHS_INTERRUPT_RS485 RHSHalInterruptIdUsart5
+#    define RHS_DMA_TX_RS485 RHSHalInterruptIdDMA1Channel2  // TODO
+#    define RHS_DMA_RX_RS485 RHSHalInterruptIdDMA1Channel3  // TODO
+#    define RHS_INTERFACE_RS422 UART4
+#    define RHS_INTERRUPT_RS422 RHSHalInterruptIdUsart4
+#    define RHS_DMA_TX_RS422 RHSHalInterruptIdDMA1Channel2  // TODO
+#    define RHS_DMA_RX_RS422 RHSHalInterruptIdDMA1Channel3  // TODO
 #else
 #    error "Not implemented Serial for this platform"
 #endif
@@ -50,15 +78,15 @@ void rhs_hal_serial_deinit(RHSHalSerialId id)
     switch (id)
     {
     case RHSHalSerialIdRS232:
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdUsart3, NULL, NULL);
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdDMA1Stream3, NULL, NULL);
+        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS232, NULL, NULL);
+        rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS232, NULL, NULL);
         break;
     case RHSHalSerialIdRS485:
         rhs_hal_rs485_async_tx_dma_stop();
         rhs_hal_rs485_async_rx_dma_stop();
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdUsart6, NULL, NULL);
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdDMA2Stream1, NULL, NULL);
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdDMA2Stream6, NULL, NULL);
+        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS485, NULL, NULL);
+        rhs_hal_interrupt_set_isr(RHS_DMA_RX_RS485, NULL, NULL);
+        rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS485, NULL, NULL);
         break;
     case RHSHalSerialIdRS422:
         rhs_crash("Not implemented RHSHalSerialIdRS422");
@@ -72,19 +100,35 @@ void rhs_hal_serial_deinit(RHSHalSerialId id)
 }
 
 /*********************************** SERIAL TX ************************************/
+void rhs_hal_serial_tx(RHSHalSerialId id, const uint8_t* buffer, uint16_t buffer_size)
+{
+    rhs_assert(rhs_hal_serial[id].enabled == true);
+    if (LL_USART_IsEnabled(rhs_hal_serial[id].rserial.uart.Instance) == 0)
+        return;
+    while (buffer_size > 0)
+    {
+        LL_USART_TransmitData8(rhs_hal_serial[id].rserial.uart.Instance, *buffer);
+
+        while (!LL_USART_IsActiveFlag_TXE(rhs_hal_serial[id].rserial.uart.Instance))
+            ;
+
+        buffer++;
+        buffer_size--;
+    }
+}
 
 void rhs_hal_serial_async_tx_dma_configure(RHSHalSerialId id)
 {
     switch (id)
     {
     case RHSHalSerialIdRS232:
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdDMA1Stream3,
+        rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS232,
                                   rhs_hal_rs232_tx_irq_callback,
                                   &rhs_hal_serial[RHSHalSerialIdRS232]);
         rhs_hal_rs232_async_tx_dma_configure();
         break;
     case RHSHalSerialIdRS485:
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdDMA2Stream6,
+        rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS485,
                                   rhs_hal_rs485_tx_irq_callback,
                                   &rhs_hal_serial[RHSHalSerialIdRS485]);
         rhs_hal_rs485_async_tx_dma_configure();
@@ -137,12 +181,12 @@ void rhs_hal_serial_async_rx_start(RHSHalSerialId id, RHSHalSerialAsyncRxCallbac
     switch (id)
     {
     case RHSHalSerialIdRS232:
-        LL_USART_EnableIT_RXNE(USART3);
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdUsart3, rhs_hal_rs232_irq_callback, &rhs_hal_serial[id]);
+        LL_USART_EnableIT_RXNE(RHS_INTERFACE_RS232);
+        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS232, rhs_hal_rs232_irq_callback, &rhs_hal_serial[id]);
         break;
     case RHSHalSerialIdRS485:
-        LL_USART_EnableIT_RXNE(USART6);
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdUsart6, rhs_hal_rs485_rx_irq_callback, &rhs_hal_serial[id]);
+        LL_USART_EnableIT_RXNE(RHS_INTERFACE_RS485);
+        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS485, rhs_hal_rs485_rx_irq_callback, &rhs_hal_serial[id]);
         break;
     case RHSHalSerialIdRS422:
         rhs_crash("Not implemented RHSHalSerialIdRS422");
@@ -192,8 +236,8 @@ void rhs_hal_serial_async_rx_dma_configure(RHSHalSerialId id, RHSHalSerialDmaRxC
         rhs_crash("Not implemented RHSHalSerialIdRS232");
         break;
     case RHSHalSerialIdRS485:
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdUsart6, NULL, NULL);
-        rhs_hal_interrupt_set_isr(RHSHalInterruptIdDMA2Stream1, rhs_hal_rs485_rx_irq_callback, &rhs_hal_serial[id]);
+        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS485, NULL, NULL);
+        rhs_hal_interrupt_set_isr(RHS_DMA_RX_RS485, rhs_hal_rs485_rx_irq_callback, &rhs_hal_serial[id]);
         rhs_hal_rs485_async_rx_dma_configure();
         break;
     case RHSHalSerialIdRS422:

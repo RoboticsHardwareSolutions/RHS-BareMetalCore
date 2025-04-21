@@ -11,5 +11,6 @@
 #include "core/mutex.h"
 #include "core/thread.h"
 #include "core/timer.h"
+#include "core/api_lock.h"
 
 void rhs_init(void);

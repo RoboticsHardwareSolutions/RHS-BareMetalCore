@@ -1,5 +1,6 @@
 add_subdirectory(cli)
 add_subdirectory(loader)
+add_subdirectory(can_open)
 
 if(RPLC_XL)
     add_subdirectory(notification)

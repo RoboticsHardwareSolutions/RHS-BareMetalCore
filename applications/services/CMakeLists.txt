@@ -3,6 +3,7 @@ add_subdirectory(loader)
 
 if(RPLC_XL)
     add_subdirectory(notification)
+    add_subdirectory(LWIP)
 elseif(RPLC_L)
     add_subdirectory(notification)
 elseif(RPLC_M)

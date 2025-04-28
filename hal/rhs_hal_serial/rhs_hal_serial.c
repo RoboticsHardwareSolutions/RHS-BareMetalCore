@@ -63,9 +63,11 @@ void rhs_hal_serial_init(RHSHalSerialId id, uint32_t baud)
         rserial_open(&rhs_hal_serial[RHSHalSerialIdRS485].rserial, "UART6", (int) baud, "8N1", FLOW_CTRL_DE, 4000);
         rhs_hal_serial[RHSHalSerialIdRS485].enabled = true;
         break;
+#if !defined(RPLC_XL)
     case RHSHalSerialIdRS422:
         rhs_crash("Not implemented RHSHalSerialIdRS422");
         break;
+#endif
     case RHSHalSerialIdMax:
     default:
         rhs_crash("No serial id");
@@ -88,9 +90,11 @@ void rhs_hal_serial_deinit(RHSHalSerialId id)
         rhs_hal_interrupt_set_isr(RHS_DMA_RX_RS485, NULL, NULL);
         rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS485, NULL, NULL);
         break;
+#if !defined(RPLC_XL)
     case RHSHalSerialIdRS422:
         rhs_crash("Not implemented RHSHalSerialIdRS422");
         break;
+#endif
     case RHSHalSerialIdMax:
     default:
         rhs_crash("No serial id");
@@ -133,9 +137,11 @@ void rhs_hal_serial_async_tx_dma_configure(RHSHalSerialId id)
                                   &rhs_hal_serial[RHSHalSerialIdRS485]);
         rhs_hal_rs485_async_tx_dma_configure();
         break;
+#if !defined(RPLC_XL)
     case RHSHalSerialIdRS422:
         rhs_crash("Not implemented RHSHalSerialIdRS422");
         break;
+#endif
     case RHSHalSerialIdMax:
     default:
         rhs_crash("No serial id");
@@ -158,9 +164,11 @@ void rhs_hal_serial_async_tx_dma_start(RHSHalSerialId            id,
     case RHSHalSerialIdRS485:
         rhs_hal_rs485_async_tx_dma_start(buffer, buffer_size);
         break;
+#if !defined(RPLC_XL)
     case RHSHalSerialIdRS422:
         rhs_crash("Not implemented RHSHalSerialIdRS422");
         break;
+#endif
     case RHSHalSerialIdMax:
     default:
         rhs_crash("No serial id");
@@ -188,9 +196,11 @@ void rhs_hal_serial_async_rx_start(RHSHalSerialId id, RHSHalSerialAsyncRxCallbac
         LL_USART_EnableIT_RXNE(RHS_INTERFACE_RS485);
         rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS485, rhs_hal_rs485_rx_irq_callback, &rhs_hal_serial[id]);
         break;
+#if !defined(RPLC_XL)
     case RHSHalSerialIdRS422:
         rhs_crash("Not implemented RHSHalSerialIdRS422");
         break;
+#endif
     case RHSHalSerialIdMax:
     default:
         rhs_crash("No serial id");
@@ -209,8 +219,10 @@ uint8_t rhs_hal_serial_async_rx(RHSHalSerialId id)
         return LL_USART_ReceiveData8(rhs_hal_serial[id].rserial.uart.Instance);
     case RHSHalSerialIdRS485:
         return LL_USART_ReceiveData8(rhs_hal_serial[id].rserial.uart.Instance);
+#if !defined(RPLC_XL)
     case RHSHalSerialIdRS422:
         rhs_crash("Not implemented RHSHalSerialIdRS422");
+#endif
     case RHSHalSerialIdMax:
     default:
         rhs_crash("No serial id");
@@ -240,9 +252,11 @@ void rhs_hal_serial_async_rx_dma_configure(RHSHalSerialId id, RHSHalSerialDmaRxC
         rhs_hal_interrupt_set_isr(RHS_DMA_RX_RS485, rhs_hal_rs485_rx_irq_callback, &rhs_hal_serial[id]);
         rhs_hal_rs485_async_rx_dma_configure();
         break;
+#if !defined(RPLC_XL)
     case RHSHalSerialIdRS422:
         rhs_crash("Not implemented RHSHalSerialIdRS422");
         break;
+#endif
     case RHSHalSerialIdMax:
     default:
         rhs_crash("No serial id");
@@ -261,9 +275,11 @@ void rhs_hal_serial_async_rx_dma_start(RHSHalSerialId id, uint8_t* buffer, uint1
         rhs_hal_serial[id].buffer_rx_ptr = buffer;
         rhs_hal_rs485_async_rx_dma_start(buffer, buffer_size);
         break;
+#if !defined(RPLC_XL)
     case RHSHalSerialIdRS422:
         rhs_crash("Not implemented RHSHalSerialIdRS422");
         break;
+#endif
     case RHSHalSerialIdMax:
     default:
         rhs_crash("No serial id");

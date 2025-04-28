@@ -132,3 +132,5 @@ uint32_t rhs_thread_flags_get(void);
 uint32_t rhs_thread_flags_wait(uint32_t flags, uint32_t options, uint32_t timeout);
 
 void rhs_thread_scrub(void);
+
+void rhs_thread_check(void);

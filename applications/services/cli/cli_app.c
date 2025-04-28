@@ -246,6 +246,11 @@ void cli_command_uid(char* args, void* context)
     );
 }
 
+void cli_command_top(char* args, void* context)
+{
+    rhs_thread_check();
+}
+
 int32_t cli_service(void* context)
 {
     Cli* cli = cli_alloc();
@@ -256,6 +261,7 @@ int32_t cli_service(void* context)
     cli_add_command("log", cli_command_log, NULL);
     cli_add_command("reset", cli_command_reset, NULL);
     cli_add_command("uid", cli_command_uid, NULL);
+    cli_add_command("top", cli_command_top, NULL);
 
     for (;;)
     {

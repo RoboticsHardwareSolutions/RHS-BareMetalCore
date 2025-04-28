@@ -11,7 +11,7 @@ typedef enum
 {
     RHSHalSerialIdRS232,
     RHSHalSerialIdRS485,
-#if !defined(RPLC_M)
+#if !defined(RPLC_XL)
     RHSHalSerialIdRS422,
 #endif
     RHSHalSerialIdMax,
@@ -21,6 +21,7 @@ void rhs_hal_serial_init(RHSHalSerialId id, uint32_t baud);
 
 void rhs_hal_serial_deinit(RHSHalSerialId id);
 
+void rhs_hal_serial_tx(RHSHalSerialId id, const uint8_t* buffer, uint16_t buffer_size);
 /** Receive callback
  *
  * @warning    Callback will be called in interrupt context, ensure thread

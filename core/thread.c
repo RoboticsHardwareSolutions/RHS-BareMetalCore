@@ -427,3 +427,71 @@ void rhs_thread_scrub(void)
         RHS_LOG_D(TAG, "task deleted");
     }
 }
+
+static const char* rhs_thread_state_name(eTaskState state)
+{
+    switch (state)
+    {
+    case eRunning:
+        return "Running";
+    case eReady:
+        return "Ready";
+    case eBlocked:
+        return "Blocked";
+    case eSuspended:
+        return "Suspended";
+    case eDeleted:
+        return "Deleted";
+    case eInvalid:
+        return "Invalid";
+    default:
+        return "?";
+    }
+}
+
+void rhs_thread_check(void)
+{
+    rhs_assert(!RHS_IS_IRQ_MODE());
+
+
+    vTaskSuspendAll();
+    do
+    {
+        uint32_t tick  = rhs_get_tick();
+        uint32_t count = uxTaskGetNumberOfTasks();
+
+        TaskStatus_t* task = pvPortMalloc(count * sizeof(TaskStatus_t));
+
+        if (!task)
+            break;
+
+        configRUN_TIME_COUNTER_TYPE total_run_time;
+        count = uxTaskGetSystemState(task, count, &total_run_time);
+
+        RHS_LOG_I(TAG, "Total run count: %u", count);
+
+        total_run_time /= 100;
+        RHS_LOG_I(TAG, "%-32s %-10s %-5s %-6s %-10s", "Task Name", "State", "Prio", "RunTime", "StackMinFree");
+        for (uint32_t i = 0U; i < count; i++)
+        {
+            uint32_t run_time = task[i].ulRunTimeCounter / total_run_time;
+            RHS_LOG_I(TAG,
+                      "%-32s %-10s %-3d %-4s %-5d",
+                      task[i].pcTaskName,
+                      rhs_thread_state_name(task[i].eCurrentState),
+                      task[i].uxCurrentPriority,
+                      run_time < 1 ? "<1%"
+                                   : (
+                                         {
+                                             char buffer[12];
+                                             itoa(run_time, buffer, 10);
+                                             strcat(buffer, "%");
+                                             buffer;
+                                         }),
+                      (uint32_t) (uxTaskGetStackHighWaterMark(task[i].xHandle) * sizeof(StackType_t))  // stack_min_free
+            );
+        }
+        vPortFree(task);
+    } while (false);
+    (void) xTaskResumeAll();
+}

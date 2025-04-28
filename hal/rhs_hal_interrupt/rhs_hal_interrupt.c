@@ -62,6 +62,11 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdCAN2Rx0] = CAN2_RX0_IRQn,
     [RHSHalInterruptIdCAN2SCE] = CAN2_SCE_IRQn,
     [RHSHalInterruptIdCAN2Tx]  = CAN2_TX_IRQn,
+
+#elif defined(STM32F103xE)
+    /* UART */
+    [RHSHalInterruptIdUsart3] = USART3_IRQn,
+    
 #endif
 };
 
@@ -243,6 +248,31 @@ void CAN2_SCE_IRQHandler(void)
 void CAN2_TX_IRQHandler(void)
 {
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
+}
+
+#elif STM32F103xE
+
+#    include "usbd_core.h"
+
+extern usbd_device udev;
+
+extern void HW_IPCC_Tx_Handler(void);
+extern void HW_IPCC_Rx_Handler(void);
+
+void USB_LP_IRQHandler(void)
+{
+    usbd_poll(&udev);
+}
+
+void USB_HP_IRQHandler(void)
+{
+    usbd_poll(&udev);
+}
+
+/* USART 3 */
+void USART3_IRQHandler(void)
+{
+    rhs_hal_interrupt_call(RHSHalInterruptIdUsart3);
 }
 
 #endif

@@ -65,6 +65,19 @@ static const CdcCallbacks cdc_cb = {
     vcp_on_line_config,
 };
 
+static void serial_rx_cb(RHSHalSerialRxEvent event, void* context)
+{
+    UsbSerialBridge* usb_serial = (UsbSerialBridge*) context;
+
+    rhs_hal_serial_async_rx(usb_serial->cfg.serial_ch);
+    if (event & (RHSHalSerialRxEventData))
+    {
+        uint8_t data = rhs_hal_serial_async_rx(usb_serial->cfg.serial_ch);
+        rhs_stream_buffer_send(usb_serial->rx_stream, &data, 1, 0);
+        rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtRxDone);
+    }
+}
+
 static void usb_serial_vcp_init(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
 {
     rhs_hal_usb_unlock();
@@ -80,17 +93,19 @@ static void usb_serial_vcp_deinit(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
     }
 }
 
-void serial_rx_cb(RHSHalSerialRxEvent event, void* context)
+static void usb_uart_serial_init(UsbSerialBridge* usb_uart, UsbSerialConfig uart)
 {
-    UsbSerialBridge* usb_serial = (UsbSerialBridge*) context;
+    rhs_assert(!usb_uart->serial_handle);
 
-    rhs_hal_serial_async_rx(RHSHalSerialIdRS232);
-    if (event & (RHSHalSerialRxEventData))
-    {
-        uint8_t data = rhs_hal_serial_async_rx(RHSHalSerialIdRS232);
-        rhs_stream_buffer_send(usb_serial->rx_stream, &data, 1, 0);
-        rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtRxDone);
-    }
+    rhs_hal_serial_init(uart.serial_ch, 115200);
+    rhs_hal_serial_async_rx_start(uart.serial_ch, serial_rx_cb, usb_uart);
+}
+
+static void usb_uart_serial_deinit(UsbSerialBridge* usb_uart)
+{
+    rhs_assert(usb_uart->serial_handle);
+
+    rhs_hal_serial_deinit(usb_uart->serial_handle);
 }
 
 static int32_t usb_serial_tx_thread(void* context)
@@ -114,14 +129,10 @@ static int32_t usb_serial_tx_thread(void* context)
             {
                 usb_serial->st.tx_cnt += len;
 
-                // if(usb_serial->cfg.software_de_re != 0)
-                // rhs_hal_gpio_write(USB_USART_DE_RE_PIN, false);
-                rhs_hal_serial_tx(RHSHalSerialIdRS232, data, len);
+                rhs_hal_serial_tx(usb_serial->cfg.serial_ch, data, len);
 
                 if (usb_serial->cfg.software_de_re != 0)
                 {
-                    // rhs_hal_serial_tx_wait_complete(usb_serial->serial_handle);
-                    // rhs_hal_gpio_write(USB_USART_DE_RE_PIN, true);
                 }
             }
         }
@@ -144,16 +155,8 @@ static int32_t usb_serial_worker(void* context)
 
     usb_serial_vcp_init(usb_serial, usb_serial->cfg.vcp_ch);
 
-    rhs_hal_serial_init(RHSHalSerialIdRS232, 115200);
-    rhs_hal_serial_async_rx_start(RHSHalSerialIdRS232, serial_rx_cb, usb_serial);
-    // if(usb_serial->cfg.flow_pins != 0) {
-    //     rhs_assert((size_t)(usb_serial->cfg.flow_pins - 1) < COUNT_OF(flow_pins));
-    //     rhs_hal_gpio_init_simple(
-    //         flow_pins[usb_serial->cfg.flow_pins - 1][0], GpioModeOutputPushPull);
-    //     rhs_hal_gpio_init_simple(
-    //         flow_pins[usb_serial->cfg.flow_pins - 1][1], GpioModeOutputPushPull);
-    //     usb_serial_update_ctrl_lines(usb_serial);
-    // }
+    rhs_hal_serial_init(usb_serial->cfg.serial_ch, usb_serial->cfg.baudrate);
+    rhs_hal_serial_async_rx_start(usb_serial->cfg.serial_ch, serial_rx_cb, usb_serial);
 
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->tx_thread), WorkerEvtCdcRx);
 
@@ -179,6 +182,7 @@ static int32_t usb_serial_worker(void* context)
                 }
                 else
                 {
+                    RHS_LOG_D(TAG, "USB TX timeout");
                     rhs_stream_buffer_reset(usb_serial->rx_stream);
                 }
             }
@@ -190,7 +194,7 @@ static int32_t usb_serial_worker(void* context)
                 rhs_thread_flags_set(rhs_thread_get_id(usb_serial->tx_thread), WorkerEvtTxStop);
                 rhs_thread_join(usb_serial->tx_thread);
 
-                // usb_serial_vcp_deinit(usb_serial, usb_serial->cfg.vcp_ch);
+                usb_serial_vcp_deinit(usb_serial, usb_serial->cfg.vcp_ch);
                 usb_serial_vcp_init(usb_serial, usb_serial->cfg_new.vcp_ch);
 
                 usb_serial->cfg.vcp_ch = usb_serial->cfg_new.vcp_ch;
@@ -203,48 +207,29 @@ static int32_t usb_serial_worker(void* context)
                 rhs_thread_flags_set(rhs_thread_get_id(usb_serial->tx_thread), WorkerEvtTxStop);
                 rhs_thread_join(usb_serial->tx_thread);
 
-                // usb_serial_serial_deinit(usb_serial);
-                // usb_serial_serial_init(usb_serial, usb_serial->cfg_new.serial_ch);
+                usb_uart_serial_deinit(usb_serial);
+                usb_uart_serial_init(usb_serial, usb_serial->cfg_new);
 
                 usb_serial->cfg.serial_ch = usb_serial->cfg_new.serial_ch;
-                // usb_serial_set_baudrate(usb_serial, usb_serial->cfg.baudrate);
 
                 rhs_thread_start(usb_serial->tx_thread);
             }
             if (usb_serial->cfg.baudrate != usb_serial->cfg_new.baudrate)
             {
+                rhs_crash("Baudrate change not implemented");
                 // usb_serial_set_baudrate(usb_serial, usb_serial->cfg_new.baudrate);
                 usb_serial->cfg.baudrate = usb_serial->cfg_new.baudrate;
             }
             if (usb_serial->cfg.flow_pins != usb_serial->cfg_new.flow_pins)
             {
-                // if(usb_serial->cfg.flow_pins != 0) {
-                //     rhs_hal_gpio_init_simple(
-                //         flow_pins[usb_serial->cfg.flow_pins - 1][0], GpioModeAnalog);
-                //     rhs_hal_gpio_init_simple(
-                //         flow_pins[usb_serial->cfg.flow_pins - 1][1], GpioModeAnalog);
-                // }
-                // if(usb_serial->cfg_new.flow_pins != 0) {
-                //     rhs_assert((size_t)(usb_serial->cfg_new.flow_pins - 1) < COUNT_OF(flow_pins));
-                //     rhs_hal_gpio_init_simple(
-                //         flow_pins[usb_serial->cfg_new.flow_pins - 1][0], GpioModeOutputPushPull);
-                //     rhs_hal_gpio_init_simple(
-                //         flow_pins[usb_serial->cfg_new.flow_pins - 1][1], GpioModeOutputPushPull);
-                // }
+                rhs_crash("Flow pins change not implemented");
                 usb_serial->cfg.flow_pins = usb_serial->cfg_new.flow_pins;
                 events |= WorkerEvtCtrlLineSet;
             }
             if (usb_serial->cfg.software_de_re != usb_serial->cfg_new.software_de_re)
             {
+                rhs_crash("Software de-re change not implemented");
                 usb_serial->cfg.software_de_re = usb_serial->cfg_new.software_de_re;
-                // if(usb_serial->cfg.software_de_re != 0) {
-                //     rhs_hal_gpio_write(USB_USART_DE_RE_PIN, true);
-                //     rhs_hal_gpio_init(
-                //         USB_USART_DE_RE_PIN, GpioModeOutputPushPull, GpioPullNo, GpioSpeedMedium);
-                // } else {
-                //     rhs_hal_gpio_init(
-                //         USB_USART_DE_RE_PIN, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
-                // }
             }
             api_lock_unlock(usb_serial->cfg_lock);
         }
@@ -262,14 +247,7 @@ static int32_t usb_serial_worker(void* context)
     }
 
     usb_serial_vcp_deinit(usb_serial, usb_serial->cfg.vcp_ch);
-    // usb_serial_serial_deinit(usb_serial);
-
-    // rhs_hal_gpio_init(USB_USART_DE_RE_PIN, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
-
-    // if(usb_serial->cfg.flow_pins != 0) {
-    //     rhs_hal_gpio_init_simple(flow_pins[usb_serial->cfg.flow_pins - 1][0], GpioModeAnalog);
-    //     rhs_hal_gpio_init_simple(flow_pins[usb_serial->cfg.flow_pins - 1][1], GpioModeAnalog);
-    // }
+    usb_uart_serial_deinit(usb_serial);
 
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->tx_thread), WorkerEvtTxStop);
     rhs_thread_join(usb_serial->tx_thread);
@@ -281,9 +259,6 @@ static int32_t usb_serial_worker(void* context)
 
     rhs_hal_usb_unlock();
     rhs_assert(rhs_hal_usb_set_config(&usb_cdc_single, NULL) == true);
-    // Cli* cli = rhs_record_open(RECORD_CLI);
-    // cli_session_open(cli, &cli_vcp);
-    // rhs_record_close(RECORD_CLI);
 
     return 0;
 }
@@ -323,25 +298,82 @@ static void vcp_on_line_config(void* context, struct usb_cdc_line_coding* config
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtLineCfgSet);
 }
 
+static void usb_bridge_cb(char* args, void* context)
+{
+    static UsbSerialBridge* usb_serial = NULL;
+    if (args == NULL)
+    {
+        RHS_LOG_E(TAG, "Invalid argument");
+        return;
+    }
+
+    char* separator = strchr(args, ' ');
+    if (separator != NULL && *(separator + 1) != 0)
+    {
+    }
+
+    if (strstr(args, "-rs232") == args)
+    {
+        if (usb_serial == NULL)
+        {
+            UsbSerialConfig cfg = {
+                .vcp_ch         = 0,
+                .serial_ch      = RHSHalSerialIdRS232,
+                .flow_pins      = 0,
+                .baudrate_mode  = 0,
+                .baudrate       = 115200,
+                .software_de_re = 0,
+            };
+            usb_serial = usb_serial_enable(&cfg);
+            RHS_LOG_W(TAG, "RS232 enabled");
+        }
+        else
+        {
+            usb_serial_disable(usb_serial);
+            usb_serial = NULL;
+            RHS_LOG_W(TAG, "RS232 disabled");
+        }
+        return;
+    }
+    else if (strstr(args, "-rs485") == args)
+    {
+        RHS_LOG_W(TAG, "RS485 not implemented");
+        return;
+    }
+    else
+    {
+        RHS_LOG_E(TAG, "Invalid argument");
+    }
+}
+
 UsbSerialBridge* usb_serial_enable(UsbSerialConfig* cfg)
 {
     UsbSerialBridge* usb_serial = malloc(sizeof(UsbSerialBridge));
-
     memcpy(&(usb_serial->cfg_new), cfg, sizeof(UsbSerialConfig));
 
     usb_serial->thread = rhs_thread_alloc("UsbSerialWorker", 1024, usb_serial_worker, usb_serial);
 
     rhs_thread_start(usb_serial->thread);
+    cli_add_command("usb_bridge_stop", usb_bridge_cb, NULL);
+
     return usb_serial;
 }
 
-void usb_serial_bridge_start_up(void)
+void usb_serial_disable(UsbSerialBridge* usb_serial)
 {
-    UsbSerialConfig* cfg = malloc(sizeof(UsbSerialConfig));
-    cfg->vcp_ch          = 0;
-    cfg->serial_ch       = 0;
-    cfg->flow_pins       = 0;
-    cfg->baudrate_mode   = 0;
-    cfg->baudrate        = 0;
-    usb_serial_enable(cfg);
+    rhs_assert(usb_serial);
+    rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtStop);
+    rhs_thread_join(usb_serial->thread);
+    rhs_thread_free(usb_serial->thread);
+    free(usb_serial);
+}
+
+void cli_vcp_start_up(void)
+{
+    cli_add_command("usb_bridge", usb_bridge_cb, NULL);
+
+    // TODO cli_vcp
+    // This is a stub
+    rhs_hal_usb_set_config(&usb_cdc_single, NULL);
+    // rhs_hal_cdc_set_callbacks(0, (CdcCallbacks*) &cdc_cb, cli_vcp);
 }

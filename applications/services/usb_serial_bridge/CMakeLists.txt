@@ -16,4 +16,4 @@ target_link_libraries(
         rhs_hal
 )
 
-start_up(usb_serial_bridge_start_up)
+start_up(cli_vcp_start_up)

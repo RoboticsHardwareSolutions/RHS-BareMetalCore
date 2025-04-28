@@ -40,6 +40,14 @@ typedef enum
     RHSHalInterruptIdCAN2Rx0,
     RHSHalInterruptIdCAN2SCE,
     RHSHalInterruptIdCAN2Tx,
+#elif STM32F103xE
+    /* USART */
+    RHSHalInterruptIdUsart3,
+    RHSHalInterruptIdUsart4,
+    RHSHalInterruptIdUsart5,
+    /* DMA */
+    RHSHalInterruptIdDMA1Channel2,
+    RHSHalInterruptIdDMA1Channel3,
 #endif
 
     // Service value

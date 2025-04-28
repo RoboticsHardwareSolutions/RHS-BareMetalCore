@@ -13,6 +13,8 @@ add_library(${PROJECT_NAME} STATIC
         core/check.c
         core/log.c
         core/thread.c
+        core/stream_buf.c
+        core/semaphore.c
 )
 target_sources(${PROJECT_NAME} PUBLIC ${CMAKE_BINARY_DIR}/applications.c)
 

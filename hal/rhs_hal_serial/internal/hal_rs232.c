@@ -1,15 +1,17 @@
+
+#include "rhs.h"
 #include "hal_rs232.h"
 #include "rhs_hal_serial.h"
 #include "rhs_hal_serial_types.h"
 
-#include "stm32f7xx_ll_rcc.h"
-#include "stm32f7xx_ll_dma.h"
-#include "stm32f7xx_ll_usart.h"
-#include "stm32f7xx_ll_bus.h"
-
-#include "rhs.h"
-
 #define TAG "rs232"
+
+#if defined(RPLC_XL) || defined(RPLC_L)
+
+#    include "stm32f7xx_ll_rcc.h"
+#    include "stm32f7xx_ll_dma.h"
+#    include "stm32f7xx_ll_usart.h"
+#    include "stm32f7xx_ll_bus.h"
 
 static uint32_t dma_bytes_available(RHSHalSerial* serial)
 {
@@ -106,9 +108,7 @@ void rhs_hal_rs232_irq_callback(void* context)
     {
         if (serial->rx_dma_callback)
         {
-            serial->rx_dma_callback(event,
-                                    dma_bytes_available(serial),
-                                    serial->context);
+            serial->rx_dma_callback(event, dma_bytes_available(serial), serial->context);
         }
     }
 }
@@ -169,3 +169,121 @@ void rhs_hal_rs232_async_tx_dma_configure(void)
     NVIC_SetPriority(DMA1_Stream3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
     NVIC_EnableIRQ(DMA1_Stream3_IRQn);
 }
+#elif defined(RPLC_M)
+#    include "stm32f1xx_ll_rcc.h"
+#    include "stm32f1xx_ll_dma.h"
+#    include "stm32f1xx_ll_usart.h"
+#    include "stm32f1xx_ll_bus.h"
+
+static uint32_t dma_bytes_available(RHSHalSerial* serial)
+{
+    rhs_assert(serial);
+    size_t dma_remain = LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_1);
+
+    serial->buffer_rx_index_write = RHS_HAL_SERIAL_DMA_BUFFER_SIZE - dma_remain;
+    if (serial->buffer_rx_index_write >= serial->buffer_rx_index_read)
+    {
+        return serial->buffer_rx_index_write - serial->buffer_rx_index_read;
+    }
+    else
+    {
+        return RHS_HAL_SERIAL_DMA_BUFFER_SIZE - serial->buffer_rx_index_read + serial->buffer_rx_index_write;
+    }
+}
+
+void rhs_hal_rs232_init(void)
+{
+    GPIO_InitTypeDef         GPIO_InitStruct     = {0};
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+    __HAL_RCC_USART3_CLK_ENABLE();
+
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    /**USART3 GPIO Configuration
+    PB10     ------> USART3_TX
+    PB11     ------> USART3_RX
+    */
+    GPIO_InitStruct.Pin   = GPIO_PIN_10;
+    GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin  = GPIO_PIN_11;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+}
+
+void rhs_hal_rs232_irq_callback(void* context)
+{
+    rhs_assert(context);
+    RHSHalSerial*       serial = (RHSHalSerial*) context;
+    RHSHalSerialRxEvent event  = 0;
+    // Notification flags
+
+    if (USART3->SR & USART_SR_RXNE)
+    {
+        event |= RHSHalSerialRxEventData;
+    }
+    if (USART3->SR & USART_SR_IDLE)
+    {
+        // USART3->CR = USART_ICR_IDLECF;
+        event |= RHSHalSerialRxEventIdle;
+    }
+    // Error flags
+    if (USART3->SR & USART_SR_ORE)
+    {
+        RHS_LOG_T(TAG, "RxOverrun", USART3->SR);
+        // USART3->CR1 = USART_CR1_ORECF;
+        event |= RHSHalSerialRxEventOverrunError;
+    }
+    if (USART3->SR & USART_SR_NE)
+    {
+        RHS_LOG_T(TAG, "RxNoise", USART3->SR);
+        // USART3->ICR = USART_ICR_NCF;
+        event |= RHSHalSerialRxEventNoiseError;
+    }
+    if (USART3->SR & USART_SR_FE)
+    {
+        RHS_LOG_T(TAG, "RxFrameError", USART3->SR);
+        // USART3->ICR = USART_ICR_FECF;
+        event |= RHSHalSerialRxEventFrameError;
+    }
+    if (USART3->SR & USART_SR_PE)
+    {
+        RHS_LOG_T(TAG, "RxFrameErrorP", USART3->SR);
+        // USART3->ICR = USART_ICR_PECF;
+        event |= RHSHalSerialRxEventFrameError;
+    }
+
+    if (serial->buffer_rx_ptr == NULL)
+    {
+        if (serial->rx_byte_callback)
+        {
+            serial->rx_byte_callback(event, serial->context);
+        }
+    }
+    else
+    {
+        if (serial->rx_dma_callback)
+        {
+            serial->rx_dma_callback(event, dma_bytes_available(serial), serial->context);
+        }
+    }
+}
+
+void rhs_hal_rs232_tx_irq_callback(void* context)
+{
+    rhs_crash("Not implemented");
+}
+
+void rhs_hal_rs232_async_tx_dma_start(const uint8_t* buffer, uint16_t buffer_size)
+{
+    rhs_crash("Not implemented");
+}
+
+void rhs_hal_rs232_async_tx_dma_configure(void)
+{
+    rhs_crash("Not implemented");
+}
+
+#endif

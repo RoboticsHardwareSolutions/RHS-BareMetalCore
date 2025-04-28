@@ -21,7 +21,10 @@
 #    include "rhs_hal_can.h"
 #    include "rhs_hal_random.h"
 #elif RPLC_M
+#    include "rhs_hal_serial.h"
 #    include "rhs_hal_speaker.h"
+#    include "rhs_hal_usb.h"
+#    include "rhs_hal_usb_cdc.h"
 #else
 #    if RHS_HAL_SPEAKER
 #        include "rhs_hal_speaker.h"

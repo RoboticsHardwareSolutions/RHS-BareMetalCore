@@ -1,9 +1,6 @@
 #pragma once
 #include "rserial.h"
 
-#define RHS_HAL_SERIAL_RS485_DMA_INSTANCE (DMA1)
-#define RHS_HAL_SERIAL_RS485_DMA_CHANNEL (LL_DMA_CHANNEL_7)
-
 typedef struct
 {
     uint8_t*                    buffer_rx_ptr;

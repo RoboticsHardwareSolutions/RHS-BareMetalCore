@@ -84,6 +84,10 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdCAN2SCE] = CAN2_SCE_IRQn,
     [RHSHalInterruptIdCAN2Tx]  = CAN2_TX_IRQn,
 #    elif defined(STM32F103xE)
+/* CAN */
+[RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
+[RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
+[RHSHalInterruptIdCAN1Tx]  = CAN1_TX_IRQn,
     /* UART */
     [RHSHalInterruptIdUsart3] = USART3_IRQn,
 #    endif
@@ -193,7 +197,7 @@ void CAN1_TX_IRQHandler(void)
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
 }
 
-#    if defined(RPLC_XL) || defined(RPLC_L)
+#    if !defined(RPLC_XL) && !defined(RPLC_L)
 
 /* CAN 2 RX0 */
 void CAN2_RX0_IRQHandler(void)

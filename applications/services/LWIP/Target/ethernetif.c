@@ -19,7 +19,12 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f7xx_hal.h"
+#ifdef STM32F765xx
+#    include "stm32f7xx_hal.h"
+#elif STM32F407xx
+#    include "stm32f4xx_hal.h"
+#else
+#endif
 #include "lwip/opt.h"
 #include "lwip/timeouts.h"
 #include "netif/ethernet.h"

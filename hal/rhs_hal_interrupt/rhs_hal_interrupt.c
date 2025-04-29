@@ -93,10 +93,10 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
 __attribute__((always_inline)) inline static void rhs_hal_interrupt_call(RHSHalInterruptId index)
 {
     const RHSHalInterruptISRPair* isr_descr = &rhs_hal_interrupt.isr[index];
-    rhs_assert(isr_descr->isr);
 
     RHS_HAL_INTERRUPT_ACCOUNT_START();
-    isr_descr->isr(isr_descr->context);
+    if(isr_descr->isr != NULL)
+        isr_descr->isr(isr_descr->context);
     RHS_HAL_INTERRUPT_ACCOUNT_END();
 }
 

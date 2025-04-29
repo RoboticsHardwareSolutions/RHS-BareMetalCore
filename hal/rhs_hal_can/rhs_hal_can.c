@@ -32,7 +32,7 @@ static uint32_t HAL_RCC_CAN1_CLK_ENABLED = 0;
 
 void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
 {
-#ifdef STM32F765xx
+#if defined(RPLC_XL) || defined(RPLC_L)
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     if (canHandle->Instance == CAN1)
     {
@@ -49,7 +49,31 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
         GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
         HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
     }
-#elif STM32F407xx
+#elif defined(RPLC_M)
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    if (canHandle->Instance == CAN1)
+    {
+        /* CAN1 clock enable */
+        __HAL_RCC_CAN1_CLK_ENABLE();
+        __HAL_RCC_GPIOB_CLK_ENABLE();
+        /**CAN GPIO Configuration
+        PB8     ------> CAN_RX
+        PB9     ------> CAN_TX
+        */
+        GPIO_InitStruct.Pin  = GPIO_PIN_8;
+        GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+        GPIO_InitStruct.Pin   = GPIO_PIN_9;
+        GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+        __HAL_AFIO_REMAP_CAN1_2();
+    }
+#else
+#    if defined(STM32F407xx)
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     if (canHandle->Instance == CAN1)
     {
@@ -84,14 +108,15 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
         GPIO_InitStruct.Alternate = GPIO_AF9_CAN2;
         HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
     }
-#else
-#    error "No processor defined or not implemented"
+#    else
+#        error "No processor defined or not implemented"
+#    endif
 #endif
 }
 
 void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
 {
-#ifdef STM32F765xx
+#if defined(RPLC_XL) || defined(RPLC_L)
     if (canHandle->Instance == CAN1)
     {
         /* Peripheral clock disable */
@@ -103,7 +128,24 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
         */
         HAL_GPIO_DeInit(GPIOA, GPIO_PIN_11 | GPIO_PIN_12);
     }
-#elif STM32F407xx
+#elif defined(RPLC_M)
+    if (canHandle->Instance == CAN1)
+    {
+        /* USER CODE BEGIN CAN1_MspDeInit 0 */
+
+        /* USER CODE END CAN1_MspDeInit 0 */
+        /* Peripheral clock disable */
+        __HAL_RCC_CAN1_CLK_DISABLE();
+
+        /**CAN GPIO Configuration
+        PB8     ------> CAN_RX
+        PB9     ------> CAN_TX
+        */
+        HAL_GPIO_DeInit(GPIOB, GPIO_PIN_8 | GPIO_PIN_9);
+    }
+#else
+#    if defined(STM32F407xx)
+
     if (canHandle->Instance == CAN1)
     {
         HAL_RCC_CAN1_CLK_ENABLED--;
@@ -123,8 +165,9 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
         }
         HAL_GPIO_DeInit(GPIOB, GPIO_PIN_5 | GPIO_PIN_6);
     }
-#else
-#    error "No processor defined or not implemented"
+#    else
+#        error "No processor defined or not implemented"
+#    endif
 #endif
 }
 
@@ -278,22 +321,25 @@ static void can_tx_callback(void* context)
     RHSHalCAN*   can        = (RHSHalCAN*) context;
     CAN_TypeDef* can_handle = can->rcan.handle.Instance;
 
-    if (can_handle->TSR & CAN_TSR_RQCP0)
+    if (can_handle->TSR & (CAN_TSR_RQCP0 | CAN_TSR_RQCP1 | CAN_TSR_RQCP2))
     {
-        can_handle->TSR = CAN_TSR_RQCP0;
-    }
-    if (can_handle->TSR & CAN_TSR_RQCP1)
-    {
-        can_handle->TSR = CAN_TSR_RQCP1;
-    }
-    if (can_handle->TSR & CAN_TSR_RQCP2)
-    {
-        can_handle->TSR = CAN_TSR_RQCP2;
-    }
+        if (can_handle->TSR & CAN_TSR_RQCP0)
+        {
+            can_handle->TSR = CAN_TSR_RQCP0;
+        }
+        if (can_handle->TSR & CAN_TSR_RQCP1)
+        {
+            can_handle->TSR = CAN_TSR_RQCP1;
+        }
+        if (can_handle->TSR & CAN_TSR_RQCP2)
+        {
+            can_handle->TSR = CAN_TSR_RQCP2;
+        }
 
-    if (can->tx_callback)
-    {
-        can->tx_callback(can->tx_context);
+        if (can->tx_callback)
+        {
+            can->tx_callback(can->tx_context);
+        }
     }
 }
 
@@ -368,11 +414,17 @@ void rhs_hal_can_async_sce(RHSHalCANId id, RHSHalCANAsyncSCECallback callback, v
     switch (id)
     {
     case RHSHalCANId1:
-        rhs_hal_interrupt_set_isr_ex(RHSHalInterruptIdCAN1SCE, RHSHalInterruptPriorityLow, can_sce_callback, &rhs_hal_can[id]);
+        rhs_hal_interrupt_set_isr_ex(RHSHalInterruptIdCAN1SCE,
+                                     RHSHalInterruptPriorityLow,
+                                     can_sce_callback,
+                                     &rhs_hal_can[id]);
         break;
 #if !defined(RPLC_XL) && !defined(RPLC_L) && !defined(RPLC_M)
     case RHSHalCANId2:
-        rhs_hal_interrupt_set_isr_ex(RHSHalInterruptIdCAN2SCE, RHSHalInterruptPriorityLow, can_sce_callback, &rhs_hal_can[id]);
+        rhs_hal_interrupt_set_isr_ex(RHSHalInterruptIdCAN2SCE,
+                                     RHSHalInterruptPriorityLow,
+                                     can_sce_callback,
+                                     &rhs_hal_can[id]);
         break;
 #endif
     case RHSHalCANIdMax:
@@ -462,11 +514,10 @@ void rhs_hal_can_async_rx_start(RHSHalCANId id, RHSHalCANAsyncRxCallback callbac
     HAL_CAN_ActivateNotification(&rhs_hal_can[id].rcan.handle, CAN_IT_RX_FIFO0_MSG_PENDING);
 }
 
-void rhs_hal_can_rx(RHSHalCANId id, RHSHalCANFrameType* frame)
+bool rhs_hal_can_rx(RHSHalCANId id, RHSHalCANFrameType* frame)
 {
     rhs_assert(rhs_hal_can[id].enabled == true);
     static uint8_t rec = 0;
-
     rec = (rhs_hal_can[id].rcan.handle.Instance->ESR >> 24) & 0xFF;
     if (rhs_hal_can[id].rec != rec)
     {
@@ -475,11 +526,15 @@ void rhs_hal_can_rx(RHSHalCANId id, RHSHalCANFrameType* frame)
     }
 
     rcan_frame rcan_frame = {0};
-
-    rcan_receive(&rhs_hal_can[id].rcan, &rcan_frame);
+    
+    if(rcan_receive(&rhs_hal_can[id].rcan, &rcan_frame) == false)
+    {
+        return false;
+    }
     frame->id   = rcan_frame.id;
     frame->len  = rcan_frame.len;
     frame->type = rcan_frame.type;
     frame->rtr  = rcan_frame.rtr;
     memcpy(frame->payload, rcan_frame.payload, rcan_frame.len);
+    return true;
 }

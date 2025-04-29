@@ -21,7 +21,10 @@ static void can_rx_irq_cb(RHSHalCANId can_id, void* context)
     Message            rxm = {0};
     RHSHalCANFrameType frame;
 
-    rhs_hal_can_rx(can_id, &frame);
+    if(rhs_hal_can_rx(can_id, &frame) == false)
+    {
+        return;
+    }
 
     for (FilterId* current = filter_list; current != NULL; current = current->next)
     {

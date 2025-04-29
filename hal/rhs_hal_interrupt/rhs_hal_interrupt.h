@@ -11,16 +11,47 @@ typedef void (*RHSHalInterruptISR)(void* context);
 
 typedef enum
 {
-#ifdef STM32F765xx
+#if defined(RPLC_XL) || defined(RPLC_L)
     /* CAN */
     RHSHalInterruptIdCAN1Rx0,
     RHSHalInterruptIdCAN1SCE,
     RHSHalInterruptIdCAN1Tx,
-#if defined(RPLC_XL) || defined(RPLC_L)
+
+    /* USART */
+    RHSHalInterruptIdUsart3,
+    RHSHalInterruptIdUsart6,
+
+    /* UART */
+    RHSHalInterruptIdUart5,
+
+    /* DMA */
+    RHSHalInterruptIdDMA1Stream3,
+    RHSHalInterruptIdDMA2Stream1,
+    RHSHalInterruptIdDMA2Stream6,
+#elif defined(RPLC_M)
+    /* CAN */
+    RHSHalInterruptIdCAN1Rx0,
+    RHSHalInterruptIdCAN1SCE,
+    RHSHalInterruptIdCAN1Tx,
+
+    /* USART */
+    RHSHalInterruptIdUsart3,
+    RHSHalInterruptIdUsart4,
+    RHSHalInterruptIdUsart5,
+
+    /* DMA */
+    RHSHalInterruptIdDMA1Channel2,
+    RHSHalInterruptIdDMA1Channel3,
+#else
+
+#    if defined(STM32F765xx)
+    /* CAN */
+    RHSHalInterruptIdCAN1Rx0,
+    RHSHalInterruptIdCAN1SCE,
+    RHSHalInterruptIdCAN1Tx,
     RHSHalInterruptIdCAN2Rx0,
     RHSHalInterruptIdCAN2SCE,
     RHSHalInterruptIdCAN2Tx,
-#endif
 
     /* USART */
     RHSHalInterruptIdUsart3,
@@ -32,7 +63,7 @@ typedef enum
     RHSHalInterruptIdDMA1Stream3,
     RHSHalInterruptIdDMA2Stream1,
     RHSHalInterruptIdDMA2Stream6,
-#elif STM32F407xx
+#    elif defined(STM32F407xx)
     /* CAN */
     RHSHalInterruptIdCAN1Rx0,
     RHSHalInterruptIdCAN1SCE,
@@ -40,7 +71,7 @@ typedef enum
     RHSHalInterruptIdCAN2Rx0,
     RHSHalInterruptIdCAN2SCE,
     RHSHalInterruptIdCAN2Tx,
-#elif STM32F103xE
+#    elif defined(STM32F103xE)
     /* USART */
     RHSHalInterruptIdUsart3,
     RHSHalInterruptIdUsart4,
@@ -48,8 +79,8 @@ typedef enum
     /* DMA */
     RHSHalInterruptIdDMA1Channel2,
     RHSHalInterruptIdDMA1Channel3,
+#    endif
 #endif
-
     // Service value
     RHSHalInterruptIdMax,
 } RHSHalInterruptId;

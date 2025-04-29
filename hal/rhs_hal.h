@@ -23,6 +23,7 @@
 #elif RPLC_M
 #    include "rhs_hal_serial.h"
 #    include "rhs_hal_speaker.h"
+#    include "rhs_hal_can.h"
 #    include "rhs_hal_usb.h"
 #    include "rhs_hal_usb_cdc.h"
 #else

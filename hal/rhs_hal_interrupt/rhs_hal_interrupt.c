@@ -34,16 +34,12 @@ typedef struct
 static RHSHalIterrupt rhs_hal_interrupt = {};
 
 const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
-#ifdef STM32F765xx
+
+#if defined(RPLC_XL) || defined(RPLC_L)
     /* CAN */
     [RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
     [RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
     [RHSHalInterruptIdCAN1Tx]  = CAN1_TX_IRQn,
-#    if !defined(RPLC_XL) && !defined(RPLC_L)
-    [RHSHalInterruptIdCAN2Rx0] = CAN2_RX0_IRQn,
-    [RHSHalInterruptIdCAN2SCE] = CAN2_SCE_IRQn,
-    [RHSHalInterruptIdCAN2Tx]  = CAN2_TX_IRQn,
-#    endif
     /* UART */
     [RHSHalInterruptIdUsart3] = USART3_IRQn,
     [RHSHalInterruptIdUart5]  = UART5_IRQn,
@@ -53,8 +49,16 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdDMA1Stream3] = DMA1_Stream3_IRQn,
     [RHSHalInterruptIdDMA2Stream1] = DMA2_Stream1_IRQn,
     [RHSHalInterruptIdDMA2Stream6] = DMA2_Stream6_IRQn,
+#elif defined(RPLC_M)
+    /* CAN */
+    [RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
+    [RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
+    [RHSHalInterruptIdCAN1Tx]  = CAN1_TX_IRQn,
+    /* UART */
+    [RHSHalInterruptIdUsart3] = USART3_IRQn,
+#else
 
-#elif STM32F407xx
+#    if defined(STM32F765xx)
     /* CAN */
     [RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
     [RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
@@ -62,11 +66,27 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdCAN2Rx0] = CAN2_RX0_IRQn,
     [RHSHalInterruptIdCAN2SCE] = CAN2_SCE_IRQn,
     [RHSHalInterruptIdCAN2Tx]  = CAN2_TX_IRQn,
-
-#elif defined(STM32F103xE)
     /* UART */
     [RHSHalInterruptIdUsart3] = USART3_IRQn,
-    
+    [RHSHalInterruptIdUart5]  = UART5_IRQn,
+    [RHSHalInterruptIdUsart6] = USART6_IRQn,
+
+    /* DMA */
+    [RHSHalInterruptIdDMA1Stream3] = DMA1_Stream3_IRQn,
+    [RHSHalInterruptIdDMA2Stream1] = DMA2_Stream1_IRQn,
+    [RHSHalInterruptIdDMA2Stream6] = DMA2_Stream6_IRQn,
+#    elif defined(STM32F407xx)
+    /* CAN */
+    [RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
+    [RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
+    [RHSHalInterruptIdCAN1Tx]  = CAN1_TX_IRQn,
+    [RHSHalInterruptIdCAN2Rx0] = CAN2_RX0_IRQn,
+    [RHSHalInterruptIdCAN2SCE] = CAN2_SCE_IRQn,
+    [RHSHalInterruptIdCAN2Tx]  = CAN2_TX_IRQn,
+#    elif defined(STM32F103xE)
+    /* UART */
+    [RHSHalInterruptIdUsart3] = USART3_IRQn,
+#    endif
 #endif
 };
 
@@ -259,14 +279,22 @@ extern usbd_device udev;
 extern void HW_IPCC_Tx_Handler(void);
 extern void HW_IPCC_Rx_Handler(void);
 
-void USB_LP_IRQHandler(void)
+void USB_LP_CAN1_RX0_IRQHandler(void)
 {
+    rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Rx0);
     usbd_poll(&udev);
 }
 
-void USB_HP_IRQHandler(void)
+void USB_HP_CAN1_TX_IRQHandler(void)
 {
+    rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
     usbd_poll(&udev);
+}
+
+/* CAN 1 RX0 */
+void CAN1_SCE_IRQHandler(void)
+{
+    rhs_hal_interrupt_call(RHSHalInterruptIdCAN1SCE);
 }
 
 /* USART 3 */

@@ -86,4 +86,4 @@ typedef void (*RHSHalCANAsyncRxCallback)(RHSHalCANId id, void* context);
 
 void rhs_hal_can_async_rx_start(RHSHalCANId id, RHSHalCANAsyncRxCallback callback, void* context);
 
-void rhs_hal_can_rx(RHSHalCANId id, RHSHalCANFrameType* frame);
+bool rhs_hal_can_rx(RHSHalCANId id, RHSHalCANFrameType* frame);

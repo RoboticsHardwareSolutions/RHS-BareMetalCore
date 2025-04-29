@@ -4,7 +4,7 @@
 #include "data.h"
 #include "od_common_defs.h"
 
-void can_open_start(CO_Data* d, uint8_t node_id, RHSHalCANId id, uint32_t baud);
+void can_open_start_node(CO_Data* d, uint8_t node_id, RHSHalCANId id, uint32_t baud);
 
 typedef void (*sdo_cb)(CO_Data* d, uint16_t index, uint8_t subindex, uint32_t count, const uint8_t* data);
 

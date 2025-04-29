@@ -206,7 +206,7 @@ int canSend(CAN_PORT port, Message const* m)
     rhs_crash("CAN_PORT doesn't reg for OD");
 }
 
-void can_open_start(CO_Data* d, uint8_t node_id, RHSHalCANId id, uint32_t baud)
+void can_open_start_node(CO_Data* d, uint8_t node_id, RHSHalCANId id, uint32_t baud)
 {
     rhs_assert(can_open_app);
     rhs_assert(can_open_app->counter_od < MAX_OD);

@@ -7,10 +7,10 @@
 
 #if defined(RPLC_XL) || defined(RPLC_L)
 
-#include "stm32f7xx_ll_rcc.h"
-#include "stm32f7xx_ll_dma.h"
-#include "stm32f7xx_ll_usart.h"
-#include "stm32f7xx_ll_bus.h"
+#    include "stm32f7xx_ll_rcc.h"
+#    include "stm32f7xx_ll_dma.h"
+#    include "stm32f7xx_ll_usart.h"
+#    include "stm32f7xx_ll_bus.h"
 
 static uint32_t dma_bytes_available(RHSHalSerial* serial)
 {
@@ -253,48 +253,134 @@ void rhs_hal_rs485_async_rx_dma_stop(void)
 }
 
 #elif defined(RPLC_M)
-#include "stm32f1xx_ll_rcc.h"
-#include "stm32f1xx_ll_dma.h"
-#include "stm32f1xx_ll_usart.h"
-#include "stm32f1xx_ll_bus.h"
+#    include "stm32f1xx_ll_rcc.h"
+#    include "stm32f1xx_ll_dma.h"
+#    include "stm32f1xx_ll_usart.h"
+#    include "stm32f1xx_ll_bus.h"
 
-static uint32_t dma_bytes_available(RHSHalSerial* serial)
-{
-}
+static uint32_t dma_bytes_available(RHSHalSerial* serial) {}
 
 void rhs_hal_rs485_init(void)
 {
+    GPIO_InitTypeDef         GPIO_InitStruct     = {0};
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+    __HAL_RCC_UART5_CLK_ENABLE();
+
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOD_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    /**UART5 GPIO Configuration
+    PC12     ------> UART5_TX
+    PD02     ------> UART5_RX
+    PA15     ------> UART5_DE
+    */
+    GPIO_InitStruct.Pin   = GPIO_PIN_12;
+    GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin  = GPIO_PIN_2;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin   = GPIO_PIN_15;
+    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 }
 
 void rhs_hal_rs485_rx_irq_callback(void* context)
 {
+    rhs_assert(context);
+    RHSHalSerial*       serial = (RHSHalSerial*) context;
+    RHSHalSerialRxEvent event  = 0;
+    // Notification flags
+
+    if (UART5->SR & USART_SR_RXNE)
+    {
+        event |= RHSHalSerialRxEventData;
+    }
+    if (UART5->SR & USART_SR_IDLE)
+    {
+        // UART5->CR = USART_ICR_IDLECF;
+        event |= RHSHalSerialRxEventIdle;
+    }
+    // Error flags
+    if (UART5->SR & USART_SR_ORE)
+    {
+        RHS_LOG_T(TAG, "RxOverrun", UART5->SR);
+        // UART5->CR1 = USART_CR1_ORECF;
+        event |= RHSHalSerialRxEventOverrunError;
+    }
+    if (UART5->SR & USART_SR_NE)
+    {
+        RHS_LOG_T(TAG, "RxNoise", UART5->SR);
+        // UART5->ICR = USART_ICR_NCF;
+        event |= RHSHalSerialRxEventNoiseError;
+    }
+    if (UART5->SR & USART_SR_FE)
+    {
+        RHS_LOG_T(TAG, "RxFrameError", UART5->SR);
+        // UART5->ICR = USART_ICR_FECF;
+        event |= RHSHalSerialRxEventFrameError;
+    }
+    if (UART5->SR & USART_SR_PE)
+    {
+        RHS_LOG_T(TAG, "RxFrameErrorP", UART5->SR);
+        // UART5->ICR = USART_ICR_PECF;
+        event |= RHSHalSerialRxEventFrameError;
+    }
+
+    if (serial->buffer_rx_ptr == NULL)
+    {
+        if (serial->rx_byte_callback)
+        {
+            serial->rx_byte_callback(event, serial->context);
+        }
+    }
+    else
+    {
+        if (serial->rx_dma_callback)
+        {
+            serial->rx_dma_callback(event, dma_bytes_available(serial), serial->context);
+        }
+    }
 }
 
 void rhs_hal_rs485_tx_irq_callback(void* context)
 {
+    rhs_crash("Not implemented");
 }
 
 void rhs_hal_rs485_async_tx_dma_start(const uint8_t* buffer, uint16_t buffer_size)
 {
+    rhs_crash("Not implemented");
 }
 
 void rhs_hal_rs485_async_tx_dma_stop(void)
 {
+    rhs_crash("Not implemented");
 }
 
 void rhs_hal_rs485_async_tx_dma_configure(void)
 {
+    rhs_crash("Not implemented");
 }
 
 void rhs_hal_rs485_async_rx_dma_configure(void)
 {
+    rhs_crash("Not implemented");
 }
 
 void rhs_hal_rs485_async_rx_dma_start(const uint8_t* buffer, uint16_t buffer_size)
 {
+    rhs_crash("Not implemented");
 }
 
 void rhs_hal_rs485_async_rx_dma_stop(void)
 {
+    rhs_crash("Not implemented");
 }
 #endif

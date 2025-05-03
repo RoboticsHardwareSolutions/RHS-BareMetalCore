@@ -97,30 +97,58 @@ static void         reset_evt(usbd_device* dev, uint8_t event, uint8_t ep);
 static void         susp_evt(usbd_device* dev, uint8_t event, uint8_t ep);
 static void         wkup_evt(usbd_device* dev, uint8_t event, uint8_t ep);
 
+#if defined(STM32F103xE)
+static uint8_t connect(bool connect)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    if (!connect)
+    {
+        GPIO_InitStruct.Pin   = GPIO_PIN_12 | GPIO_PIN_11;
+        GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+        GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    }
+    else
+    {
+        GPIO_InitStruct.Pin   = GPIO_PIN_12 | GPIO_PIN_11;
+        GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
+        GPIO_InitStruct.Pull  = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    }
+    return 0;
+}
+#endif
+
 /* Low-level init */
 void rhs_hal_usb_init(void)
 {
-    GPIO_InitTypeDef         GPIO_InitStruct     = {0};
-    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
-    /** Initializes the peripherals clock
-     */
-    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USB;
-    PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
-
-    rhs_assert(HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) == HAL_OK);
-    __HAL_RCC_USB_CLK_ENABLE();
-
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    GPIO_InitStruct.Pin       = GPIO_PIN_10 | GPIO_PIN_11;
-    GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull      = GPIO_NOPULL;
-    GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
+#if defined(STM32F103xE)
+    static struct usbd_driver usbd_dev_f1;
+    usbd_dev_f1.getinfo           = usbd_hw.getinfo;
+    usbd_dev_f1.enable            = usbd_hw.enable;
+    usbd_dev_f1.connect           = connect;
+    usbd_dev_f1.setaddr           = usbd_hw.setaddr;
+    usbd_dev_f1.ep_config         = usbd_hw.ep_config;
+    usbd_dev_f1.ep_deconfig       = usbd_hw.ep_deconfig;
+    usbd_dev_f1.ep_read           = usbd_hw.ep_read;
+    usbd_dev_f1.ep_write          = usbd_hw.ep_write;
+    usbd_dev_f1.ep_setstall       = usbd_hw.ep_setstall;
+    usbd_dev_f1.ep_isstalled      = usbd_hw.ep_isstalled;
+    usbd_dev_f1.poll              = usbd_hw.poll;
+    usbd_dev_f1.frame_no          = usbd_hw.frame_no;
+    usbd_dev_f1.get_serialno_desc = usbd_hw.get_serialno_desc;
+    usbd_init(&udev, &usbd_dev_f1, USB_EP0_SIZE, ubuf, sizeof(ubuf));
+#else
     usbd_init(&udev, &usbd_hw, USB_EP0_SIZE, ubuf, sizeof(ubuf));
-
+#endif
     taskENTER_CRITICAL();
+    usbd_connect(&udev, false);
+    rhs_delay_ms(4);
     usbd_enable(&udev, true);
+    usbd_connect(&udev, true);
     taskEXIT_CRITICAL();
 
     usbd_reg_descr(&udev, usb_descriptor_get);
@@ -384,6 +412,7 @@ static void usb_process_mode_start(RHSHalUsbInterface* interface, void* context)
     __disable_irq();
     usb.interface         = interface;
     usb.interface_context = context;
+    usbd_enable(&udev, true);
     __enable_irq();
 
     if (interface != NULL)
@@ -403,8 +432,13 @@ static void usb_process_mode_change(RHSHalUsbInterface* interface, void* context
         {
             // Disable current interface
             susp_evt(&udev, 0, 0);
-            usbd_connect(&udev, false);
             usb.enabled = false;
+
+            taskENTER_CRITICAL();
+            usbd_enable(&udev, false);
+            usbd_connect(&udev, false);
+            taskEXIT_CRITICAL();
+
             rhs_delay_ms(USB_RECONNECT_DELAY);
         }
         usb_process_mode_start(interface, context);
@@ -417,11 +451,11 @@ static void usb_process_mode_reinit(void)
     usbd_reg_event(&udev, usbd_evt_reset, NULL);
     RHS_LOG_I(TAG, "USB Reinit");
     susp_evt(&udev, 0, 0);
-    usbd_connect(&udev, false);
     usb.enabled = false;
-
+    
     taskENTER_CRITICAL();
     usbd_enable(&udev, false);
+    usbd_connect(&udev, false);
     usbd_enable(&udev, true);
     taskEXIT_CRITICAL();
 

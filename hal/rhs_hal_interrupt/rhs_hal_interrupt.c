@@ -56,6 +56,8 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdCAN1Tx]  = CAN1_TX_IRQn,
     /* UART */
     [RHSHalInterruptIdUsart3] = USART3_IRQn,
+    [RHSHalInterruptIdUart4]  = UART4_IRQn,
+    [RHSHalInterruptIdUart5]  = UART5_IRQn,
 #else
 
 #    if defined(STM32F765xx)
@@ -84,10 +86,10 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdCAN2SCE] = CAN2_SCE_IRQn,
     [RHSHalInterruptIdCAN2Tx]  = CAN2_TX_IRQn,
 #    elif defined(STM32F103xE)
-/* CAN */
-[RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
-[RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
-[RHSHalInterruptIdCAN1Tx]  = CAN1_TX_IRQn,
+    /* CAN */
+    [RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
+    [RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
+    [RHSHalInterruptIdCAN1Tx]  = CAN1_TX_IRQn,
     /* UART */
     [RHSHalInterruptIdUsart3] = USART3_IRQn,
 #    endif
@@ -99,7 +101,7 @@ __attribute__((always_inline)) inline static void rhs_hal_interrupt_call(RHSHalI
     const RHSHalInterruptISRPair* isr_descr = &rhs_hal_interrupt.isr[index];
 
     RHS_HAL_INTERRUPT_ACCOUNT_START();
-    if(isr_descr->isr != NULL)
+    if (isr_descr->isr != NULL)
         isr_descr->isr(isr_descr->context);
     RHS_HAL_INTERRUPT_ACCOUNT_END();
 }
@@ -305,6 +307,19 @@ void CAN1_SCE_IRQHandler(void)
 void USART3_IRQHandler(void)
 {
     rhs_hal_interrupt_call(RHSHalInterruptIdUsart3);
+}
+
+/* UART 4 */
+void UART4_IRQHandler(void)
+{
+    rhs_hal_interrupt_call(RHSHalInterruptIdUart4);
+}
+
+
+/* UART 5 */
+void UART5_IRQHandler(void)
+{
+    rhs_hal_interrupt_call(RHSHalInterruptIdUart5);
 }
 
 #endif

@@ -11,5 +11,3 @@
 ## rhs_hal_speaker
 - [ ] Merge hardware PWM for all RPLC
 
-## rhs_hal_speaker
-- [ ] Merge hardware PWM for all RPLC

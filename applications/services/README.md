@@ -15,3 +15,10 @@
 
 ## Notification
 - [ ] Add LEDs for RPLC_M
+
+## usb bridge
+- [ ] Set baudrate
+- [ ] Set ctrl line
+- [ ] Disable bridge
+- [ ] Detect connection/disconnection
+- [ ] Start without config

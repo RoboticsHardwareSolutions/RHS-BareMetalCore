@@ -3,13 +3,18 @@
 #include <stdint.h>
 #include "usb_cdc.h"
 
-#define CDC_DATA_SZ 64
+#if defined(STM32F103xE) /* There is not enough memory for double vcp */
+#    define CDC_DATA_SZ 32
+#else
+#    define CDC_DATA_SZ 64
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct
+{
     void (*tx_ep_callback)(void* context);
     void (*rx_ep_callback)(void* context);
     void (*state_callback)(void* context, uint8_t state);

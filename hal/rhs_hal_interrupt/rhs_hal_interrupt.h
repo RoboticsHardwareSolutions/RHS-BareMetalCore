@@ -36,8 +36,8 @@ typedef enum
 
     /* USART */
     RHSHalInterruptIdUsart3,
-    RHSHalInterruptIdUsart4,
-    RHSHalInterruptIdUsart5,
+    RHSHalInterruptIdUart4,
+    RHSHalInterruptIdUart5,
 
     /* DMA */
     RHSHalInterruptIdDMA1Channel2,

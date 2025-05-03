@@ -30,11 +30,11 @@
 #    define RHS_DMA_TX_RS232 RHSHalInterruptIdDMA1Channel2
 #    define RHS_DMA_RX_RS232 RHSHalInterruptIdDMA1Channel3
 #    define RHS_INTERFACE_RS485 UART5
-#    define RHS_INTERRUPT_RS485 RHSHalInterruptIdUsart5
+#    define RHS_INTERRUPT_RS485 RHSHalInterruptIdUart5
 #    define RHS_DMA_TX_RS485 RHSHalInterruptIdDMA1Channel2  // TODO
 #    define RHS_DMA_RX_RS485 RHSHalInterruptIdDMA1Channel3  // TODO
 #    define RHS_INTERFACE_RS422 UART4
-#    define RHS_INTERRUPT_RS422 RHSHalInterruptIdUsart4
+#    define RHS_INTERRUPT_RS422 RHSHalInterruptIdUart4
 #    define RHS_DMA_TX_RS422 RHSHalInterruptIdDMA1Channel2  // TODO
 #    define RHS_DMA_RX_RS422 RHSHalInterruptIdDMA1Channel3  // TODO
 #else
@@ -60,7 +60,11 @@ void rhs_hal_serial_init(RHSHalSerialId id, uint32_t baud)
         break;
     case RHSHalSerialIdRS485:
         rhs_hal_rs485_init();
+#if defined(RPLC_L) || defined(RPLC_XL)
         rserial_open(&rhs_hal_serial[RHSHalSerialIdRS485].rserial, "UART6", (int) baud, "8N1", FLOW_CTRL_DE, 4000);
+#elif defined(RPLC_M)
+        rserial_open(&rhs_hal_serial[RHSHalSerialIdRS485].rserial, "UART5", (int) baud, "8N1", FLOW_CTRL_DE, 4000);
+#endif
         rhs_hal_serial[RHSHalSerialIdRS485].enabled = true;
         break;
 #if !defined(RPLC_XL)
@@ -109,16 +113,22 @@ void rhs_hal_serial_tx(RHSHalSerialId id, const uint8_t* buffer, uint16_t buffer
     rhs_assert(rhs_hal_serial[id].enabled == true);
     if (LL_USART_IsEnabled(rhs_hal_serial[id].rserial.uart.Instance) == 0)
         return;
+#if defined(RPLC_M)
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
+#endif
     while (buffer_size > 0)
     {
         LL_USART_TransmitData8(rhs_hal_serial[id].rserial.uart.Instance, *buffer);
 
-        while (!LL_USART_IsActiveFlag_TXE(rhs_hal_serial[id].rserial.uart.Instance))
+        while (!LL_USART_IsActiveFlag_TC(rhs_hal_serial[id].rserial.uart.Instance))
             ;
 
         buffer++;
         buffer_size--;
     }
+#if defined(RPLC_M)
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+#endif
 }
 
 void rhs_hal_serial_async_tx_dma_configure(RHSHalSerialId id)

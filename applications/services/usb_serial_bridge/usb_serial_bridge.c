@@ -81,7 +81,7 @@ static void serial_rx_cb(RHSHalSerialRxEvent event, void* context)
 static void usb_serial_vcp_init(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
 {
     rhs_hal_usb_unlock();
-    rhs_assert(rhs_hal_usb_set_config(&usb_cdc_single, NULL) == true);
+    rhs_assert(rhs_hal_usb_set_config(&usb_cdc_dual, NULL) == true);
     rhs_hal_cdc_set_callbacks(vcp_ch, (CdcCallbacks*) &cdc_cb, usb_serial);
 }
 
@@ -237,7 +237,7 @@ static int32_t usb_serial_worker(void* context)
         {
             if (usb_serial->cfg.baudrate == 0)
             {
-                // usb_serial_set_baudrate(usb_serial, usb_serial->cfg.baudrate);}
+                // usb_serial_set_baudrate(usb_serial, usb_serial->cfg.baudrate);
             }
             if (events & WorkerEvtCtrlLineSet)
             {
@@ -300,7 +300,8 @@ static void vcp_on_line_config(void* context, struct usb_cdc_line_coding* config
 
 static void usb_bridge_cb(char* args, void* context)
 {
-    static UsbSerialBridge* usb_serial = NULL;
+    static UsbSerialBridge* usb_rs232 = NULL; /* FIXME Sorry programming God */
+    static UsbSerialBridge* usb_rs485 = NULL;
     if (args == NULL)
     {
         RHS_LOG_E(TAG, "Invalid argument");
@@ -314,7 +315,7 @@ static void usb_bridge_cb(char* args, void* context)
 
     if (strstr(args, "-rs232") == args)
     {
-        if (usb_serial == NULL)
+        if (usb_rs232 == NULL)
         {
             UsbSerialConfig cfg = {
                 .vcp_ch         = 0,
@@ -324,20 +325,38 @@ static void usb_bridge_cb(char* args, void* context)
                 .baudrate       = 115200,
                 .software_de_re = 0,
             };
-            usb_serial = usb_serial_enable(&cfg);
+            usb_rs232 = usb_serial_enable(&cfg);
             RHS_LOG_W(TAG, "RS232 enabled");
         }
         else
         {
-            usb_serial_disable(usb_serial);
-            usb_serial = NULL;
+            usb_serial_disable(usb_rs232);
+            usb_rs232 = NULL;
             RHS_LOG_W(TAG, "RS232 disabled");
         }
         return;
     }
     else if (strstr(args, "-rs485") == args)
     {
-        RHS_LOG_W(TAG, "RS485 not implemented");
+        if (usb_rs485 == NULL)
+        {
+            UsbSerialConfig cfg = {
+                .vcp_ch         = 1,
+                .serial_ch      = RHSHalSerialIdRS485,
+                .flow_pins      = 0,
+                .baudrate_mode  = 0,
+                .baudrate       = 115200,
+                .software_de_re = 0,
+            };
+            usb_rs485 = usb_serial_enable(&cfg);
+            RHS_LOG_W(TAG, "RS485 enabled");
+        }
+        else
+        {
+            usb_serial_disable(usb_rs485);
+            usb_rs485 = NULL;
+            RHS_LOG_W(TAG, "RS485 disabled");
+        }
         return;
     }
     else
@@ -354,7 +373,6 @@ UsbSerialBridge* usb_serial_enable(UsbSerialConfig* cfg)
     usb_serial->thread = rhs_thread_alloc("UsbSerialWorker", 1024, usb_serial_worker, usb_serial);
 
     rhs_thread_start(usb_serial->thread);
-    cli_add_command("usb_bridge_stop", usb_bridge_cb, NULL);
 
     return usb_serial;
 }
@@ -374,6 +392,7 @@ void cli_vcp_start_up(void)
 
     // TODO cli_vcp
     // This is a stub
-    rhs_hal_usb_set_config(&usb_cdc_single, NULL);
+    rhs_hal_usb_unlock();
+    rhs_assert(rhs_hal_usb_set_config(&usb_cdc_single, NULL) == true);
     // rhs_hal_cdc_set_callbacks(0, (CdcCallbacks*) &cdc_cb, cli_vcp);
 }

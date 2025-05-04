@@ -21,7 +21,7 @@ static void can_rx_irq_cb(RHSHalCANId can_id, void* context)
     Message            rxm = {0};
     RHSHalCANFrameType frame;
 
-    if(rhs_hal_can_rx(can_id, &frame) == false)
+    if (rhs_hal_can_rx(can_id, &frame) == false)
     {
         return;
     }
@@ -102,6 +102,7 @@ static void can_open_sdo_cb(CO_Data* d, UNS8 nodeId)
         if (can_open_app->sdo_callback)
 
             can_open_app->sdo_callback(d,
+                                       nodeId,
                                        d->transfers[line].index,
                                        d->transfers[line].subIndex,
                                        d->transfers[line].count,
@@ -184,7 +185,7 @@ uint8_t can_open_set_field(CO_Data* d, uint16_t index, uint8_t subIndex, const v
     uint32_t error_code = setODentry(d, index, subIndex, (void*) data, &size_data, 1);
     if (error_code == OD_SUCCESSFUL)
     {
-        rhs_event_flag_set(can_open_app->srv_event, CanOpenAppEventTypeTX);
+        rhs_event_flag_set(can_open_app->srv_event, CanOpenAppEventTypePDO);
     }
     return error_code;
 }

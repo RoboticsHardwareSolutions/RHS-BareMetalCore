@@ -4,7 +4,7 @@
 /********************** GET FIELD FROM OD **********************/
 
 /* Rx and Tx PDO */
-int sdo_set_pdo(CO_Data* d, PDOField pdo_field, NumPDOType num_pdo, uint8_t node_id, void* data, bool is_tx)
+static int sdo_set_pdo(CO_Data* d, PDOField pdo_field, NumPDOType num_pdo, uint8_t node_id, void* data, bool is_tx)
 {
     rhs_assert(num_pdo < NumPDOMax);
     ODFieldType        field;

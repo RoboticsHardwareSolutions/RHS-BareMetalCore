@@ -123,7 +123,7 @@ void rhs_hal_rtc_get_datetime(datetime_t* out_datetime)
     RTC_DateTypeDef sDate;
 
     uint32_t   reg  = rhs_hal_rtc_get_register(RHSHalRtcRegisterSystem);
-    SystemReg* data = (SystemReg*) reg;
+    SystemReg* data = (SystemReg*) &reg;
 
     vPortEnterCritical();
     if (HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)

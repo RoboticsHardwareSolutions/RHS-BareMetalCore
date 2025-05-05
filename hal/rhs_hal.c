@@ -11,6 +11,7 @@ void rhs_hal_init(void)
     rhs_hal_flash_ex_init();
 #endif
 #if RHS_HAL_RTC
+    rhs_hal_rtc_init();
 #endif
 #if RHS_HAL_IO
     rhs_hal_io_init();

@@ -132,6 +132,7 @@ uint8_t can_open_read_sdo(CO_Data* d, uint8_t node_id, uint16_t index, uint8_t s
     rhs_assert(rhs_mutex_acquire(can_open_app->sdo_mutex, RHSWaitForever) == RHSStatusOk);
 
     can_open_app->sdo_callback = cb;
+    uint32_t time = rhs_get_tick();
     result                     = readNetworkDictCallback(d, node_id, index, subindex, 0, can_open_sdo_cb, 0);
     if (result == CANOPEN_SDO_STATE_OK)
     {
@@ -144,7 +145,7 @@ uint8_t can_open_read_sdo(CO_Data* d, uint8_t node_id, uint16_t index, uint8_t s
     }
     resetSDO(d);
     can_open_app->sdo_callback = NULL;
-    RHS_LOG_E(TAG, "SDO read error %d for 0x%02X, i=0x%04X s=0x%02X", result, node_id, index, subindex);
+    RHS_LOG_E(TAG, "SDO read in %d error %d for 0x%02X, i=0x%04X s=0x%02X", time, result, node_id, index, subindex);
     rhs_mutex_release(can_open_app->sdo_mutex);
     return result ? result : -1;
 }
@@ -162,6 +163,7 @@ uint8_t can_open_write_sdo(CO_Data* d,
     rhs_assert(rhs_mutex_acquire(can_open_app->sdo_mutex, RHSWaitForever) == RHSStatusOk);
 
     can_open_app->sdo_callback = cb;
+    uint32_t time = rhs_get_tick();
     result = writeNetworkDictCallBack(d, node_id, index, subindex, count, 0, data, can_open_sdo_cb, 0);
     if (result == CANOPEN_SDO_STATE_OK)
     {
@@ -174,7 +176,7 @@ uint8_t can_open_write_sdo(CO_Data* d,
     }
     resetSDO(d);
     can_open_app->sdo_callback = NULL;
-    RHS_LOG_E(TAG, "SDO write error %d for 0x%02X, i=0x%04X s=0x%02X", result, node_id, index, subindex);
+    RHS_LOG_E(TAG, "SDO write in %d error %d for 0x%02X, i=0x%04X s=0x%02X", time, result, node_id, index, subindex);
     rhs_mutex_release(can_open_app->sdo_mutex);
     return result ? result : -1;
 }

@@ -46,9 +46,8 @@ int32_t can_open_service(void* context)
                                        RHSFlagWaitAny,
                                        RHSWaitForever))
         {
-            switch (flag)
+            if (flag & CanOpenAppEventTypeRX)
             {
-            case CanOpenAppEventTypeRX:
                 while (rhs_message_queue_get(app->rx_queue, &msg, 0) == RHSStatusOk)
                 {
                     rhs_kernel_lock();
@@ -56,13 +55,16 @@ int32_t can_open_service(void* context)
                     canDispatch(msg.od, &msg.data);
                     rhs_kernel_unlock();
                 }
-                break;
-            case CanOpenAppEventTypePDO:
-                for (uint8_t i = 0; i < app->counter_od; i++)
+            }
+            if (flag & (CanOpenAppEventTypeTX | CanOpenAppEventTypePDO))
+            {
+                if (flag & CanOpenAppEventTypePDO)
                 {
-                    sendPDOevent(app->handler[i].od);
+                    for (uint8_t i = 0; i < app->counter_od; i++)
+                    {
+                        sendPDOevent(app->handler[i].od);
+                    }
                 }
-            case CanOpenAppEventTypeTX:
                 while (rhs_message_queue_get(app->tx_queue, &msg, 0) == RHSStatusOk)
                 {
                     uint8_t try_tx = 3;
@@ -77,9 +79,6 @@ int32_t can_open_service(void* context)
                         try_tx--;
                     }
                 }
-                break;
-            default:
-                break;
             }
         }
     }

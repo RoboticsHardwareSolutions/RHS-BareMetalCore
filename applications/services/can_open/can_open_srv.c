@@ -10,6 +10,7 @@ extern void can_open_cli(char* args, void* context);
 static CanOpenApp* can_open_app_alloc(void)
 {
     CanOpenApp* app = malloc(sizeof(CanOpenApp));
+    app->thread     = rhs_thread_get_current();    
     app->srv_event  = rhs_event_flag_alloc();
     app->sdo_event  = rhs_event_flag_alloc();
     app->sdo_mutex  = rhs_mutex_alloc(RHSMutexTypeNormal);
@@ -73,10 +74,10 @@ int32_t can_open_service(void* context)
                     frame.len      = msg.data.len;
                     frame.rtr      = msg.data.rtr;
                     memcpy(frame.payload, msg.data.data, msg.data.len);
-                    while (!rhs_hal_can_tx(msg.can_id, &frame) && try_tx)
+                    rhs_thread_flags_clear(WORKER_TX_COMPLETED);
+                    while (!rhs_hal_can_tx(msg.can_id, &frame) && try_tx--)
                     {
-                        rhs_delay_ms(1);
-                        try_tx--;
+                        rhs_thread_flags_wait(WORKER_TX_COMPLETED, RHSFlagWaitAny, 1);
                     }
                 }
             }

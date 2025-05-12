@@ -64,6 +64,16 @@ static void can_rx_irq_cb(RHSHalCANId can_id, void* context)
     }
 }
 
+static void can_tx_irq_cb(void* context)
+{
+    rhs_assert(context);
+    CanOpenApp* app = context;
+    if (app->tx_queue)
+    {
+        rhs_thread_flags_set(rhs_thread_get_id(app->thread), WORKER_TX_COMPLETED);
+    }
+}
+
 static void can_sce_irq_cb(RHSHalCANId can_id, RHSHalCANSCEEvent event, void* context)
 {
     rhs_assert(context);
@@ -76,7 +86,7 @@ static void can_sce_irq_cb(RHSHalCANId can_id, RHSHalCANSCEEvent event, void* co
             {
                 setState(app->handler[i].od, Stopped);
                 rhs_hal_can_deinit(app->handler[i].can_id);
-                RHS_LOG_D(TAG, "CAN %d is stopped", app->handler[i].can_id);
+                RHS_LOG_W(TAG, "CAN %d is stopped", app->handler[i].can_id);
                 return;
             }
         }
@@ -112,7 +122,7 @@ static void can_open_sdo_cb(CO_Data* d, UNS8 nodeId)
     {
         if (d->transfers[line].state == SDO_ABORTED_RCV)
         {
-            RHS_LOG_D(TAG,
+            RHS_LOG_W(TAG,
                       "node 0x%02X index 0x%04X sub 0x%02X response 0x%08X",
                       nodeId,
                       d->transfers[line].index,
@@ -219,6 +229,7 @@ void can_open_start_node(CO_Data* d, uint8_t node_id, RHSHalCANId id, uint32_t b
 
     rhs_hal_can_init(id, baud);
     rhs_hal_can_async_rx_start(id, can_rx_irq_cb, can_open_app);
+    rhs_hal_can_tx_cmplt_cb(id, can_tx_irq_cb, can_open_app);
     rhs_hal_can_async_sce(id, can_sce_irq_cb, can_open_app);
 
     can_open_app->handler[can_open_app->counter_od].can_id        = id;

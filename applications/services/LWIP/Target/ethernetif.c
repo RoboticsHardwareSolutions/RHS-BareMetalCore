@@ -38,9 +38,7 @@
 #include "rhs.h"
 
 /* Within 'USER CODE' section, code will be kept by default at each generation */
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
+#define TAG "ETH"
 
 /* Private define ------------------------------------------------------------*/
 /* The time to block waiting for input. */
@@ -327,7 +325,7 @@ static void low_level_init(struct netif *netif)
   }
   else
   {    
-    rhs_crash("Failed");
+    RHS_LOG_E(TAG, "Failed to initialize ETH HAL");
   }
 #endif /* LWIP_ARP || LWIP_ETHERNET */
 

@@ -8,6 +8,7 @@
 
 #define TAG "CanOpen App"
 
+#define WORKER_TX_COMPLETED (1 << 0)
 #define EVENT_FLAG_SDO (1 << 0)
 
 #define MAX_OD 3  // FIXME one day...
@@ -37,6 +38,7 @@ struct CanOpenApp
         RHSHalCANId can_id;
     } handler[MAX_OD];
 
+    RHSThread*       thread;
     RHSMessageQueue* rx_queue;
     RHSMessageQueue* tx_queue;
 

@@ -637,7 +637,6 @@ static void cdc_txrx_ep_callback(usbd_device* dev, uint8_t event, uint8_t ep)
 static usbd_respond cdc_ep_config(usbd_device* dev, uint8_t cfg)
 {
     uint8_t if_cnt = ((struct usb_config_descriptor*) (cdc_if_cur->cfg_descr))->bNumInterfaces;
-    RHS_LOG_D("con", "conf");
     switch (cfg)
     {
     case 0:

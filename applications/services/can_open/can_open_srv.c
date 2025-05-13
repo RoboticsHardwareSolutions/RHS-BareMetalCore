@@ -33,6 +33,11 @@ static void can_open_app_free(CanOpenApp* app)
     free(app);
 }
 
+__attribute__((weak)) void weak_canDispatch(CO_Data* d, Message *m) {
+    (void) d;
+    (void) m;
+}
+
 int32_t can_open_service(void* context)
 {
     CanOpenApp*        app  = can_open_app_alloc();
@@ -54,6 +59,7 @@ int32_t can_open_service(void* context)
                     rhs_kernel_lock();
                     rhs_assert(msg.od);
                     canDispatch(msg.od, &msg.data);
+                    weak_canDispatch(msg.od, &msg.data);
                     rhs_kernel_unlock();
                 }
             }

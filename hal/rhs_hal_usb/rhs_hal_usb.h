@@ -26,9 +26,6 @@ struct RHSHalUsbInterface {
 /** USB device interface modes */
 extern RHSHalUsbInterface usb_cdc_single;
 extern RHSHalUsbInterface usb_cdc_dual;
-extern RHSHalUsbInterface usb_hid;
-extern RHSHalUsbInterface usb_hid_u2f;
-extern RHSHalUsbInterface usb_ccid;
 
 typedef enum {
     RHSHalUsbStateEventReset,

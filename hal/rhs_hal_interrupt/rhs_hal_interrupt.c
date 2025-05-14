@@ -244,6 +244,16 @@ void DMA2_Stream6_IRQHandler(void)
 
 #elif STM32F407xx
 
+#    include "usbd_core.h"
+
+extern usbd_device udev;
+
+
+void OTG_FS_IRQHandler(void)
+{
+    usbd_poll(&udev);
+}
+
 /* CAN 1 RX0 */
 void CAN1_RX0_IRQHandler(void)
 {
@@ -314,7 +324,6 @@ void UART4_IRQHandler(void)
 {
     rhs_hal_interrupt_call(RHSHalInterruptIdUart4);
 }
-
 
 /* UART 5 */
 void UART5_IRQHandler(void)

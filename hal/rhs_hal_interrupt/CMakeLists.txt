@@ -11,6 +11,6 @@ target_include_directories(
 
 target_link_libraries(${PROJECT_NAME} PUBLIC rhs)
 
-if(RPLC_M)
+if(TARGET usb_core)
         target_link_libraries(${PROJECT_NAME} PUBLIC usb_core)
 endif()

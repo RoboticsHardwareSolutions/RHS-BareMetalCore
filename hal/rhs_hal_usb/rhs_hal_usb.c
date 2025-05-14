@@ -2,14 +2,9 @@
 #include <rhs_hal_usb_i.h>
 #include <rhs_hal_usb.h>
 #include <rhs_hal_power.h>
-
 #include <rhs.h>
 
-#if defined(STM32F103xE)
-#    include <stm32f1xx_ll_pwr.h>
-#    include <stm32f1xx_ll_rcc.h>
-#    include <stm32f1xx_ll_gpio.h>
-#endif
+#include "stm32.h"
 
 #include "usb.h"
 
@@ -97,7 +92,7 @@ static void         reset_evt(usbd_device* dev, uint8_t event, uint8_t ep);
 static void         susp_evt(usbd_device* dev, uint8_t event, uint8_t ep);
 static void         wkup_evt(usbd_device* dev, uint8_t event, uint8_t ep);
 
-#if defined(STM32F103xE)
+#if defined(STM32F1)
 static uint8_t connect(bool connect)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -125,7 +120,7 @@ static uint8_t connect(bool connect)
 /* Low-level init */
 void rhs_hal_usb_init(void)
 {
-#if defined(STM32F103xE)
+#if defined(STM32F1)
     static struct usbd_driver usbd_dev_f1;
     usbd_dev_f1.getinfo           = usbd_hw.getinfo;
     usbd_dev_f1.enable            = usbd_hw.enable;
@@ -141,7 +136,17 @@ void rhs_hal_usb_init(void)
     usbd_dev_f1.frame_no          = usbd_hw.frame_no;
     usbd_dev_f1.get_serialno_desc = usbd_hw.get_serialno_desc;
     usbd_init(&udev, &usbd_dev_f1, USB_EP0_SIZE, ubuf, sizeof(ubuf));
-#else
+#elif defined(STM32F4)
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    GPIO_InitStruct.Pin       = GPIO_PIN_11 | GPIO_PIN_12;
+    GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull      = GPIO_NOPULL;
+    GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
     usbd_init(&udev, &usbd_hw, USB_EP0_SIZE, ubuf, sizeof(ubuf));
 #endif
     taskENTER_CRITICAL();
@@ -158,11 +163,15 @@ void rhs_hal_usb_init(void)
 
     usb.enabled   = false;
     usb.interface = NULL;
+#if defined(STM32F1)
     NVIC_SetPriority(USB_LP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
     NVIC_SetPriority(USB_HP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
     NVIC_EnableIRQ(USB_LP_IRQn);
     NVIC_EnableIRQ(USB_HP_IRQn);
-
+#elif defined(STM32F4)
+    NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+    NVIC_EnableIRQ(OTG_FS_IRQn);
+#endif
     usb.queue  = rhs_message_queue_alloc(1, sizeof(UsbApiEventMessage));
     usb.thread = rhs_thread_alloc_service("UsbDriver", 1024, rhs_hal_usb_thread, NULL);
     rhs_thread_start(usb.thread);
@@ -452,7 +461,7 @@ static void usb_process_mode_reinit(void)
     RHS_LOG_I(TAG, "USB Reinit");
     susp_evt(&udev, 0, 0);
     usb.enabled = false;
-    
+
     taskENTER_CRITICAL();
     usbd_enable(&udev, false);
     usbd_connect(&udev, false);

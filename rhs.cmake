@@ -98,9 +98,6 @@ if(RPLC_XL)
     file(GLOB_RECURSE SOURCES "core/src/syscalls.c" "core/src/sysmem.c" "core/src/f7/*.*" "thirdparty/stm32f7_hal/*.*" "thirdparty/stm32f7_cmsis/Source/Templates/gcc/startup_stm32f765xx.s")
     list(FILTER SOURCES EXCLUDE REGEX "_template[.]c$")
 
-    set(FREERTOS_HEAP "4" CACHE STRING "" FORCE)
-    set(FREERTOS_PORT "GCC_ARM_CM7" CACHE STRING "" FORCE)
-
 elseif(RPLC_L)
 
     if(NOT LINKER_SCRIPT_NAME)
@@ -138,9 +135,6 @@ elseif(RPLC_L)
     file(GLOB_RECURSE SOURCES "core/src/syscalls.c" "core/src/sysmem.c" "core/src/f7/*.*" "thirdparty/stm32f7_hal/*.*" "thirdparty/stm32f7_cmsis/Source/Templates/gcc/startup_stm32f765xx.s")
     list(FILTER SOURCES EXCLUDE REGEX "_template[.]c$")
 
-    set(FREERTOS_HEAP "4" CACHE STRING "" FORCE)
-    set(FREERTOS_PORT "GCC_ARM_CM7" CACHE STRING "" FORCE)
-
 elseif(RPLC_M)
 
     if(NOT LINKER_SCRIPT_NAME)
@@ -177,9 +171,6 @@ elseif(RPLC_M)
 
     file(GLOB_RECURSE SOURCES "core/src/syscalls.c" "core/src/sysmem.c" "core/src/f1/*.*" "thirdparty/stm32f1_hal/*.*" "thirdparty/stm32f1_cmsis/Source/Templates/gcc/startup_stm32f103xe.s")
     list(FILTER SOURCES EXCLUDE REGEX "_template[.]c$")
-
-    set(FREERTOS_HEAP "4" CACHE STRING "" FORCE)
-    set(FREERTOS_PORT "GCC_ARM_CM3" CACHE STRING "" FORCE)
 
 else()
 

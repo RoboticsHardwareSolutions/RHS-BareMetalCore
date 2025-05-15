@@ -10,6 +10,7 @@
 #include "core/message_queue.h"
 #include "core/mutex.h"
 #include "core/thread.h"
+#include "core/thread_list.h"
 #include "core/timer.h"
 #include "core/stream_buf.h"
 #include "core/semaphore.h"

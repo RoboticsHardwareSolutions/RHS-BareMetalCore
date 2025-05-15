@@ -9,6 +9,7 @@
 #include "task.h"
 #include "message_queue.h"
 #include <stdint.h>
+#include "thread_list.h"
 
 #define TAG "thread"
 
@@ -449,10 +450,9 @@ static const char* rhs_thread_state_name(eTaskState state)
     }
 }
 
-void rhs_thread_check(void)
+void rhs_thread_enumerate(RHSThreadList* thread_list)
 {
     rhs_assert(!RHS_IS_IRQ_MODE());
-
 
     vTaskSuspendAll();
     do
@@ -467,29 +467,20 @@ void rhs_thread_check(void)
 
         configRUN_TIME_COUNTER_TYPE total_run_time;
         count = uxTaskGetSystemState(task, count, &total_run_time);
-
-        RHS_LOG_I(TAG, "Total run count: %u", count);
-
+        rhs_thread_list_erase(thread_list);
+        
         total_run_time /= 100;
-        RHS_LOG_I(TAG, "%-32s %-10s %-5s %-6s %-10s", "Task Name", "State", "Prio", "RunTime", "StackMinFree");
         for (uint32_t i = 0U; i < count; i++)
         {
-            uint32_t run_time = task[i].ulRunTimeCounter / total_run_time;
-            RHS_LOG_I(TAG,
-                      "%-32s %-10s %-3d %-4s %-5d",
-                      task[i].pcTaskName,
-                      rhs_thread_state_name(task[i].eCurrentState),
-                      task[i].uxCurrentPriority,
-                      run_time < 1 ? "<1%"
-                                   : (
-                                         {
-                                             char buffer[12];
-                                             itoa(run_time, buffer, 10);
-                                             strcat(buffer, "%");
-                                             buffer;
-                                         }),
-                      (uint32_t) (uxTaskGetStackHighWaterMark(task[i].xHandle) * sizeof(StackType_t))  // stack_min_free
-            );
+            uint32_t           run_time = task[i].ulRunTimeCounter / total_run_time;
+            RHSThreadListItem* item     = rhs_thread_list_add(thread_list);
+
+            item->name           = task[i].pcTaskName;
+            item->priority       = task[i].uxCurrentPriority;
+            item->stack_address  = (uint32_t) task[i].pxStackBase;
+            item->state          = rhs_thread_state_name(task[i].eCurrentState);
+            item->cpu            = run_time;
+            item->stack_min_free = (uint32_t) (uxTaskGetStackHighWaterMark(task[i].xHandle) * sizeof(StackType_t));
         }
         vPortFree(task);
     } while (false);

@@ -1,6 +1,7 @@
 #pragma once
 #include <stdbool.h>
 #include "stdint.h"
+
 /**
  * @brief Enumeration of possible RHSThread states.
  *
@@ -32,6 +33,8 @@ typedef enum {
  * @brief RHSThread opaque type.
  */
 typedef struct RHSThread RHSThread;
+
+typedef struct RHSThreadList RHSThreadList;
 
 typedef void* RHSThreadId;
 
@@ -133,4 +136,4 @@ uint32_t rhs_thread_flags_wait(uint32_t flags, uint32_t options, uint32_t timeou
 
 void rhs_thread_scrub(void);
 
-void rhs_thread_check(void);
+void rhs_thread_enumerate(RHSThreadList* thread_list);

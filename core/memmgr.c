@@ -2,6 +2,7 @@
 #include "check.h"
 #include "log.h"
 #include <string.h>
+#include "FreeRTOS.h"
 
 extern void*  pvPortMalloc(size_t xSize);
 extern void   vPortFree(void* pv);
@@ -63,6 +64,12 @@ size_t memmgr_get_free_heap(void)
     return xPortGetFreeHeapSize();
 }
 
-size_t memmgr_get_minimum_free_heap(void) {
+size_t memmgr_get_total_heap(void)
+{
+    return configTOTAL_HEAP_SIZE;
+}
+
+size_t memmgr_get_minimum_free_heap(void)
+{
     return xPortGetMinimumEverFreeHeapSize();
 }

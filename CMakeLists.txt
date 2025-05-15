@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.24)
 project(rhs C)
 set(CMAKE_C_STANDARD 11)
 
+message("\n\n")
+message("|--------------------------------------------------|")
+message("|  Configuration ROBOTICS HARDWARE SOLUTIONS core  |")
+message("|--------------------------------------------------|")
+
 add_library(${PROJECT_NAME} STATIC
         rhs.c
         core/mutex.c
@@ -13,6 +18,7 @@ add_library(${PROJECT_NAME} STATIC
         core/check.c
         core/log.c
         core/thread.c
+        core/thread_list.c
         core/stream_buf.c
         core/semaphore.c
 )
@@ -71,6 +77,92 @@ target_link_libraries(${PROJECT_NAME}
         rhs_hal_power
 )
 
+if(RPLC_XL)
+        message("\nRPLC_XL:")
+        target_compile_definitions(${PROJECT_NAME} PUBLIC -DRPLC_XL)
+
+        ## set HAL
+        set(RHS_HAL_FLASH_EX ON)
+        set(RHS_HAL_IO ON)
+        set(RHS_HAL_RTC ON)
+        set(RHS_HAL_SERIAL ON)
+        set(RHS_HAL_SPEAKER ON)
+        set(RHS_HAL_CAN ON)
+        set(RHS_HAL_RANDOM ON)
+        # set(RHS_HAL_NETWORK ON)
+
+        ## set SERVICES
+        if(NOT RHS_SERVICE_NOTIFICATION_DISABLE)
+                set(RHS_SERVICE_NOTIFICATION ON)
+        endif()
+        if(NOT RHS_SERVICE_LWIP_DISABLE)
+                set(RHS_SERVICE_LWIP ON)
+        endif()
+        if(NOT RHS_CAN_OPEN_DISABLE)
+                set(RHS_CAN_OPEN ON)
+        endif()
+        ## set TESTS
+        if(NOT RHS_TEST_MEMMNG_DISABLE)
+                set(RHS_TEST_MEMMNG ON)
+        endif()
+        if(NOT RHS_TESTFLASH_EX_DISABLE)
+                set(RHS_TESTFLASH_EX ON)
+        endif()
+elseif(RPLC_L)
+        message("\n\nRPLC_L:")
+        target_compile_definitions(${PROJECT_NAME} PUBLIC -DRPLC_L)
+
+        ## set HAL
+        set(RHS_HAL_FLASH_EX ON)
+        set(RHS_HAL_IO ON)
+        set(RHS_HAL_RTC ON)
+        set(RHS_HAL_SERIAL ON)
+        set(RHS_HAL_SPEAKER ON)
+        set(RHS_HAL_CAN ON)
+        set(RHS_HAL_RANDOM ON)
+
+        ## set SERVICES
+        if(NOT RHS_SERVICE_NOTIFICATION_DISABLE)
+                set(RHS_SERVICE_NOTIFICATION ON)
+        endif()
+        if(NOT RHS_CAN_OPEN_DISABLE)
+                set(RHS_CAN_OPEN ON)
+        endif()
+        ## set TESTS
+        if(NOT RHS_TEST_MEMMNG_DISABLE)
+                set(RHS_TEST_MEMMNG ON)
+        endif()
+        if(NOT RHS_TESTFLASH_EX_DISABLE)
+                set(RHS_TESTFLASH_EX ON)
+        endif()
+elseif(RPLC_M)
+        message("\n\nRPLC_M:")
+        target_compile_definitions(${PROJECT_NAME} PUBLIC -DRPLC_M)
+
+        ## set HAL
+        set(RHS_HAL_SERIAL ON)
+        set(RHS_HAL_SPEAKER ON)
+        set(RHS_HAL_CAN ON)
+        set(RHS_HAL_USB ON)
+
+        ## set SERVICES
+        if(NOT RHS_SERVICE_NOTIFICATION_DISABLE)
+                set(RHS_SERVICE_NOTIFICATION ON)
+        endif()
+        if(NOT RHS_SERVICE_USB_SERIAL_BRIDGE_DISABLE)
+                set(RHS_SERVICE_USB_SERIAL_BRIDGE ON)
+        endif()
+        if(NOT RHS_SERVICE_CAN_OPEN_DISABLE)
+                set(RHS_SERVICE_CAN_OPEN ON)
+        endif()
+        ## set TESTS
+        if(NOT RHS_TEST_MEMMNG_DISABLE)
+                set(RHS_TEST_MEMMNG ON)
+        endif()
+else()
+        message("\n\nCustom:")
+endif()
+
 add_subdirectory(hal)
 add_subdirectory(applications)
 
@@ -97,3 +189,4 @@ if(NOT RHS_LAUNCH_IN_DISABLE)
 else()
         message("\t\tGENERATOR - OFF")
 endif()
+message("\n\n")

@@ -154,8 +154,10 @@ void cli_command_uptime(char* args, void* context)
 
 void cli_command_free(char* args, void* context)
 {
-    SEGGER_RTT_printf(0, "Free heap size: %d\r\n", memmgr_get_free_heap());
-    SEGGER_RTT_printf(0, "Minimum heap size: %d\r\n", memmgr_get_minimum_free_heap());
+    RHS_LOG_I(TAG, "total_heap: %d", memmgr_get_total_heap());
+    RHS_LOG_I(TAG, "minimum_free_heap: %d", memmgr_get_minimum_free_heap());
+    RHS_LOG_I(TAG, "free_heap: %d", memmgr_get_free_heap());
+    RHS_LOG_I(TAG, "isr_ticks: %d", rhs_hal_interrupt_get_time_in_isr_total());
 }
 
 void cli_commands(char* args, void* context)
@@ -248,7 +250,35 @@ void cli_command_uid(char* args, void* context)
 
 void cli_command_top(char* args, void* context)
 {
-    rhs_thread_check();
+    RHSThreadList* thread_list = rhs_thread_list_create();
+    uint16_t       count;
+
+    rhs_thread_enumerate(thread_list);
+    count = rhs_thread_list_size(thread_list);
+
+    RHS_LOG_I(TAG, "Total run count: %u", count);
+    RHS_LOG_I(TAG, "%-32s %-10s %-5s %-6s %-10s", "Task Name", "State", "Prio", "RunTime", "StackMinFree");
+
+    for (size_t i = 0; i < count; i++)
+    {
+        RHSThreadListItem* item = rhs_thread_list_at(thread_list, i);
+        RHS_LOG_I(TAG,
+                  "%-32s %-10s %-3d %-4s %-5d",
+                  item->name,
+                  item->state,
+                  item->priority,
+                  item->cpu < 1 ? "<1%"
+                                : (
+                                      {
+                                          char buffer[12];
+                                          itoa(item->cpu, buffer, 10);
+                                          strcat(buffer, "%");
+                                          buffer;
+                                      }),
+                  item->stack_min_free);
+    }
+
+    rhs_thread_list_destroy(thread_list);
 }
 
 int32_t cli_service(void* context)

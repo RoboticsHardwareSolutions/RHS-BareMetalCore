@@ -74,7 +74,10 @@ target_link_libraries(${PROJECT_NAME}
 add_subdirectory(hal)
 add_subdirectory(applications)
 
-if(NOT CUSTOM_LAUNCH)
+message("\tLAUNCHER:")
+
+if(NOT RHS_LAUNCH_IN_DISABLE)
+        message("\t\tGENERATOR - ON")
         if(RPLC_XL OR RPLC_L OR RPLC_M)
                 if(RPLC_XL OR RPLC_L)
                         set(DEVICE_TYPE "STM32F765ZG")
@@ -91,4 +94,6 @@ if(NOT CUSTOM_LAUNCH)
                         @ONLY
                 )
         endif()
+else()
+        message("\t\tGENERATOR - OFF")
 endif()

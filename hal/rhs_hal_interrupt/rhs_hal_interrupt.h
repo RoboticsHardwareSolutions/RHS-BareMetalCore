@@ -63,7 +63,7 @@ typedef enum
     RHSHalInterruptIdDMA1Stream3,
     RHSHalInterruptIdDMA2Stream1,
     RHSHalInterruptIdDMA2Stream6,
-#    elif defined(STM32F407xx)
+#    elif defined(STM32F407xx) || defined(STM32F405xx)
     /* CAN */
     RHSHalInterruptIdCAN1Rx0,
     RHSHalInterruptIdCAN1SCE,

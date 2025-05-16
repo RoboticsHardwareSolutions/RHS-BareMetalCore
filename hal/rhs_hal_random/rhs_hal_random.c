@@ -5,7 +5,7 @@
 #    include "stm32f7xx_ll_bus.h"
 #    include "stm32f7xx_ll_rcc.h"
 #    include "stm32f7xx_ll_rng.h"
-#elif defined(STM32F407xx)
+#elif defined(STM32F407xx) || defined(STM32F405xx)
 #    include "stm32f4xx.h"
 #    include "stm32f4xx_ll_bus.h"
 #    include "stm32f4xx_ll_rcc.h"

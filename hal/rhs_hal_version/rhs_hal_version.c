@@ -1,7 +1,7 @@
 #include "rhs_hal_version.h"
 #if defined(STM32F765xx)
 #include "stm32f765xx.h"
-#elif defined(STM32F407xx)
+#elif defined(STM32F407xx) || defined(STM32F405xx)
 #include "stm32f407xx.h"
 #elif defined(STM32F103xE)
 #include "stm32f103xe.h"

@@ -10,7 +10,7 @@
 
 #ifdef STM32F765xx
 #    include "stm32f7xx.h"
-#elif STM32F407xx
+#elif STM32F407xx || defined(STM32F405xx)
 #    include "stm32f4xx.h"
 #elif STM32F103xE
 #    include "stm32f1xx.h"

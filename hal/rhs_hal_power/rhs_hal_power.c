@@ -5,7 +5,7 @@
 #elif defined(RPLC_M)
 #    include "stm32f103xe.h"
 #else
-#    if STM32F407xx
+#    if defined(STM32F407xx)  || defined(STM32F405xx)
 #        include "stm32f4xx.h"
 #    endif
 #endif

@@ -74,7 +74,7 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
         __HAL_AFIO_REMAP_CAN1_2();
     }
 #else
-#    if defined(STM32F407xx)
+#    if defined(STM32F407xx) || defined(STM32F405xx)
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     if (canHandle->Instance == CAN1)
     {
@@ -145,7 +145,7 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
         HAL_GPIO_DeInit(GPIOB, GPIO_PIN_8 | GPIO_PIN_9);
     }
 #else
-#    if defined(STM32F407xx)
+#    if defined(STM32F407xx) || defined(STM32F405xx)
 
     if (canHandle->Instance == CAN1)
     {

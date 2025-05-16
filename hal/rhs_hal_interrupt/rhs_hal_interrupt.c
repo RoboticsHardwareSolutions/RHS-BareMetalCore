@@ -3,8 +3,8 @@
 #ifdef STM32F765xx
 #    include "stm32f765xx.h"
 #    include "stm32f7xx_ll_rcc.h"
-#elif STM32F407xx
-#    include "stm32f407xx.h"
+#elif defined(STM32F407xx) || defined(STM32F405xx)
+#    include "stm32f4xx.h"
 #    include "stm32f4xx_ll_rcc.h"
 #elif STM32F103xE
 #    include "stm32f103xe.h"
@@ -77,7 +77,7 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdDMA1Stream3] = DMA1_Stream3_IRQn,
     [RHSHalInterruptIdDMA2Stream1] = DMA2_Stream1_IRQn,
     [RHSHalInterruptIdDMA2Stream6] = DMA2_Stream6_IRQn,
-#    elif defined(STM32F407xx)
+#    elif defined(STM32F407xx) || defined(STM32F405xx)
     /* CAN */
     [RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
     [RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
@@ -242,7 +242,7 @@ void DMA2_Stream6_IRQHandler(void)
     rhs_hal_interrupt_call(RHSHalInterruptIdDMA2Stream6);
 }
 
-#elif STM32F407xx
+#elif defined(STM32F407xx) || defined(STM32F405xx)
 
 #    include "usbd_core.h"
 

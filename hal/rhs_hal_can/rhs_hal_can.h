@@ -18,6 +18,16 @@ typedef struct
     uint8_t   payload[8];
 } RHSHalCANFrameType;
 
+typedef struct
+{
+    uint32_t tx_msgs;
+    uint32_t tx_errs;
+    uint32_t tx_ovfs;
+    uint32_t rx_msgs;
+    uint32_t rx_errs;
+    uint32_t rx_ovfs;
+} RHSHalCANStatistic;
+
 /**
  * CAN channels
  */
@@ -87,3 +97,5 @@ typedef void (*RHSHalCANAsyncRxCallback)(RHSHalCANId id, void* context);
 void rhs_hal_can_async_rx_start(RHSHalCANId id, RHSHalCANAsyncRxCallback callback, void* context);
 
 bool rhs_hal_can_rx(RHSHalCANId id, RHSHalCANFrameType* frame);
+
+RHSHalCANStatistic rhs_hal_can_get_statistic(RHSHalCANId id);

@@ -24,6 +24,7 @@ typedef struct
     void*                     tx_context;
     RHSHalCANAsyncSCECallback sce_callback;
     void*                     sce_context;
+    RHSHalCANStatistic        statistic;
 } RHSHalCAN;
 
 static RHSHalCAN rhs_hal_can[RHSHalCANIdMax] = {0};
@@ -278,20 +279,31 @@ static void can_sce_callback(void* context)
         CAN_LOG_E("CAN%d BOFF", can_num);
         event |= RHSHalCANSCEEventBusOff;
     }
-    if (can_handle->TSR & CAN_TSR_ALST0 || can_handle->TSR & CAN_TSR_ALST1 || can_handle->TSR & CAN_TSR_ALST2)
+    uint32_t tsr = can_handle->TSR;
+
+    if (tsr & (CAN_TSR_ALST0 | CAN_TSR_ALST1 | CAN_TSR_ALST2 | CAN_TSR_TERR0 | CAN_TSR_TERR1 | CAN_TSR_TERR2))
     {
-        CAN_LOG_E("CAN%d Arbitration lost", can_num);
-    }
-    if (can_handle->TSR & CAN_TSR_TERR0 || can_handle->TSR & CAN_TSR_TERR1 || can_handle->TSR & CAN_TSR_TERR2)
-    {
-        CAN_LOG_E("CAN%d Transmition error", can_num);
-        if (((can_handle->ESR >> 16) & 0xFF) >= 0x80)
+        can->statistic.tx_errs++;
+
+        if (tsr & (CAN_TSR_ALST0 | CAN_TSR_ALST1 | CAN_TSR_ALST2))
+        {
+            CAN_LOG_E("CAN%d Arbitration lost", can_num);
+        }
+        if (tsr & (CAN_TSR_TERR0 | CAN_TSR_TERR1 | CAN_TSR_TERR2))
         {
             // can_handle->TSR = CAN_TSR_ABRQ0;
             // can_handle->TSR = CAN_TSR_ABRQ1;
             // can_handle->TSR = CAN_TSR_ABRQ2;
-            event |= RHSHalCANSCEEventTXPassive;
+            CAN_LOG_E("CAN%d Transmission error", can_num);
+            if (((can_handle->ESR >> 16) & 0xFF) >= 0x80)
+            {
+                event |= RHSHalCANSCEEventTXPassive;
+            }
         }
+    }
+    else
+    {
+        can->statistic.rx_errs++;
     }
 
     can->lec = (can_handle->ESR >> 4) & 0x03;
@@ -309,6 +321,12 @@ static void can_rx_callback(void* context)
     RHSHalCAN*   can        = (RHSHalCAN*) context;
     CAN_TypeDef* can_handle = can->rcan.handle.Instance;
     uint8_t      can_num    = get_can_num_interface(can_handle);
+
+    if (can_handle->RF0R & CAN_RF0R_FOVR0)
+    {
+        can->statistic.rx_ovfs++;
+    }
+
     if (can->rx_callback)
     {
         can->rx_callback(can_num, can->rx_context);
@@ -321,6 +339,7 @@ static void can_tx_callback(void* context)
     RHSHalCAN*   can        = (RHSHalCAN*) context;
     CAN_TypeDef* can_handle = can->rcan.handle.Instance;
 
+    can->statistic.tx_msgs++;
     if (can_handle->TSR & (CAN_TSR_RQCP0 | CAN_TSR_RQCP1 | CAN_TSR_RQCP2))
     {
         if (can_handle->TSR & CAN_TSR_RQCP0)
@@ -422,7 +441,7 @@ void rhs_hal_can_async_sce(RHSHalCANId id, RHSHalCANAsyncSCECallback callback, v
 #if !defined(RPLC_XL) && !defined(RPLC_L) && !defined(RPLC_M)
     case RHSHalCANId2:
         rhs_hal_interrupt_set_isr_ex(RHSHalInterruptIdCAN2SCE,
-                                     RHSHalInterruptPriorityLow,
+                                    RHSHalInterruptPriorityLow,
                                      can_sce_callback,
                                      &rhs_hal_can[id]);
         break;
@@ -457,7 +476,12 @@ bool rhs_hal_can_tx(RHSHalCANId id, RHSHalCANFrameType* frame)
     rcan_frame.type = frame->type;
     rcan_frame.rtr  = frame->rtr;
     memcpy(rcan_frame.payload, frame->payload, frame->len);
-    return rcan_send(&rhs_hal_can[id].rcan, &rcan_frame);
+    if (rcan_send(&rhs_hal_can[id].rcan, &rcan_frame) == false)
+    {
+        rhs_hal_can[id].statistic.tx_ovfs++;
+        return false;
+    }
+    return true;
 }
 
 void rhs_hal_can_tx_cmplt_cb(RHSHalCANId id, RHSHalCANAsyncTxCallback callback, void* context)
@@ -518,7 +542,7 @@ bool rhs_hal_can_rx(RHSHalCANId id, RHSHalCANFrameType* frame)
 {
     rhs_assert(rhs_hal_can[id].enabled == true);
     static uint8_t rec = 0;
-    rec = (rhs_hal_can[id].rcan.handle.Instance->ESR >> 24) & 0xFF;
+    rec                = (rhs_hal_can[id].rcan.handle.Instance->ESR >> 24) & 0xFF;
     if (rhs_hal_can[id].rec != rec)
     {
         print_ecr(rhs_hal_can[id].rcan.handle.Instance);
@@ -526,8 +550,8 @@ bool rhs_hal_can_rx(RHSHalCANId id, RHSHalCANFrameType* frame)
     }
 
     rcan_frame rcan_frame = {0};
-    
-    if(rcan_receive(&rhs_hal_can[id].rcan, &rcan_frame) == false)
+
+    if (rcan_receive(&rhs_hal_can[id].rcan, &rcan_frame) == false)
     {
         return false;
     }
@@ -536,5 +560,12 @@ bool rhs_hal_can_rx(RHSHalCANId id, RHSHalCANFrameType* frame)
     frame->type = rcan_frame.type;
     frame->rtr  = rcan_frame.rtr;
     memcpy(frame->payload, rcan_frame.payload, rcan_frame.len);
+    rhs_hal_can[id].statistic.rx_msgs++;
     return true;
+}
+
+RHSHalCANStatistic rhs_hal_can_get_statistic(RHSHalCANId id)
+{
+    rhs_assert(id < RHSHalCANIdMax);
+    return rhs_hal_can[id].statistic;
 }

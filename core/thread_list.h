@@ -10,7 +10,11 @@ typedef struct RHSThreadListItem
     uint32_t          stack_size;     /**< Thread stack size */
     uint32_t          stack_min_free; /**< Thread minimum of the stack size ever reached */
     const char* state; /**< Thread state, can be: "Running", "Ready", "Blocked", "Suspended", "Deleted", "Invalid" */
-    uint32_t    cpu;   /**< Thread CPU usage time in percents (including interrupts happened while running) */
+
+    uint32_t counter_previous; /**< Thread previous runtime counter */
+    uint32_t counter_current;  /**< Thread current runtime counter */
+    uint32_t cpu;              /**< Thread CPU usage time in percents (including interrupts happened while running) */
+    uint32_t tick;             /**< Thread last seen tick */
 
     struct RHSThreadListItem* next;
 } RHSThreadListItem;
@@ -25,8 +29,10 @@ RHSThreadListItem* rhs_thread_list_find(RHSThreadList* list, RHSThreadListItem* 
 
 RHSThreadListItem* rhs_thread_list_add(RHSThreadList* list);
 
-RHSThreadListItem* rhs_thread_list_at(RHSThreadList* list, size_t index);
+RHSThreadListItem* rhs_thread_list_at(RHSThreadList* list, uint16_t index);
 
 int rhs_thread_list_remove(RHSThreadList* list, RHSThreadListItem* item);
 
-size_t rhs_thread_list_size(RHSThreadList* list);
+uint16_t rhs_thread_list_size(RHSThreadList* list);
+
+void rhs_thread_list_process(RHSThreadList* instance, uint32_t runtime, uint32_t tick);

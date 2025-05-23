@@ -468,21 +468,23 @@ void rhs_thread_enumerate(RHSThreadList* thread_list)
         configRUN_TIME_COUNTER_TYPE total_run_time;
         count = uxTaskGetSystemState(task, count, &total_run_time);
         rhs_thread_list_erase(thread_list);
-        
-        total_run_time /= 100;
+
         for (uint32_t i = 0U; i < count; i++)
         {
-            uint32_t           run_time = task[i].ulRunTimeCounter / total_run_time;
-            RHSThreadListItem* item     = rhs_thread_list_add(thread_list);
+            RHSThreadListItem* item = rhs_thread_list_add(thread_list);
 
-            item->name           = task[i].pcTaskName;
-            item->priority       = task[i].uxCurrentPriority;
-            item->stack_address  = (uint32_t) task[i].pxStackBase;
-            item->state          = rhs_thread_state_name(task[i].eCurrentState);
-            item->cpu            = run_time;
-            item->stack_min_free = (uint32_t) (uxTaskGetStackHighWaterMark(task[i].xHandle) * sizeof(StackType_t));
+            item->name             = task[i].pcTaskName;
+            item->priority         = task[i].uxCurrentPriority;
+            item->stack_address    = (uint32_t) task[i].pxStackBase;
+            item->stack_size       = (task[i].pxEndOfStack - task[i].pxStackBase + 2);
+            item->stack_min_free   = (uint32_t) (uxTaskGetStackHighWaterMark(task[i].xHandle));
+            item->state            = rhs_thread_state_name(task[i].eCurrentState);
+            item->counter_previous = item->counter_current;
+            item->counter_current  = task[i].ulRunTimeCounter;
+            item->tick             = tick;
         }
         vPortFree(task);
+        rhs_thread_list_process(thread_list, total_run_time, tick);
     } while (false);
     (void) xTaskResumeAll();
 }

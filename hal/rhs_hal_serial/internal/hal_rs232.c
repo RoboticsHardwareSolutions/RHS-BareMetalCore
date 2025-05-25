@@ -62,38 +62,38 @@ void rhs_hal_rs232_irq_callback(void* context)
     RHSHalSerialRxEvent event  = 0;
     // Notification flags
 
-    if (USART3->ISR & USART_ISR_RXNE)
+    if (RHS_INTERFACE_RS232->ISR & USART_ISR_RXNE)
     {
         event |= RHSHalSerialRxEventData;
     }
-    if (USART3->ISR & USART_ISR_IDLE)
+    if (RHS_INTERFACE_RS232->ISR & USART_ISR_IDLE)
     {
-        USART3->ICR = USART_ICR_IDLECF;
+        RHS_INTERFACE_RS232->ICR = USART_ICR_IDLECF;
         event |= RHSHalSerialRxEventIdle;
     }
     // Error flags
-    if (USART3->ISR & USART_ISR_ORE)
+    if (RHS_INTERFACE_RS232->ISR & USART_ISR_ORE)
     {
-        RHS_LOG_T(TAG, "RxOverrun", USART3->ISR);
-        USART3->ICR = USART_ICR_ORECF;
+        RHS_LOG_T(TAG, "RxOverrun", RHS_INTERFACE_RS232->ISR);
+        RHS_INTERFACE_RS232->ICR = USART_ICR_ORECF;
         event |= RHSHalSerialRxEventOverrunError;
     }
-    if (USART3->ISR & USART_ISR_NE)
+    if (RHS_INTERFACE_RS232->ISR & USART_ISR_NE)
     {
-        RHS_LOG_T(TAG, "RxNoise", USART3->ISR);
-        USART3->ICR = USART_ICR_NCF;
+        RHS_LOG_T(TAG, "RxNoise", RHS_INTERFACE_RS232->ISR);
+        RHS_INTERFACE_RS232->ICR = USART_ICR_NCF;
         event |= RHSHalSerialRxEventNoiseError;
     }
-    if (USART3->ISR & USART_ISR_FE)
+    if (RHS_INTERFACE_RS232->ISR & USART_ISR_FE)
     {
-        RHS_LOG_T(TAG, "RxFrameError", USART3->ISR);
-        USART3->ICR = USART_ICR_FECF;
+        RHS_LOG_T(TAG, "RxFrameError", RHS_INTERFACE_RS232->ISR);
+        RHS_INTERFACE_RS232->ICR = USART_ICR_FECF;
         event |= RHSHalSerialRxEventFrameError;
     }
-    if (USART3->ISR & USART_ISR_PE)
+    if (RHS_INTERFACE_RS232->ISR & USART_ISR_PE)
     {
-        RHS_LOG_T(TAG, "RxFrameErrorP", USART3->ISR);
-        USART3->ICR = USART_ICR_PECF;
+        RHS_LOG_T(TAG, "RxFrameErrorP", RHS_INTERFACE_RS232->ISR);
+        RHS_INTERFACE_RS232->ICR = USART_ICR_PECF;
         event |= RHSHalSerialRxEventFrameError;
     }
 
@@ -145,7 +145,7 @@ void rhs_hal_rs232_async_tx_dma_configure(void)
 {
     /* Init with LL driver */
     /* DMA controller clock enable */
-    USART3->CR3 |= USART_CR3_DMAT;
+    RHS_INTERFACE_RS232->CR3 |= USART_CR3_DMAT;
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
 
     DMA1_Stream3->CR &= ~(DMA_SxCR_EN);
@@ -156,7 +156,7 @@ void rhs_hal_rs232_async_tx_dma_configure(void)
     /* DMA1_Stream3_IRQn interrupt configuration */
     LL_DMA_SetChannelSelection(DMA1, LL_DMA_STREAM_3, LL_DMA_CHANNEL_4);
     LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_STREAM_3, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
-    LL_DMA_SetPeriphAddress(DMA1, LL_DMA_STREAM_3, (uint32_t) &USART3->TDR);
+    LL_DMA_SetPeriphAddress(DMA1, LL_DMA_STREAM_3, (uint32_t) &RHS_INTERFACE_RS232->TDR);
     LL_DMA_SetStreamPriorityLevel(DMA1, LL_DMA_STREAM_3, LL_DMA_PRIORITY_LOW);
     LL_DMA_SetMode(DMA1, LL_DMA_STREAM_3, LL_DMA_MODE_NORMAL);
     LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_STREAM_3, LL_DMA_PERIPH_NOINCREMENT);
@@ -220,38 +220,38 @@ void rhs_hal_rs232_irq_callback(void* context)
     RHSHalSerialRxEvent event  = 0;
     // Notification flags
 
-    if (USART3->SR & USART_SR_RXNE)
+    if (RHS_INTERFACE_RS232->SR & USART_SR_RXNE)
     {
         event |= RHSHalSerialRxEventData;
     }
-    if (USART3->SR & USART_SR_IDLE)
+    if (RHS_INTERFACE_RS232->SR & USART_SR_IDLE)
     {
-        // USART3->CR = USART_ICR_IDLECF;
+        // RHS_INTERFACE_RS232->CR = USART_ICR_IDLECF;
         event |= RHSHalSerialRxEventIdle;
     }
     // Error flags
-    if (USART3->SR & USART_SR_ORE)
+    if (RHS_INTERFACE_RS232->SR & USART_SR_ORE)
     {
-        RHS_LOG_T(TAG, "RxOverrun", USART3->SR);
-        // USART3->CR1 = USART_CR1_ORECF;
+        RHS_LOG_T(TAG, "RxOverrun");
+        // RHS_INTERFACE_RS232->CR1 = USART_CR1_ORECF;
         event |= RHSHalSerialRxEventOverrunError;
     }
-    if (USART3->SR & USART_SR_NE)
+    if (RHS_INTERFACE_RS232->SR & USART_SR_NE)
     {
-        RHS_LOG_T(TAG, "RxNoise", USART3->SR);
-        // USART3->ICR = USART_ICR_NCF;
+        RHS_LOG_T(TAG, "RxNoise");
+        // RHS_INTERFACE_RS232->ICR = USART_ICR_NCF;
         event |= RHSHalSerialRxEventNoiseError;
     }
-    if (USART3->SR & USART_SR_FE)
+    if (RHS_INTERFACE_RS232->SR & USART_SR_FE)
     {
-        RHS_LOG_T(TAG, "RxFrameError", USART3->SR);
-        // USART3->ICR = USART_ICR_FECF;
+        RHS_LOG_T(TAG, "RxFrameError");
+        // RHS_INTERFACE_RS232->ICR = USART_ICR_FECF;
         event |= RHSHalSerialRxEventFrameError;
     }
-    if (USART3->SR & USART_SR_PE)
+    if (RHS_INTERFACE_RS232->SR & USART_SR_PE)
     {
-        RHS_LOG_T(TAG, "RxFrameErrorP", USART3->SR);
-        // USART3->ICR = USART_ICR_PECF;
+        RHS_LOG_T(TAG, "RxFrameErrorP");
+        // RHS_INTERFACE_RS232->ICR = USART_ICR_PECF;
         event |= RHSHalSerialRxEventFrameError;
     }
 

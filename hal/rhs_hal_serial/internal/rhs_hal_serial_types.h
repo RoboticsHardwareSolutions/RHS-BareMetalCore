@@ -1,4 +1,5 @@
 #pragma once
+#include "hard_defs.h"
 #include "rserial.h"
 
 typedef struct

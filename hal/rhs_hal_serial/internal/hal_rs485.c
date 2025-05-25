@@ -351,36 +351,36 @@ void rhs_hal_rs485_rx_irq_callback(void* context)
 
 void rhs_hal_rs485_tx_irq_callback(void* context)
 {
-    rhs_crash("Not implemented");
+    RHS_LOG_W(TAG, "tx_irq_callback Not implemented");
 }
 
 void rhs_hal_rs485_async_tx_dma_start(const uint8_t* buffer, uint16_t buffer_size)
 {
-    rhs_crash("Not implemented");
+    RHS_LOG_W(TAG, "async_tx_dma_start Not implemented");
 }
 
 void rhs_hal_rs485_async_tx_dma_stop(void)
 {
-    rhs_crash("Not implemented");
+    RHS_LOG_W(TAG, "async_tx_dma_stop Not implemented");
 }
 
 void rhs_hal_rs485_async_tx_dma_configure(void)
 {
-    rhs_crash("Not implemented");
+    RHS_LOG_W(TAG, "async_tx_dma_configure Not implemented");
 }
 
 void rhs_hal_rs485_async_rx_dma_configure(void)
 {
-    rhs_crash("Not implemented");
+    RHS_LOG_W(TAG, "async_rx_dma_configure Not implemented");
 }
 
 void rhs_hal_rs485_async_rx_dma_start(const uint8_t* buffer, uint16_t buffer_size)
 {
-    rhs_crash("Not implemented");
+    RHS_LOG_W(TAG, "async_rx_dma_start Not implemented");
 }
 
 void rhs_hal_rs485_async_rx_dma_stop(void)
 {
-    rhs_crash("Not implemented");
+    RHS_LOG_W(TAG, "async_rx_dma_stop Not implemented");
 }
 #endif

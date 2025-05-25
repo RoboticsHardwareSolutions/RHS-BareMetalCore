@@ -3,11 +3,11 @@
 ## Common
 - [ ] Create records for instance
 - [ ] Add IO service
-- [ ] Add ethernet service with LWIP
+- [x] Add ethernet service with LWIP
 
 ## Cli
 - [ ] Create sessions
-- [ ] Check threads in log
+- [x] Check threads in log
 
 ## Loader
 - [ ] Fix delay 100 ms

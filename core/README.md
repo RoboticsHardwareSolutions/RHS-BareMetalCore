@@ -5,5 +5,5 @@
 - [ ] Excludes should be list
 
 ## threads
-- [ ] List of threads for process and memory analize
-- [ ] Creating just threads
+- [x] List of threads for process and memory analize
+- [x] Creating just threads

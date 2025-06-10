@@ -3,6 +3,14 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#ifndef MAX_LOG_COUNT
+#    define MAX_LOG_COUNT 16
+#endif
+
+#ifndef MAX_LOG_LENGTH
+#    define MAX_LOG_LENGTH 120
+#endif
+
 typedef enum
 {
     RHSLogLevelDefault = 0,
@@ -23,7 +31,7 @@ void rhs_log_set_level(RHSLogLevel level);
 
 RHSLogLevel rhs_log_get_level(void);
 
-void rhs_log_exclude_tag(char *tag);
+void rhs_log_exclude_tag(char* tag);
 
 void rhs_log_unexclude_tag(char* tag);
 

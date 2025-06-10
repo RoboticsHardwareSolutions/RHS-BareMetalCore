@@ -58,6 +58,10 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
     {
         context.file = last_separator + 1;
     }
+    rhs_log_save("%d: Message: %s. file: %s, line: %d;\n", rhs_get_tick(), m, context.file, context.line);
+    rhs_log_save("Stack: r0=0x%08lX r1=0x%08lX r2=0x%08lX r3=0x%08lX r12=0x%08lX lr=0x%08lX pc=0x%08lX psr=0x%08lX\n",
+                 (unsigned long)stack_ptr->r0, (unsigned long)stack_ptr->r1, (unsigned long)stack_ptr->r2, (unsigned long)stack_ptr->r3,
+                 (unsigned long)stack_ptr->r12, (unsigned long)stack_ptr->lr, (unsigned long)stack_ptr->pc, (unsigned long)stack_ptr->psr);
     rhs_log_save("%d: [Assert] Message: %s. Called from file: %s, line: %d\n", rhs_get_tick(), m, context.file, context.line);
     if (debug)
     {

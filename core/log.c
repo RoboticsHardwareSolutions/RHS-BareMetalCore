@@ -7,7 +7,6 @@
 #include "mutex.h"
 #include "common.h"
 
-
 #define _RHS_LOG_CLR(clr) "\033[0;" clr "m"
 #define _RHS_LOG_CLR_RESET "\033[0m"
 
@@ -24,10 +23,7 @@
 #define _RHS_LOG_CLR_D _RHS_LOG_CLR(_RHS_LOG_CLR_BLUE)
 #define _RHS_LOG_CLR_T _RHS_LOG_CLR(_RHS_LOG_CLR_PURPLE)
 
-
 #define RHS_LOG_LEVEL_DEFAULT RHSLogLevelDebug
-#define MAX_LOG_COUNT 16
-#define MAX_LOG_LENGTH 120
 #define MAX_TAG_COUNT 32
 #define MAX_TAG_LENGTH 16
 
@@ -164,6 +160,8 @@ void rhs_log_save(char* str, ...)
     char*       p = buffer;
     const char* s = str;
 
+    rhs_assert(str);
+
     if (save_log.MAGIC_KEY != LOG_MAGIC_KEY || save_log.count >= MAX_LOG_COUNT)
     {
         rhs_erase_saved_log();
@@ -171,23 +169,11 @@ void rhs_log_save(char* str, ...)
     }
     va_list ParamList;
     va_start(ParamList, str);
-    while (*s && (p - buffer) < (MAX_LOG_LENGTH - 1))
-    {
-        if (*s == '%' && *(s + 1) == 's')
-        {
-            s += 2;
-            char* arg = va_arg(ParamList, char*);
-            while (*arg && (p - buffer) < (MAX_LOG_LENGTH - 1))
-            {
-                *p++ = *arg++;
-            }
-        }
-        else
-        {
-            *p++ = *s++;
-        }
+    int len = vsnprintf(buffer, MAX_LOG_LENGTH, str, ParamList);
+    if (len >= MAX_LOG_LENGTH) {
+        strncpy(buffer, "too long", MAX_LOG_LENGTH);
+        buffer[MAX_LOG_LENGTH - 1] = '\0';
     }
-    *p = '\0';
     strncpy(save_log.str[save_log.count], buffer, MAX_LOG_LENGTH);
     va_end(ParamList);
     save_log.count++;

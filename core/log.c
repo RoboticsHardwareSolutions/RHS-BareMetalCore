@@ -214,3 +214,24 @@ uint16_t rhs_count_saved_log(void)
 {
     return save_log.MAGIC_KEY == LOG_MAGIC_KEY ? save_log.count : 0;
 }
+
+char* uint64_to_str(uint64_t num)
+{
+    static char buf[21];
+    char*       p = buf + sizeof(buf) - 1;
+    *p            = '\0';
+
+    if (num == 0)
+    {
+        *--p = '0';
+    }
+    else
+    {
+        while (num > 0)
+        {
+            *--p = '0' + (num % 10);
+            num /= 10;
+        }
+    }
+    return p;
+}

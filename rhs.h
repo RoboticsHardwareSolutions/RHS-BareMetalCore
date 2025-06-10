@@ -3,6 +3,7 @@
 #include "core/base.h"
 #include "core/check.h"
 #include "core/common.h"
+#include "core/defines.h"
 #include "core/event_flag.h"
 #include "core/kernel.h"
 #include "core/log.h"

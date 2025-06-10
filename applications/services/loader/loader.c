@@ -3,9 +3,10 @@
 
 #define TAG "loader"
 
-static Loader* loader_alloc(void) {
+static Loader* loader_alloc(void)
+{
     Loader* loader = malloc(sizeof(Loader));
-    loader->queue = rhs_message_queue_alloc(1, sizeof(LoaderMessage));
+    loader->queue  = rhs_message_queue_alloc(1, sizeof(LoaderMessage));
     return loader;
 }
 

@@ -388,7 +388,9 @@ void usb_serial_disable(UsbSerialBridge* usb_serial)
 
 void cli_vcp_start_up(void)
 {
-    cli_add_command("usb_bridge", usb_bridge_cb, NULL);
+    Cli *cli = rhs_record_open(RECORD_CLI);
+    cli_add_command(cli, "usb_bridge", usb_bridge_cb, NULL);
+    rhs_record_close(RECORD_CLI);
 
     // TODO cli_vcp
     // This is a stub

@@ -33,7 +33,7 @@ target_include_directories(
 if(NOT TARGET freertos_kernel)
         message(FATAL_ERROR
                 "freertos_kernel target is not found. Please add freertos_kernel as a submodule (https://github.com/FreeRTOS/FreeRTOS-Kernel.git) to thyrdparty directory.
-In CMakeLists.txt of thyrdparty directory add:
+In CMakeLists.txt of thirdparty directory add:
 add_library(freertos_config INTERFACE)
 target_include_directories(freertos_config SYSTEM
         INTERFACE
@@ -52,7 +52,7 @@ endif()
 if(NOT TARGET RTT)
         message(FATAL_ERROR
                 "RTT target is not found. Please add RTT as a submodule (https://github.com/SEGGERMicro/RTT.git) to thyrdparty directory.
-In CMakeLists.txt of thyrdparty directory add:
+In CMakeLists.txt of thirdparty directory add:
 add_library(RTT STATIC
         RTT/RTT/SEGGER_RTT_ASM_ARMv7M.S
         RTT/RTT/SEGGER_RTT_printf.c
@@ -66,6 +66,20 @@ target_include_directories(RTT
         $<BUILD_INTERFACE:\${CMAKE_CURRENT_SOURCE_DIR}/RTT/RTT>
         $<BUILD_INTERFACE:\${CMAKE_CURRENT_SOURCE_DIR}/RTT/Config>
 )"
+        )
+endif()
+
+if(NOT TARGET mlib)
+        message(FATAL_ERROR
+                "mlib target is not found. Please add mlib as a submodule (https://github.com/P-p-H-d/mlib.git) to thyrdparty directory.
+In CMakeLists.txt of thirdparty directory add:
+add_library(mlib INTERFACE)
+
+target_include_directories(mlib
+        INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/mlib
+)
+"
         )
 endif()
 

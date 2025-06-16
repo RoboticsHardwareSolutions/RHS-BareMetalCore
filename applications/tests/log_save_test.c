@@ -248,5 +248,7 @@ void log_save_test(char* args, void* context)
 
 void log_save_test_start_up(void)
 {
-    cli_add_command("log_save_test", log_save_test, NULL);
+    Cli *cli = rhs_record_open(RECORD_CLI);
+    cli_add_command(cli, "log_save_test", log_save_test, NULL);
+    rhs_record_close(RECORD_CLI);
 }

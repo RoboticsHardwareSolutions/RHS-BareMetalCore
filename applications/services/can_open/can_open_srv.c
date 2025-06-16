@@ -3,8 +3,6 @@
 #include "can_open_srv.h"
 #include "cli.h"
 
-CanOpenApp* can_open_app = NULL;
-
 extern void can_open_cli(char* args, void* context);
 
 static CanOpenApp* can_open_app_alloc(void)
@@ -17,8 +15,13 @@ static CanOpenApp* can_open_app_alloc(void)
     app->tx_queue   = rhs_message_queue_alloc(32, sizeof(CanOpenAppMessage));
     TimerInit();
 
-    cli_add_command("can_open", can_open_cli, app);
-    can_open_app = app;  // FIXME It's my headache
+    Cli* cli = rhs_record_open(RECORD_CLI);
+    cli_add_command(cli, "can_open", can_open_cli, app);
+    rhs_record_close(RECORD_CLI);
+    
+    extern CanOpenApp *can_open_app; /* co_stack and rtimer use callbacks without context. It makes me use this trash */
+    can_open_app = app;
+
     return app;
 }
 
@@ -38,6 +41,8 @@ int32_t can_open_service(void* context)
     uint32_t           flag = 0;
     CanOpenAppMessage  msg;
     RHSHalCANFrameType frame = {0};
+
+    rhs_record_create(RECORD_CAN_OPEN, app);
 
     while (1)
     {

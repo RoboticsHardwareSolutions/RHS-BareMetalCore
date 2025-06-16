@@ -21,6 +21,7 @@ add_library(${PROJECT_NAME} STATIC
         core/thread_list.c
         core/stream_buf.c
         core/semaphore.c
+        core/record.c
 )
 target_sources(${PROJECT_NAME} PUBLIC ${CMAKE_BINARY_DIR}/applications.c)
 
@@ -72,6 +73,7 @@ target_link_libraries(${PROJECT_NAME}
         PUBLIC
         freertos_kernel
         RTT
+        mlib
         PRIVATE
         rhs_hal_cortex
         rhs_hal_power

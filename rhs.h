@@ -16,5 +16,6 @@
 #include "core/stream_buf.h"
 #include "core/semaphore.h"
 #include "core/api_lock.h"
+#include "core/record.h"
 
 void rhs_init(void);

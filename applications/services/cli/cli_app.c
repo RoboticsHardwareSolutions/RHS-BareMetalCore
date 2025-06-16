@@ -9,30 +9,26 @@
 
 #define MAX_LINE_LENGTH 64
 
-static Cli* s_cli = NULL;
-
 Cli* cli_alloc(void)
 {
-    Cli* cli   = malloc(sizeof(Cli));
-    s_cli      = cli;
-    cli->line  = calloc(1, MAX_LINE_LENGTH);
-    cli->mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
-    return cli;
+    Cli* app   = malloc(sizeof(Cli));
+    app->line  = calloc(1, MAX_LINE_LENGTH);
+    app->mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
+    return app;
 }
 
-void cli_add_command(const char* name, CliCallback callback, void* context)
+void cli_add_command(Cli* app, const char* name, CliCallback callback, void* context)
 {
-    rhs_assert(s_cli);
     CliCommand* command;
-    rhs_assert(rhs_mutex_acquire(s_cli->mutex, RHSWaitForever) == RHSStatusOk);
-    for (int i = 0; i < sizeof(s_cli->commands) / sizeof(s_cli->commands[0]); i++)
+    rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
+    for (int i = 0; i < sizeof(app->commands) / sizeof(app->commands[0]); i++)
     {
-        if (i == sizeof(s_cli->commands) / sizeof(s_cli->commands[0]))
+        if (i == sizeof(app->commands) / sizeof(app->commands[0]))
         {
-            rhs_assert(rhs_mutex_release(s_cli->mutex) == RHSStatusOk);
+            rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
             return;
         }
-        command = &s_cli->commands[i];
+        command = &app->commands[i];
         if (command->name == NULL)
         {
             break;
@@ -40,17 +36,17 @@ void cli_add_command(const char* name, CliCallback callback, void* context)
         if (strcmp(command->name, name) == 0)
         {
             RHS_LOG_E(TAG, "Cammand already exists");
-            rhs_assert(rhs_mutex_release(s_cli->mutex) == RHSStatusOk);
+            rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
             return;
         }
     }
     command->name     = name;
     command->callback = callback;
     command->context  = context;
-    rhs_assert(rhs_mutex_release(s_cli->mutex) == RHSStatusOk);
+    rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
 }
 
-char cli_getc()
+static char cli_getc(void)
 {
     char c = 0;
 
@@ -71,38 +67,38 @@ char cli_getc()
     return c;
 }
 
-void cli_reset(Cli* cli)
+void cli_reset(Cli* app)
 {
-    cli->cursor_position = 0;
-    memset(cli->line, 0, MAX_LINE_LENGTH);
+    app->cursor_position = 0;
+    memset(app->line, 0, MAX_LINE_LENGTH);
 }
 
-void cli_handle_enter(Cli* cli)
+void cli_handle_enter(Cli* app)
 {
-    for (int i = 0; i < sizeof(cli->commands) / sizeof(cli->commands[0]); i++)
+    for (int i = 0; i < sizeof(app->commands) / sizeof(app->commands[0]); i++)
     {
-        if (cli->commands[i].name == NULL)
+        if (app->commands[i].name == NULL)
         {
             break;
         }
-        char*  separator      = strchr(cli->line, ' ');
-        size_t command_length = separator ? (size_t) (separator - cli->line) : strlen(cli->line);
-        if (strncmp(cli->line, cli->commands[i].name, command_length) == 0 &&
-            strlen(cli->commands[i].name) == command_length)
+        char*  separator      = strchr(app->line, ' ');
+        size_t command_length = separator ? (size_t) (separator - app->line) : strlen(app->line);
+        if (strncmp(app->line, app->commands[i].name, command_length) == 0 &&
+            strlen(app->commands[i].name) == command_length)
         {
-            cli->commands[i].callback(separator ? separator + 1 : NULL, cli->commands[i].context);
-            cli_reset(cli);
+            app->commands[i].callback(separator ? separator + 1 : NULL, app->commands[i].context);
+            cli_reset(app);
             return;
         }
     }
-    if (*cli->line != 0)
+    if (*app->line != 0)
     {
         RHS_LOG_I(TAG, "Unknown command");
     }
-    cli_reset(cli);
+    cli_reset(app);
 }
 
-void cli_process_input(Cli* cli)
+void cli_process_input(Cli* app)
 {
     char in_chr = cli_getc();
 
@@ -134,12 +130,12 @@ void cli_process_input(Cli* cli)
     }
     else if (in_chr == CliSymbolAsciiCR)
     {
-        cli_handle_enter(cli);
+        cli_handle_enter(app);
     }
     else if ((in_chr >= 0x20 && in_chr < 0x7F))
     {
-        cli->line[cli->cursor_position] = in_chr;
-        cli->cursor_position++;
+        app->line[app->cursor_position] = in_chr;
+        app->cursor_position++;
     }
     else
     {
@@ -162,14 +158,15 @@ void cli_command_free(char* args, void* context)
 
 void cli_commands(char* args, void* context)
 {
+    Cli* app = (Cli*) context;
     SEGGER_RTT_printf(0, "Available commands:\r\n");
-    for (int i = 0; i < sizeof(s_cli->commands) / sizeof(s_cli->commands[0]); i++)
+    for (int i = 0; i < sizeof(app->commands) / sizeof(app->commands[0]); i++)
     {
-        if (s_cli->commands[i].name == NULL)
+        if (app->commands[i].name == NULL)
         {
             break;
         }
-        SEGGER_RTT_printf(0, "%s\r\n", s_cli->commands[i].name);
+        SEGGER_RTT_printf(0, "%s\r\n", app->commands[i].name);
     }
 }
 
@@ -283,18 +280,19 @@ void cli_command_top(char* args, void* context)
 
 int32_t cli_service(void* context)
 {
-    Cli* cli = cli_alloc();
+    Cli* app = cli_alloc();
+    rhs_record_create(RECORD_CLI, app);
 
-    cli_add_command("uptime", cli_command_uptime, NULL);
-    cli_add_command("free", cli_command_free, NULL);
-    cli_add_command("?", cli_commands, NULL);
-    cli_add_command("log", cli_command_log, NULL);
-    cli_add_command("reset", cli_command_reset, NULL);
-    cli_add_command("uid", cli_command_uid, NULL);
-    cli_add_command("top", cli_command_top, NULL);
+    cli_add_command(app, "uptime", cli_command_uptime, NULL);
+    cli_add_command(app, "free", cli_command_free, NULL);
+    cli_add_command(app, "?", cli_commands, app);
+    cli_add_command(app, "log", cli_command_log, NULL);
+    cli_add_command(app, "reset", cli_command_reset, NULL);
+    cli_add_command(app, "uid", cli_command_uid, NULL);
+    cli_add_command(app, "top", cli_command_top, NULL);
 
     for (;;)
     {
-        cli_process_input(cli);
+        cli_process_input(app);
     }
 }

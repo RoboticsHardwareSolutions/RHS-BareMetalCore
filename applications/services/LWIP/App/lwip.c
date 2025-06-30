@@ -1,24 +1,3 @@
-/* USER CODE BEGIN Header */
-/**
- ******************************************************************************
- * File Name          : LWIP.c
- * Description        : This file provides initialization code for LWIP
- *                      middleWare.
- ******************************************************************************
- * @attention
- *
- * Copyright (c) 2022 STMicroelectronics.
- * All rights reserved.
- *
- * This software is licensed under terms that can be found in the LICENSE file
- * in the root directory of this software component.
- * If no LICENSE file comes with this software, it is provided AS-IS.
- *
- ******************************************************************************
- */
-/* USER CODE END Header */
-
-/* Includes ------------------------------------------------------------------*/
 #include "lwip.h"
 #include "lwip/init.h"
 #include "lwip/netif.h"
@@ -28,9 +7,6 @@
 #include "ethernetif.h"
 #include <string.h>
 
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
 /* Private function prototypes -----------------------------------------------*/
 static void ethernet_link_status_updated(struct netif* netif);
 /* Variables Initialization */
@@ -85,8 +61,6 @@ int32_t ethernet_service(void* context)
 #ifdef USE_OBSOLETE_USER_CODE_SECTION_4
 /* Kept to help code migration. (See new 4_1, 4_2... sections) */
 /* Avoid to use this user section which will become obsolete. */
-/* USER CODE BEGIN 4 */
-/* USER CODE END 4 */
 #endif
 
 /**
@@ -98,13 +72,9 @@ static void ethernet_link_status_updated(struct netif* netif)
 {
     if (netif_is_up(netif))
     {
-        /* USER CODE BEGIN 5 */
-        /* USER CODE END 5 */
     }
     else /* netif is down */
     {
-        /* USER CODE BEGIN 6 */
-        /* USER CODE END 6 */
     }
 }
 
@@ -118,11 +88,7 @@ static void ethernet_link_status_updated(struct netif* netif)
 sio_fd_t sio_open(u8_t devnum)
 {
     sio_fd_t sd;
-
-    /* USER CODE BEGIN 7 */
     sd = 0;  // dummy code
-             /* USER CODE END 7 */
-
     return sd;
 }
 
@@ -134,11 +100,7 @@ sio_fd_t sio_open(u8_t devnum)
  *
  * @note This function will block until the character can be sent.
  */
-void sio_send(u8_t c, sio_fd_t fd)
-{
-    /* USER CODE BEGIN 8 */
-    /* USER CODE END 8 */
-}
+void sio_send(u8_t c, sio_fd_t fd) {}
 
 /**
  * Reads from the serial device.
@@ -155,9 +117,7 @@ u32_t sio_read(sio_fd_t fd, u8_t* data, u32_t len)
 {
     u32_t recved_bytes;
 
-    /* USER CODE BEGIN 9 */
     recved_bytes = 0;  // dummy code
-                       /* USER CODE END 9 */
     return recved_bytes;
 }
 
@@ -174,9 +134,7 @@ u32_t sio_tryread(sio_fd_t fd, u8_t* data, u32_t len)
 {
     u32_t recved_bytes;
 
-    /* USER CODE BEGIN 10 */
     recved_bytes = 0;  // dummy code
-                       /* USER CODE END 10 */
     return recved_bytes;
 }
 #endif /* MDK ARM Compiler */

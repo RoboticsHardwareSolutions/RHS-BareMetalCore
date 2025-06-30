@@ -7,26 +7,28 @@
  *
  * Many of the RHSThread functions MUST ONLY be called when the thread is STOPPED.
  */
-typedef enum {
-    RHSThreadStateStopped, /**< Thread is stopped and is safe to release. Event delivered from system init thread(TCB cleanup routine). It is safe to release thread instance. */
+typedef enum
+{
+    RHSThreadStateStopped,  /**< Thread is stopped and is safe to release. Event delivered from system init thread(TCB
+                               cleanup routine). It is safe to release thread instance. */
     RHSThreadStateStopping, /**< Thread is stopping. Event delivered from child thread. */
     RHSThreadStateStarting, /**< Thread is starting. Event delivered from parent(self) thread. */
-    RHSThreadStateRunning, /**< Thread is running. Event delivered from child thread. */
+    RHSThreadStateRunning,  /**< Thread is running. Event delivered from child thread. */
 } RHSThreadState;
 
 /**
  * @brief Enumeration of possible RHSThread priorities.
  */
-typedef enum {
-    RHSThreadPriorityIdle = 0, /**< Idle priority */
-    RHSThreadPriorityInit = 4, /**< Init System Thread Priority */
-    RHSThreadPriorityLowest = 14, /**< Lowest */
-    RHSThreadPriorityLow = 15, /**< Low */
-    RHSThreadPriorityNormal = 16, /**< Normal, system default */
-    RHSThreadPriorityHigh = 17, /**< High */
-    RHSThreadPriorityHighest = 18, /**< Highest */
-    RHSThreadPriorityIsr =
-    (32 - 1), /**< Deferred ISR (highest possible) */
+typedef enum
+{
+    RHSThreadPriorityIdle    = 0,        /**< Idle priority */
+    RHSThreadPriorityInit    = 4,        /**< Init System Thread Priority */
+    RHSThreadPriorityLowest  = 14,       /**< Lowest */
+    RHSThreadPriorityLow     = 15,       /**< Low */
+    RHSThreadPriorityNormal  = 16,       /**< Normal, system default */
+    RHSThreadPriorityHigh    = 17,       /**< High */
+    RHSThreadPriorityHighest = 18,       /**< Highest */
+    RHSThreadPriorityIsr     = (32 - 1), /**< Deferred ISR (highest possible) */
 } RHSThreadPriority;
 
 /**
@@ -50,11 +52,13 @@ typedef int32_t (*RHSThreadCallback)(void* context);
 
 void rhs_thread_init(void);
 
-RHSThread* rhs_thread_alloc(
-    const char* name,
-    uint32_t stack_size,
-    RHSThreadCallback callback,
-    void* context);
+RHSThread* rhs_thread_alloc(const char* name, uint32_t stack_size, RHSThreadCallback callback, void* context);
+
+RHSThread* rhs_thread_alloc_ex(const char*       name,
+                               uint32_t          stack_size,
+                               RHSThreadPriority priotity,
+                               RHSThreadCallback callback,
+                               void*             context);
 
 /**
  * @brief Create a RHSThread instance (service mode).
@@ -72,11 +76,7 @@ RHSThread* rhs_thread_alloc(
  * @param[in] context pointer to a user-specified object (will be passed to the callback)
  * @return pointer to the created RHSThread instance
  */
-RHSThread* rhs_thread_alloc_service(
-    const char* name,
-    uint32_t stack_size,
-    RHSThreadCallback callback,
-    void* context);
+RHSThread* rhs_thread_alloc_service(const char* name, uint32_t stack_size, RHSThreadCallback callback, void* context);
 
 void rhs_thread_free(RHSThread* thread);
 

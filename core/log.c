@@ -31,6 +31,15 @@ static RHSLogLevel log_level = RHS_LOG_LEVEL_DEFAULT;
 static char*       exclude_tag[MAX_TAG_COUNT];
 static RHSMutex*   mutex;
 
+int _write(int file, char* ptr, int len)
+{
+    for (int i = 0; i < len; i++)
+    {
+        SEGGER_RTT_PutChar(0, ptr[i]);
+    }
+    return len;
+}
+
 void rhs_log_init(void)
 {
     mutex = rhs_mutex_alloc(RHSMutexTypeRecursive);

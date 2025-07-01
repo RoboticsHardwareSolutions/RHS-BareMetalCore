@@ -24,12 +24,29 @@
 #define _RHS_LOG_CLR_T _RHS_LOG_CLR(_RHS_LOG_CLR_PURPLE)
 
 #define RHS_LOG_LEVEL_DEFAULT RHSLogLevelDebug
+#define MAX_LOG_COUNT 16
+#define MAX_LOG_LENGTH 120
 #define MAX_TAG_COUNT 32
 #define MAX_TAG_LENGTH 16
+
+__attribute__((weak)) extern uint32_t _ram_log_start;
+__attribute__((weak)) extern uint32_t _ram_log_end;
+__attribute__((weak)) extern uint32_t _ram_log_size;
+
+#define LOG_MAGIC_KEY 0x28735F7A
+typedef struct
+{
+    uint32_t MAGIC_KEY;
+    uint16_t count;
+    char     space[];
+} save_log_t;
 
 static RHSLogLevel log_level = RHS_LOG_LEVEL_DEFAULT;
 static char*       exclude_tag[MAX_TAG_COUNT];
 static RHSMutex*   mutex;
+
+static save_log_t* save_log = NULL;
+uint32_t max_log_count;
 
 int _write(int file, char* ptr, int len)
 {
@@ -42,6 +59,22 @@ int _write(int file, char* ptr, int len)
 
 void rhs_log_init(void)
 {
+    if ((&_ram_log_start != NULL) && (&_ram_log_size != NULL))
+    {
+        SEGGER_RTT_printf(0, "exist %d\r\n", (uint32_t) &_ram_log_size);
+        static save_log_t __attribute__((section("MB_MEM_LOG"))) log;
+        max_log_count = (uint32_t)&_ram_log_size / MAX_LOG_LENGTH;
+        save_log = &log;
+    }
+    else
+    {
+        SEGGER_RTT_printf(0, "not exist\r\n");
+        static save_log_t log;
+        max_log_count = MAX_LOG_COUNT;
+        save_log = &log;
+        save_log = malloc(sizeof(save_log_t) + max_log_count * MAX_LOG_LENGTH);
+    }
+
     mutex = rhs_mutex_alloc(RHSMutexTypeRecursive);
 }
 
@@ -153,46 +186,30 @@ RHSLogLevel rhs_log_get_level(void)
     return log_level;
 }
 
-#define LOG_MAGIC_KEY 0x28735F7A
-typedef struct
-{
-    uint32_t MAGIC_KEY;
-    uint16_t count;
-    char     str[MAX_LOG_COUNT][MAX_LOG_LENGTH];
-} save_log_t;
-
-save_log_t __attribute__((section("MB_MEM_LOG"))) save_log;
-
 void rhs_log_save(char* str, ...)
 {
-    char        buffer[MAX_LOG_LENGTH];
-    char*       p = buffer;
-    const char* s = str;
-
-    rhs_assert(str);
-
-    if (save_log.MAGIC_KEY != LOG_MAGIC_KEY || save_log.count >= MAX_LOG_COUNT)
+    if (save_log->MAGIC_KEY != LOG_MAGIC_KEY || save_log->count >= max_log_count)
     {
         rhs_erase_saved_log();
-        save_log.MAGIC_KEY = LOG_MAGIC_KEY;
+        save_log->MAGIC_KEY = LOG_MAGIC_KEY;
+        save_log->count = 0;
     }
+
+    char* p = save_log->space + save_log->count * MAX_LOG_LENGTH;
+
     va_list ParamList;
     va_start(ParamList, str);
-    int len = vsnprintf(buffer, MAX_LOG_LENGTH, str, ParamList);
-    if (len >= MAX_LOG_LENGTH) {
-        strncpy(buffer, "too long", MAX_LOG_LENGTH);
-        buffer[MAX_LOG_LENGTH - 1] = '\0';
-    }
-    strncpy(save_log.str[save_log.count], buffer, MAX_LOG_LENGTH);
+    vsnprintf(p, MAX_LOG_LENGTH, str, ParamList);
     va_end(ParamList);
-    save_log.count++;
+
+    save_log->count++;
 }
 
 char* rhs_read_saved_log(uint16_t index)
 {
-    if (save_log.MAGIC_KEY == LOG_MAGIC_KEY && index < save_log.count)
+    if (save_log->MAGIC_KEY == LOG_MAGIC_KEY && index < save_log->count)
     {
-        return save_log.str[index];
+        return &save_log->space[index * MAX_LOG_LENGTH];
     }
     else
     {
@@ -202,31 +219,10 @@ char* rhs_read_saved_log(uint16_t index)
 
 void rhs_erase_saved_log(void)
 {
-    memset(&save_log, 0, sizeof(save_log));
+    save_log->MAGIC_KEY = 0;
 }
 
 uint16_t rhs_count_saved_log(void)
 {
-    return save_log.MAGIC_KEY == LOG_MAGIC_KEY ? save_log.count : 0;
-}
-
-char* uint64_to_str(uint64_t num)
-{
-    static char buf[21];
-    char*       p = buf + sizeof(buf) - 1;
-    *p            = '\0';
-
-    if (num == 0)
-    {
-        *--p = '0';
-    }
-    else
-    {
-        while (num > 0)
-        {
-            *--p = '0' + (num % 10);
-            num /= 10;
-        }
-    }
-    return p;
+    return save_log->MAGIC_KEY == LOG_MAGIC_KEY ? save_log->count : 0;
 }

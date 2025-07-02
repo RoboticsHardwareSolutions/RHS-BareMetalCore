@@ -72,5 +72,7 @@ void rhs_memmgr_test(char* args, void* context)
 
 void rhs_memmgr_test_start_up(void)
 {
-    cli_add_command("mem_test", rhs_memmgr_test, NULL);
+    Cli *cli = rhs_record_open(RECORD_CLI);
+    cli_add_command(cli, "mem_test", rhs_memmgr_test, NULL);
+    rhs_record_close(RECORD_CLI);
 }

@@ -13,7 +13,6 @@ static Loader* loader_alloc(void)
 int32_t loader_service(void* context)
 {
     Loader* loader = loader_alloc();
-    rhs_delay_ms(100);
     RHS_LOG_I(TAG, "Executing system start hooks");
     for (size_t i = 0; i < RHS_START_UP_COUNT; i++)
     {

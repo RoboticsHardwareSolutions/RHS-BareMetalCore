@@ -74,5 +74,7 @@ void flash_ex_test(char* args, void* context)
 
 void flash_ex_test_start_up(void)
 {
-    cli_add_command("flash_ex_test", flash_ex_test, NULL);
+    Cli *cli = rhs_record_open(RECORD_CLI);
+    cli_add_command(cli, "flash_ex_test", flash_ex_test, NULL);
+    rhs_record_close(RECORD_CLI);
 }

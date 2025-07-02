@@ -61,17 +61,16 @@ static void notification_process_notification_message(NotificationApp* app, Noti
     };
 }
 
-NotificationApp* notification_app = NULL;
-
 int32_t notification_srv(void* context)
 {
     NotificationApp* app = notification_app_alloc();
-    notification_app     = app;
 
-    notification_message(&sequence_success);
+    notification_message(app, &sequence_success);
     notification_sound_off();
+    rhs_record_create(RECORD_NOTIFY, app);
 
     NotificationAppMessage message;
+
     while (1)
     {
         rhs_assert(rhs_message_queue_get(app->queue, &message, RHSWaitForever) == RHSStatusOk);

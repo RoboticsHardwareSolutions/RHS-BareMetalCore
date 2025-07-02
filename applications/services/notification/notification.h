@@ -1,23 +1,29 @@
 #pragma once
 #include "stdint.h"
 
+#define RECORD_NOTIFY "notify"
+
 typedef struct NotificationApp NotificationApp;
 
-typedef struct {
+typedef struct
+{
     float frequency;
     float volume;
 } NotificationMessageDataSound;
 
-typedef struct {
+typedef struct
+{
     uint32_t length;
 } NotificationMessageDataDelay;
 
-typedef union {
+typedef union
+{
     NotificationMessageDataSound sound;
     NotificationMessageDataDelay delay;
 } NotificationMessageData;
 
-typedef enum {
+typedef enum
+{
     NotificationMessageTypeSoundOn,
     NotificationMessageTypeSoundOff,
 
@@ -26,11 +32,12 @@ typedef enum {
     NotificationMessageTypeDoNotReset,
 } NotificationMessageType;
 
-typedef struct {
+typedef struct
+{
     NotificationMessageType type;
     NotificationMessageData data;
 } NotificationMessage;
 
 typedef const NotificationMessage* NotificationSequence[];
 
-void notification_message(const NotificationSequence* sequence);
+void notification_message(NotificationApp* app, const NotificationSequence* sequence);

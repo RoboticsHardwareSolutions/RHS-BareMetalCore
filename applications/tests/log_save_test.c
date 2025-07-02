@@ -10,6 +10,8 @@
 
 void log_save_test(char* args, void* context)
 {
+    extern uint32_t max_log_count;
+    extern uint32_t max_log_length;
     /* One saved message can had no more 120 bytes */
     rhs_erase_saved_log();
     if (rhs_count_saved_log())
@@ -34,18 +36,18 @@ void log_save_test(char* args, void* context)
     }
 
     /* Save multiple messages */
-    for (int i = 2; i <= MAX_LOG_COUNT; i++)
+    for (int i = 2; i <= max_log_count; i++)
     {
         char message[32];
         snprintf(message, sizeof(message), "Test message %d", i);
         rhs_log_save("%s", message);
     }
-    if (rhs_count_saved_log() != MAX_LOG_COUNT)
+    if (rhs_count_saved_log() != max_log_count)
     {
         RHS_LOG_E(TAG, "Log save test: log count is not 16 after multiple saves");
         return;
     }
-    for (int i = 0; i < MAX_LOG_COUNT; i++)
+    for (int i = 0; i < max_log_count; i++)
     {
         char expected_message[32];
         snprintf(expected_message, sizeof(expected_message), "Test message %d", i + 1);
@@ -64,7 +66,6 @@ void log_save_test(char* args, void* context)
     }
 
 #define OVERFLOW 16
-    extern uint32_t max_log_count;
     /* Test: Save more than max count, ensure only last 16 are kept and old logs are gone */
     rhs_erase_saved_log();
     for (int i = 1; i <= max_log_count + OVERFLOW; i++)
@@ -99,9 +100,9 @@ void log_save_test(char* args, void* context)
 
     /* Test saving a string exactly at the max allowed length (120 bytes) */
     rhs_erase_saved_log();
-    char max_length_string[MAX_LOG_LENGTH];
+    char max_length_string[max_log_length];
     memset(max_length_string, 'B', sizeof(max_length_string) - 1);
-    max_length_string[MAX_LOG_LENGTH - 1] = '\0';  // 120 characters + null terminator
+    max_length_string[max_log_length - 1] = '\0';  // 120 characters + null terminator
     rhs_log_save("%s", max_length_string);
     if (rhs_count_saved_log() != 1)
     {
@@ -123,9 +124,9 @@ void log_save_test(char* args, void* context)
 
     /* Test saving a string just over the max allowed length (121 bytes) */
     rhs_erase_saved_log();
-    char over_max_length_string[MAX_LOG_LENGTH + 1];
+    char over_max_length_string[max_log_length + 1];
     memset(over_max_length_string, 'C', sizeof(over_max_length_string) - 1);
-    over_max_length_string[MAX_LOG_LENGTH] = '\0';  // 121 characters + null terminator
+    over_max_length_string[max_log_length] = '\0';  // 121 characters + null terminator
     rhs_log_save("%s", over_max_length_string);
     if (rhs_count_saved_log() != 1)
     {
@@ -133,7 +134,7 @@ void log_save_test(char* args, void* context)
         return;
     }
     log_message = rhs_read_saved_log(0);
-    if (log_message[MAX_LOG_LENGTH - 1] != '\0')
+    if (log_message[max_log_length - 1] != '\0')
     {
         RHS_LOG_E(TAG, "Log save test: log message mismatch after saving over max length string");
         return;

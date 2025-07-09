@@ -15,4 +15,4 @@ target_link_libraries(
         rhs
 )
 
-service(loader_service "loader" 1024)
+service(loader_service "loader" 2048)

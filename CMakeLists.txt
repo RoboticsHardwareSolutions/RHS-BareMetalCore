@@ -22,6 +22,7 @@ add_library(${PROJECT_NAME} STATIC
         core/stream_buf.c
         core/semaphore.c
         core/record.c
+        core/critical.c
 )
 target_sources(${PROJECT_NAME} PUBLIC ${CMAKE_BINARY_DIR}/applications.c)
 
@@ -215,3 +216,7 @@ else()
         message("\t\tGENERATOR - OFF")
 endif()
 message("\n\n")
+
+if(TARGET rhs_hal_rtc)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC -DTIMESTAMPER_RTC)
+endif()

@@ -62,12 +62,11 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
     {
         extern void rhs_hal_rtc_get_timestamp(uint64_t* out_seconds, uint32_t* out_mseconds);
         uint64_t    seconds;
-        uint32_t    mseconds;
-        rhs_hal_rtc_get_timestamp(&seconds, &mseconds);
-        rhs_log_save("%d: Message: %s. file: %s, line: %d;", (uint32_t) seconds, m, context.file, context.line);
+        rhs_hal_rtc_get_timestamp(&seconds, (uint32_t[]) {0});
+        rhs_log_save("%u: Message: %s. file: %s, line: %d;", (uint32_t) seconds, m, context.file, context.line);
     }
 #else
-    rhs_log_save("%d: Message: %s. file: %s, line: %d;", rhs_get_tick(), m, context.file, context.line);
+    rhs_log_save("%u: Message: %s. file: %s, line: %d;", rhs_get_tick(), m, context.file, context.line);
 #endif
     rhs_log_save("Stack: r0=%08lX r1=%08lX r2=%08lX r3=%08lX r12=%08lX lr=%08lX pc=%08lX psr=%08lX",
                  (unsigned long) stack_ptr->r0,

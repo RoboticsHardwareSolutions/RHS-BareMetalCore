@@ -74,25 +74,25 @@ void rhs_hal_rs232_irq_callback(void* context)
     // Error flags
     if (USART3->ISR & USART_ISR_ORE)
     {
-        RHS_LOG_T(TAG, "RxOverrun", USART3->ISR);
+        RHS_LOG_E(TAG, "RxOverrun", USART3->ISR);
         USART3->ICR = USART_ICR_ORECF;
         event |= RHSHalSerialRxEventOverrunError;
     }
     if (USART3->ISR & USART_ISR_NE)
     {
-        RHS_LOG_T(TAG, "RxNoise", USART3->ISR);
+        RHS_LOG_E(TAG, "RxNoise", USART3->ISR);
         USART3->ICR = USART_ICR_NCF;
         event |= RHSHalSerialRxEventNoiseError;
     }
     if (USART3->ISR & USART_ISR_FE)
     {
-        RHS_LOG_T(TAG, "RxFrameError", USART3->ISR);
+        RHS_LOG_E(TAG, "RxFrameError", USART3->ISR);
         USART3->ICR = USART_ICR_FECF;
         event |= RHSHalSerialRxEventFrameError;
     }
     if (USART3->ISR & USART_ISR_PE)
     {
-        RHS_LOG_T(TAG, "RxFrameErrorP", USART3->ISR);
+        RHS_LOG_E(TAG, "RxFrameErrorP", USART3->ISR);
         USART3->ICR = USART_ICR_PECF;
         event |= RHSHalSerialRxEventFrameError;
     }

@@ -107,6 +107,7 @@ void rhs_hal_rtc_set_datetime(datetime_t* datetime)
     sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
     sTime.StoreOperation = RTC_STOREOPERATION_RESET;
 
+    RHS_CRITICAL_ENTER();
     if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
     {
         rhs_crash("RTC init failed");
@@ -115,6 +116,7 @@ void rhs_hal_rtc_set_datetime(datetime_t* datetime)
     {
         rhs_crash("RTC init failed");
     }
+    RHS_CRITICAL_EXIT();
 }
 
 void rhs_hal_rtc_get_datetime(datetime_t* out_datetime)
@@ -125,7 +127,7 @@ void rhs_hal_rtc_get_datetime(datetime_t* out_datetime)
     uint32_t   reg  = rhs_hal_rtc_get_register(RHSHalRtcRegisterSystem);
     SystemReg* data = (SystemReg*) &reg;
 
-    vPortEnterCritical();
+    RHS_CRITICAL_ENTER();
     if (HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
     {
         rhs_crash("RTC init failed");
@@ -135,7 +137,7 @@ void rhs_hal_rtc_get_datetime(datetime_t* out_datetime)
     {
         rhs_crash("RTC init failed");
     }
-    vPortExitCritical();
+    RHS_CRITICAL_EXIT();
 
     out_datetime->year    = data->year2000 ? 2000 + sDate.Year : 1900 + sDate.Year;
     out_datetime->month   = sDate.Month;

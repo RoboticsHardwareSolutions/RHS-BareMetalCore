@@ -184,6 +184,7 @@ void cli_command_log(char* args, void* context)
     else
     {
         char* separator = strchr(args, ' ');
+        /* Start of non paramemters section */
         if (separator == NULL || *(separator + 1) == 0)
         {
             if (strstr(args, "-l") == args)
@@ -195,9 +196,16 @@ void cli_command_log(char* args, void* context)
                 }
                 return;
             }
+            if (strstr(args, "-clear") == args)
+            {
+                rhs_erase_saved_log();
+                printf("Log erased\r\n");
+                return;
+            }
             RHS_LOG_E(TAG, "Invalid argument");
             return;
         }
+        /* End of non paramemters section */
         else if (strstr(args, "-e") == args)
         {
             rhs_log_exclude_tag(separator + 1);
@@ -278,6 +286,11 @@ void cli_command_top(char* args, void* context)
     rhs_thread_list_destroy(thread_list);
 }
 
+void cli_command_crash(char* args, void* context)
+{
+    rhs_crash("Remote Crash");
+}
+
 int32_t cli_service(void* context)
 {
     Cli* app = cli_alloc();
@@ -290,6 +303,7 @@ int32_t cli_service(void* context)
     cli_add_command(app, "reset", cli_command_reset, NULL);
     cli_add_command(app, "uid", cli_command_uid, NULL);
     cli_add_command(app, "top", cli_command_top, NULL);
+    cli_add_command(app, "crash", cli_command_crash, NULL);
 
     for (;;)
     {

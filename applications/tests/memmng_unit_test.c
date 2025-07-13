@@ -39,7 +39,7 @@ void alloc_test(void)
 
     // allocate and zero-initialize array (calloc)
     ptr = calloc(100, 2);
-    runit_assert(ptr == NULL);
+    runit_assert(ptr != NULL);
     for (int i = 0; i < 100 * 2; i++)
     {
         runit_assert(((uint8_t*) ptr)[i] == 0);

@@ -9,12 +9,10 @@
 
 #define TAG "log_save_test"
 
-void log_save_test(char* args, void* context)
+void log_test(void)
 {
     extern uint32_t max_log_count;
     extern uint32_t max_log_length;
-    runit_counter_assert_passes = 0;
-    runit_counter_assert_failures = 0;
 
 
     /* One saved message can had no more 120 bytes */
@@ -137,6 +135,16 @@ void log_save_test(char* args, void* context)
     log_message = rhs_read_saved_log(0);
     runit_assert(strcmp(log_message, "Percent: 100% complete") == 0);
     rhs_erase_saved_log();
+
+    runit_report();
+}
+
+void log_save_test(char* args, void* context)
+{
+    runit_counter_assert_passes = 0;
+    runit_counter_assert_failures = 0;
+
+    log_test();
 
     runit_report();
 }

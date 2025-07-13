@@ -247,7 +247,7 @@ void log_save_test(char* args, void* context)
     }
     rhs_erase_saved_log();
 
-    RHS_LOG_I(TAG, "Log save test: all checks passed successfully");
+    runit_report();
 }
 
 void log_save_test_start_up(void)

@@ -58,20 +58,34 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
     {
         context.file = last_separator + 1;
     }
-    rhs_log_save("%d: Message: %s. file: %s, line: %d;", rhs_get_tick(), m, context.file, context.line);
+#if defined(TIMESTAMPER_RTC)
+    {
+        extern void rhs_hal_rtc_get_timestamp(uint64_t* out_seconds, uint32_t* out_mseconds);
+        uint64_t    seconds;
+        rhs_hal_rtc_get_timestamp(&seconds, (uint32_t[]) {0});
+        rhs_log_save("%u: Message: %s. file: %s, line: %d;", (uint32_t) seconds, m, context.file, context.line);
+    }
+#else
+    rhs_log_save("%u: Message: %s. file: %s, line: %d;", rhs_get_tick(), m, context.file, context.line);
+#endif
     rhs_log_save("Stack: r0=%08lX r1=%08lX r2=%08lX r3=%08lX r12=%08lX lr=%08lX pc=%08lX psr=%08lX",
-                 (unsigned long)stack_ptr->r0, (unsigned long)stack_ptr->r1, (unsigned long)stack_ptr->r2, (unsigned long)stack_ptr->r3,
-                 (unsigned long)stack_ptr->r12, (unsigned long)stack_ptr->lr, (unsigned long)stack_ptr->pc, (unsigned long)stack_ptr->psr);
+                 (unsigned long) stack_ptr->r0,
+                 (unsigned long) stack_ptr->r1,
+                 (unsigned long) stack_ptr->r2,
+                 (unsigned long) stack_ptr->r3,
+                 (unsigned long) stack_ptr->r12,
+                 (unsigned long) stack_ptr->lr,
+                 (unsigned long) stack_ptr->pc,
+                 (unsigned long) stack_ptr->psr);
+    RHS_LOG_D("Assert", "Message: %s. Called from file: %s, line: %d\n", m, context.file, context.line);
     if (debug)
     {
-        RHS_LOG_D("Assert", "Message: %s. Called from file: %s, line: %d\n", m, context.file, context.line);
         for (;;)
         {
         }
     }
     else
     {
-        RHS_LOG_D("Assert", "Message: %s. Called from file: %s, line: %d\n", m, context.file, context.line);
         rhs_hal_power_reset();
     }
     __builtin_unreachable();

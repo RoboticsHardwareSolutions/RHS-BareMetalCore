@@ -5,6 +5,7 @@
 #include "rhs.h"
 #include "rhs_hal.h"
 #include "cli.h"
+#include "runit.h"
 
 #define TAG "log_save_test"
 
@@ -12,13 +13,13 @@ void log_save_test(char* args, void* context)
 {
     extern uint32_t max_log_count;
     extern uint32_t max_log_length;
+    runit_counter_assert_passes = 0;
+    runit_counter_assert_failures = 0;
+
+
     /* One saved message can had no more 120 bytes */
     rhs_erase_saved_log();
-    if (rhs_count_saved_log())
-    {
-        RHS_LOG_E(TAG, "Log save test: log is not empty before test");
-        return;
-    }
+    runit_assert(rhs_count_saved_log() == 0);
 
     /* Save the first log message */
     rhs_log_save("Test message 1");

@@ -8,11 +8,9 @@
 
 #define TAG "mem_test"
 
-void rhs_memmgr_test(char* args, void* context)
+void alloc_test(void)
 {
     void* ptr;
-    runit_counter_assert_passes = 0;
-    runit_counter_assert_failures = 0;
 
     // allocate memory case
     ptr = malloc(100);
@@ -47,6 +45,14 @@ void rhs_memmgr_test(char* args, void* context)
         runit_assert(((uint8_t*) ptr)[i] == 0);
     }
     free(ptr);
+}
+
+void rhs_memmgr_test(char* args, void* context)
+{
+    runit_counter_assert_passes = 0;
+    runit_counter_assert_failures = 0;
+    
+    alloc_test();
 
     runit_report();
 }

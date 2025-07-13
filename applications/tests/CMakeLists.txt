@@ -43,5 +43,6 @@ if(TEST_SOURCES)
                 rhs
                 rhs_hal
                 cli
+                runit
         )
 endif()

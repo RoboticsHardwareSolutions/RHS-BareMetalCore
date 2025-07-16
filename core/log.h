@@ -36,5 +36,3 @@ void rhs_log_unexclude_tag(char* tag);
 char*          rhs_read_saved_log(unsigned short index);
 void           rhs_erase_saved_log(void);
 unsigned short rhs_count_saved_log(void);
-
-char* uint64_to_str(uint64_t num);

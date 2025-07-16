@@ -57,8 +57,8 @@ typedef struct
     char     space[];
 } save_log_t;
 
-static save_log_t* save_log      = NULL;
-uint32_t           max_log_count = 0;
+static save_log_t* save_log       = NULL;
+uint32_t           max_log_count  = 0;
 uint32_t           max_log_length = 0;
 
 int _write(int file, char* ptr, int len)
@@ -233,7 +233,7 @@ char* rhs_read_saved_log(uint16_t index)
 void rhs_erase_saved_log(void)
 {
     save_log->MAGIC_KEY = 0;
-    save_log->count = 0;
+    save_log->count     = 0;
 }
 
 uint16_t rhs_count_saved_log(void)

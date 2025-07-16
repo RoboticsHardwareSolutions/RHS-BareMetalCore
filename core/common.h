@@ -32,3 +32,27 @@ void __rhs_critical_exit(__RHSCriticalInfo info);
 #ifndef RHS_CRITICAL_EXIT
 #define RHS_CRITICAL_EXIT() __rhs_critical_exit(__rhs_critical_info);
 #endif
+
+inline static char* uint64_to_str(uint64_t num, char* buf, uint16_t size)
+{
+    if (size < 21)
+    {
+        return 0;
+    }
+    char*       p = buf + size - 1;
+    *p            = '\0';
+
+    if (num == 0)
+    {
+        *--p = '0';
+    }
+    else
+    {
+        while (num > 0)
+        {
+            *--p = '0' + (num % 10);
+            num /= 10;
+        }
+    }
+    return p;
+}

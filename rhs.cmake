@@ -60,7 +60,8 @@ endfunction()
 
 ################################## CHECH RPLC ##################################
 
-if(RPLC_XL)
+if(PLC_TYPE MATCHES "RPLC_XL")
+    set(RPLC_XL ON)
 
     if(NOT LINKER_SCRIPT_NAME)
         set(LINKER_SCRIPT_NAME STM32F765ZGTX_FLASH.ld)
@@ -98,7 +99,8 @@ if(RPLC_XL)
     file(GLOB_RECURSE SOURCES "core/src/syscalls.c" "core/src/sysmem.c" "core/src/f7/*.*" "thirdparty/stm32f7_hal/*.*" "thirdparty/stm32f7_cmsis/Source/Templates/gcc/startup_stm32f765xx.s")
     list(FILTER SOURCES EXCLUDE REGEX "_template[.]c$")
 
-elseif(RPLC_L)
+elseif(PLC_TYPE MATCHES "RPLC_L")
+    set(RPLC_L ON)
 
     if(NOT LINKER_SCRIPT_NAME)
         set(LINKER_SCRIPT_NAME STM32F765ZGTX_FLASH.ld)
@@ -135,7 +137,8 @@ elseif(RPLC_L)
     file(GLOB_RECURSE SOURCES "core/src/syscalls.c" "core/src/sysmem.c" "core/src/f7/*.*" "thirdparty/stm32f7_hal/*.*" "thirdparty/stm32f7_cmsis/Source/Templates/gcc/startup_stm32f765xx.s")
     list(FILTER SOURCES EXCLUDE REGEX "_template[.]c$")
 
-elseif(RPLC_M)
+elseif(PLC_TYPE MATCHES "RPLC_M")
+    set(RPLC_M ON)
 
     if(NOT LINKER_SCRIPT_NAME)
         set(LINKER_SCRIPT_NAME STM32F103RETX_FLASH.ld)

@@ -6,42 +6,46 @@
 #include "rhs_hal.h"
 #include "cli.h"
 #include "rhs_hal_flash_ex.h"
+#include "runit.h"
 
 #define TAG "flash_ex_test"
 
+/* memory area for tests */
 #define FLASH_COUNT_BLOCKS 256
 #define FLASH_DATA_SIZE 256
 #define FLASH_START_ADDRESS 0x400000
 
-void flash_ex_test(char* args, void* context)
+static int erase_all(void)
+{
+    return rhs_hal_flash_ex_block_erase(FLASH_START_ADDRESS, FLASH_DATA_SIZE * FLASH_COUNT_BLOCKS);
+}
+
+static int check_erased_data(void)
 {
     uint8_t data[FLASH_DATA_SIZE] = {0};
     uint8_t data_pulled[FLASH_DATA_SIZE];
-
-    if (rhs_hal_flash_ex_block_erase(FLASH_START_ADDRESS, FLASH_DATA_SIZE * FLASH_COUNT_BLOCKS) != 0)
-    {
-        RHS_LOG_D(TAG, "Flash ERASE fault!!!");
-        return;
-    }
 
     for (int i = 0; i < FLASH_COUNT_BLOCKS; i++)
     {
         if (rhs_hal_flash_ex_read(FLASH_START_ADDRESS + i * FLASH_COUNT_BLOCKS, data_pulled, sizeof(data_pulled)) != 0)
         {
-            RHS_LOG_D(TAG, "Flash READ fault!!!");
-            return;
+            return -1;
         }
         for (int j = 0; j < sizeof(data_pulled); j++)
         {
             if (data_pulled[j] != 0xFF)
             {
-                RHS_LOG_D(TAG, "Not erased data at index %d of record %d", j, i);
-                return;
+                return -1;
             }
         }
     }
+    return 0;
+}
 
-    RHS_LOG_D(TAG, "Flash ERASE test completed successfully.");
+static int random_test(void)
+{
+    uint8_t data[FLASH_DATA_SIZE] = {0};
+    uint8_t data_pulled[FLASH_DATA_SIZE];
 
     for (int i = 0; i < FLASH_COUNT_BLOCKS; i++)
     {
@@ -49,32 +53,39 @@ void flash_ex_test(char* args, void* context)
 
         if (rhs_hal_flash_ex_write(FLASH_START_ADDRESS + i * FLASH_COUNT_BLOCKS, data, sizeof(data)) != 0)
         {
-            RHS_LOG_D(TAG, "Flash WRITE fault!!!");
-            return;
+            return -1;
         }
         if (rhs_hal_flash_ex_read(FLASH_START_ADDRESS + i * FLASH_COUNT_BLOCKS, data_pulled, sizeof(data_pulled)) != 0)
         {
-            RHS_LOG_D(TAG, "Flash READ fault!!!");
-            return;
+            return -1;
         }
 
         for (int j = 0; j < sizeof(data); j++)
         {
             if (data_pulled[j] != data[j])
             {
-                RHS_LOG_D(TAG, "Data mismatch at index %d of record %d", j, i);
-                return;
+                return -1;
             }
         }
-        RHS_LOG_D(TAG, "Flash WRITE test %d OK", i);
     }
+    return 0;
+}
 
-    RHS_LOG_D(TAG, "Flash WRITE test completed successfully.");
+void flash_ex_test(char* args, void* context)
+{
+    runit_counter_assert_passes   = 0;
+    runit_counter_assert_failures = 0;
+
+    runit_assert(erase_all() == 0);
+    runit_assert(check_erased_data() == 0);
+    runit_assert(random_test() == 0);
+
+    runit_report();
 }
 
 void flash_ex_test_start_up(void)
 {
-    Cli *cli = rhs_record_open(RECORD_CLI);
+    Cli* cli = rhs_record_open(RECORD_CLI);
     cli_add_command(cli, "flash_ex_test", flash_ex_test, NULL);
     rhs_record_close(RECORD_CLI);
 }

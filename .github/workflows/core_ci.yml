@@ -23,6 +23,7 @@ jobs:
           repository: RoboticsHardwareSolutions/RPLC_Quick_Project
           path: quick_project
           submodules: 'recursive'
+          clean: true          
           
       - name: Replace core submodule with current version
         run: |

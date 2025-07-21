@@ -1,0 +1,50 @@
+name: RHS Bare Metal Core CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test_with_quick_project:
+    runs-on: [self-hosted]
+    name: Build RPLC_M
+    
+    steps:
+      - name: Checkout rhs core
+        uses: actions/checkout@v4
+        with:
+          path: rhs
+
+      - name: Checkout Quick Project
+        uses: actions/checkout@v4
+        with:
+          repository: RoboticsHardwareSolutions/RPLC_Quick_Project
+          path: quick_project
+          submodules: 'recursive'
+          
+      - name: Replace core submodule with current version
+        run: |
+          rm -rf quick_project/thirdparty/rhs
+          cp -r rhs quick_project/thirdparty/rhs
+          
+      - name: Configure project
+        run: |
+          cd quick_project
+          mkdir build
+          cd build
+          cmake -DPLC_TYPE="RPLC_M" ..
+          
+      - name: Build project
+        run: |
+          cd quick_project/build
+          cmake --build .
+          
+      - name: Flash firmware
+        run: |
+            python3 .github/scripts/flashing.py ${{ secrets.JLINK_SERIAL_CI_BMPLC_M }} STM32F103RE build/rplc.bin 
+
+      - name: Unit tests
+        run: |
+            python3 .github/scripts/units.py ${{ secrets.JLINK_SERIAL_CI_BMPLC_M }} STM32F103RE

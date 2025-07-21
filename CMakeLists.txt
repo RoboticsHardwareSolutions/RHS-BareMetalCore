@@ -106,7 +106,7 @@ if(RPLC_XL)
         set(RHS_HAL_SPEAKER ON)
         set(RHS_HAL_CAN ON)
         set(RHS_HAL_RANDOM ON)
-        # set(RHS_HAL_NETWORK ON)
+        set(RHS_HAL_NETWORK ON)
 
         ## set SERVICES
         if(NOT RHS_SERVICE_NOTIFICATION_DISABLE)

@@ -41,6 +41,7 @@ jobs:
       - name: Configure project
         run: |
           cd quick_project
+          rm -rf build
           mkdir build
           cd build
           cmake -DPLC_TYPE="${{ matrix.plc_type }}" ..

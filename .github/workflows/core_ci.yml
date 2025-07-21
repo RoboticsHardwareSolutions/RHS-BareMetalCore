@@ -1,0 +1,63 @@
+name: RHS Bare Metal Core CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build_and_test:
+    runs-on: [self-hosted]
+    strategy:
+      matrix:
+        plc_type: ['RPLC_M', 'RPLC_XL']
+        include:
+          - plc_type: 'RPLC_M'
+            jlink_serial: 'JLINK_SERIAL_CI_BMPLC_M'
+            mcu: 'STM32F103RE'
+            build_dir: "build_m"
+          - plc_type: 'RPLC_XL'
+            jlink_serial: 'JLINK_SERIAL_CI_BMPLC_XL'
+            mcu: 'STM32F765ZG'
+            build_dir: "build_xl"
+    
+    name: Test on ${{ matrix.plc_type }}
+
+    steps:
+      - name: Checkout Quick Project
+        uses: actions/checkout@v4
+        with:
+          repository: RoboticsHardwareSolutions/RPLC_Quick_Project
+          path: quick_project
+          submodules: 'recursive'
+          
+      - name: Replace core submodule with current version
+        run: |
+          cd quick_project/thirdparty/rhs
+          TARGET_BRANCH=${{ github.event.pull_request.head.ref || github.ref_name }}
+          git config remote.origin.fetch "+refs/heads/$TARGET_BRANCH:refs/remotes/origin/$TARGET_BRANCH"
+          git fetch origin --depth=1
+          git checkout -f $TARGET_BRANCH
+
+      - name: Configure project
+        run: |
+          cd quick_project
+          mkdir ${{ matrix.build_dir }}
+          cd ${{ matrix.build_dir }}
+          cmake -DPLC_TYPE="${{ matrix.plc_type }}" ..
+          
+      - name: Build project
+        run: |
+          cd quick_project/${{ matrix.build_dir }}
+          cmake --build .
+          
+      - name: Flash firmware
+        run: |
+          cd quick_project
+          python3 .github/scripts/flashing.py ${{ secrets[matrix.jlink_serial] }} ${{ matrix.mcu }} ${{ matrix.build_dir }}/rplc.bin 
+
+      - name: Unit tests
+        run: |
+          cd quick_project
+          python3 .github/scripts/units.py ${{ secrets[matrix.jlink_serial] }} ${{ matrix.mcu }}

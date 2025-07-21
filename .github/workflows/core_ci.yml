@@ -14,11 +14,13 @@ jobs:
         plc_type: ['RPLC_M', 'RPLC_XL']
         include:
           - plc_type: 'RPLC_M'
-            target: 'STM32F103RE'
-            secrets_serial: 'JLINK_SERIAL_CI_BMPLC_M'
+            jlink_serial: 'JLINK_SERIAL_CI_BMPLC_M'
+            mcu: 'STM32F103RE'
+            build_dir: "build_m"
           - plc_type: 'RPLC_XL'
-            target: 'STM32F765ZG'
-            secrets_serial: 'JLINK_SERIAL_CI_BMPLC_XL'
+            jlink_serial: 'JLINK_SERIAL_CI_BMPLC_XL'
+            mcu: 'STM32F765ZG'
+            build_dir: "build_xl"
     
     name: Test on ${{ matrix.plc_type }}
 
@@ -41,23 +43,21 @@ jobs:
       - name: Configure project
         run: |
           cd quick_project
-          rm -rf build
-          mkdir build
-          cd build
+          mkdir ${{ matrix.build_dir }}
+          cd ${{ matrix.build_dir }}
           cmake -DPLC_TYPE="${{ matrix.plc_type }}" ..
           
       - name: Build project
         run: |
-          cd quick_project/build
+          cd quick_project/${{ matrix.build_dir }}
           cmake --build .
           
       - name: Flash firmware
         run: |
           cd quick_project
-          
-          python3 .github/scripts/flashing.py ${{ secrets[matrix.secrets_serial] }} ${{ matrix.target }} build/rplc.bin 
+          python3 .github/scripts/flashing.py ${{ secrets[matrix.jlink_serial] }} ${{ matrix.mcu }} ${{ matrix.build_dir }}/rplc.bin 
 
       - name: Unit tests
         run: |
           cd quick_project
-          python3 .github/scripts/units.py ${{ secrets[matrix.secrets_serial] }} ${{ matrix.target }}
+          python3 .github/scripts/units.py ${{ secrets[matrix.jlink_serial] }} ${{ matrix.mcu }}

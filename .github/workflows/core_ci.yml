@@ -7,9 +7,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  test_with_quick_project:
+  build_and_test:
     runs-on: [self-hosted]
-    name: Build RPLC_M
+    strategy:
+      matrix:
+        plc_type: ['RPLC_M', 'RPLC_XL']
+        include:
+          - plc_type: 'RPLC_M'
+            target: 'STM32F103RE'
+            secrets_serial: '${{ secrets.JLINK_SERIAL_CI_BMPLC_M }}'
+          - plc_type: 'RPLC_XL'
+            target: 'STM32F765ZG'
+            secrets_serial: '${{ secrets.JLINK_SERIAL_CI_BMPLC_XL }}'
+    name: Build ${{ matrix.plc_type }}
     
     steps:
       - name: Checkout Quick Project
@@ -18,11 +28,10 @@ jobs:
           repository: RoboticsHardwareSolutions/RPLC_Quick_Project
           path: quick_project
           submodules: 'recursive'
-
+          
       - name: Replace core submodule with current version
         run: |
           cd quick_project/thirdparty/rhs
-
           TARGET_BRANCH=${{ github.event.pull_request.head.ref || github.ref_name }}
           git config remote.origin.fetch "+refs/heads/$TARGET_BRANCH:refs/remotes/origin/$TARGET_BRANCH"
           git fetch origin --depth=1
@@ -33,7 +42,7 @@ jobs:
           cd quick_project
           mkdir build
           cd build
-          cmake -DPLC_TYPE="RPLC_M" ..
+          cmake -DPLC_TYPE="${{ matrix.plc_type }}" ..
           
       - name: Build project
         run: |
@@ -42,10 +51,10 @@ jobs:
           
       - name: Flash firmware
         run: |
-            cd quick_project
-            python3 .github/scripts/flashing.py ${{ secrets.JLINK_SERIAL_CI_BMPLC_M }} STM32F103RE build/rplc.bin 
+          cd quick_project
+          python3 .github/scripts/flashing.py ${{ matrix.secrets_serial }} ${{ matrix.target }} build/rplc.bin 
 
       - name: Unit tests
         run: |
-            cd quick_project
-            python3 .github/scripts/units.py ${{ secrets.JLINK_SERIAL_CI_BMPLC_M }} STM32F103RE
+          cd quick_project
+          python3 .github/scripts/units.py ${{ matrix.secrets_serial }} ${{ matrix.target }}

@@ -19,8 +19,7 @@ jobs:
           - plc_type: 'RPLC_XL'
             target: 'STM32F765ZG'
             secrets_serial: '${{ secrets.JLINK_SERIAL_CI_BMPLC_XL }}'
-    name: Build ${{ matrix.plc_type }}
-    
+ 
     steps:
       - name: Checkout Quick Project
         uses: actions/checkout@v4

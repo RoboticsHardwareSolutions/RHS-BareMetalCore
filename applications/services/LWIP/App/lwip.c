@@ -6,6 +6,8 @@
 #endif /* MDK ARM Compiler */
 #include "ethernetif.h"
 #include <string.h>
+#include "rhs.h"
+#include "rhs_hal.h"
 
 /* Private function prototypes -----------------------------------------------*/
 static void ethernet_link_status_updated(struct netif* netif);
@@ -21,18 +23,22 @@ uint8_t      GATEWAY_ADDRESS[4];
 int32_t ethernet_service(void* context)
 {
     /* IP addresses initialization */
-    IP_ADDRESS[0]      = 192;
-    IP_ADDRESS[1]      = 168;
-    IP_ADDRESS[2]      = 0;
-    IP_ADDRESS[3]      = 114;
-    NETMASK_ADDRESS[0] = 255;
-    NETMASK_ADDRESS[1] = 255;
-    NETMASK_ADDRESS[2] = 255;
-    NETMASK_ADDRESS[3] = 0;
-    GATEWAY_ADDRESS[0] = 192;
-    GATEWAY_ADDRESS[1] = 168;
-    GATEWAY_ADDRESS[2] = 0;
-    GATEWAY_ADDRESS[3] = 1;
+    uint32_t ip      = ipv4_str_to_u32(STATIC_IP_ADDRESS);
+    uint32_t mask    = ipv4_str_to_u32(STATIC_MASK_ADDRESS);
+    uint32_t gateway = ipv4_str_to_u32(STATIC_GATEWAY_ADDRESS);
+
+    IP_ADDRESS[0]      = (ip >> 0);
+    IP_ADDRESS[1]      = (ip >> 8);
+    IP_ADDRESS[2]      = (ip >> 16);
+    IP_ADDRESS[3]      = (ip >> 24);
+    NETMASK_ADDRESS[0] = (mask >> 0);
+    NETMASK_ADDRESS[1] = (mask >> 8);
+    NETMASK_ADDRESS[2] = (mask >> 16);
+    NETMASK_ADDRESS[3] = (mask >> 24);
+    GATEWAY_ADDRESS[0] = (gateway >> 0);
+    GATEWAY_ADDRESS[1] = (gateway >> 8);
+    GATEWAY_ADDRESS[2] = (gateway >> 16);
+    GATEWAY_ADDRESS[3] = (gateway >> 24);
 
     /* Initilialize the LwIP stack with RTOS */
     tcpip_init(NULL, NULL);

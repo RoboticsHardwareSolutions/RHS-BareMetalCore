@@ -9,6 +9,8 @@ typedef struct
     uint32_t port;
 } RHSNetSettingsType;
 
+uint32_t ipv4_str_to_u32(const char* str_ip);
+
 void rhs_hal_network_init(void);
 
 void rhs_hal_network_get_settings(RHSNetSettingsType* settings);

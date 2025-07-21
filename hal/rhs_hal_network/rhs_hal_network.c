@@ -10,7 +10,7 @@ static char s_ip[32];
 static char s_mask[32];
 static char s_gw[32];
 
-static uint32_t get_int_ip(const char* str_ip)
+uint32_t ipv4_str_to_u32(const char* str_ip)
 {
     uint32_t ip         = 0;
     char     part_ip[3] = {0};
@@ -68,9 +68,9 @@ int rhs_hal_network_set_settings(RHSNetSettingsType* settings)  // TODO check if
     ip4_addr_t* ip   = &gnetif.ip_addr;
     ip4_addr_t* mask = &gnetif.netmask;
     ip4_addr_t* gw   = &gnetif.gw;
-    ip->addr         = get_int_ip(settings->ip_v4);
-    mask->addr       = get_int_ip(settings->mask_v4);
-    gw->addr         = get_int_ip(settings->gw_v4);
+    ip->addr         = ipv4_str_to_u32(settings->ip_v4);
+    mask->addr       = ipv4_str_to_u32(settings->mask_v4);
+    gw->addr         = ipv4_str_to_u32(settings->gw_v4);
 
     netif_set_ipaddr(&gnetif, ip);
     netif_set_netmask(&gnetif, mask);

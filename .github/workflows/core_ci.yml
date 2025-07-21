@@ -12,23 +12,18 @@ jobs:
     name: Build RPLC_M
     
     steps:
-      - name: Checkout rhs core
-        uses: actions/checkout@v4
-        with:
-          path: rhs
-
       - name: Checkout Quick Project
         uses: actions/checkout@v4
         with:
           repository: RoboticsHardwareSolutions/RPLC_Quick_Project
           path: quick_project
           submodules: 'recursive'
-          clean: true          
-          
+
       - name: Replace core submodule with current version
         run: |
-          rm -rf quick_project/thirdparty/rhs
-          cp -r rhs quick_project/thirdparty/rhs
+          cd quick_project/thirdparty/rhs
+          git fetch
+          git checkout ${{ github.sha }}
           
       - name: Configure project
         run: |

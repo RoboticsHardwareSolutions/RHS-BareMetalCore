@@ -23,12 +23,8 @@ jobs:
         run: |
           cd quick_project/thirdparty/rhs
           git fetch
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git checkout ${{ github.event.pull_request.head.sha }}
-          else
-            git checkout ${{ github.sha }}
-          fi
-          
+          git checkout ${{ github.ref_name }}
+
       - name: Configure project
         run: |
           cd quick_project

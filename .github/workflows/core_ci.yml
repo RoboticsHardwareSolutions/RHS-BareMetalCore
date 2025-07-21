@@ -22,8 +22,13 @@ jobs:
       - name: Replace core submodule with current version
         run: |
           cd quick_project/thirdparty/rhs
-          git fetch
-          git checkout ${{ github.ref_name }}
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            git fetch origin ${{ github.event.pull_request.head.ref }}
+            git checkout ${{ github.event.pull_request.head.ref }}
+          else
+            git fetch origin ${{ github.ref_name }}
+            git checkout ${{ github.ref_name }}
+          fi
 
       - name: Configure project
         run: |

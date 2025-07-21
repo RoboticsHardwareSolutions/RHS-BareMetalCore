@@ -15,11 +15,13 @@ jobs:
         include:
           - plc_type: 'RPLC_M'
             target: 'STM32F103RE'
-            secrets_serial: '${{ secrets.JLINK_SERIAL_CI_BMPLC_M }}'
+            secrets_serial: 'JLINK_SERIAL_CI_BMPLC_M'
           - plc_type: 'RPLC_XL'
             target: 'STM32F765ZG'
-            secrets_serial: '${{ secrets.JLINK_SERIAL_CI_BMPLC_XL }}'
- 
+            secrets_serial: 'JLINK_SERIAL_CI_BMPLC_XL'
+    
+    name: Test on ${{ matrix.plc_type }}
+
     steps:
       - name: Checkout Quick Project
         uses: actions/checkout@v4
@@ -51,9 +53,10 @@ jobs:
       - name: Flash firmware
         run: |
           cd quick_project
-          python3 .github/scripts/flashing.py ${{ matrix.secrets_serial }} ${{ matrix.target }} build/rplc.bin 
+          
+          python3 .github/scripts/flashing.py ${{ secrets[matrix.secrets_serial] }} ${{ matrix.target }} build/rplc.bin 
 
       - name: Unit tests
         run: |
           cd quick_project
-          python3 .github/scripts/units.py ${{ matrix.secrets_serial }} ${{ matrix.target }}
+          python3 .github/scripts/units.py ${{ secrets[matrix.secrets_serial] }} ${{ matrix.target }}

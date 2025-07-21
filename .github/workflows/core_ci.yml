@@ -43,8 +43,10 @@ jobs:
           
       - name: Flash firmware
         run: |
+            cd quick_project
             python3 .github/scripts/flashing.py ${{ secrets.JLINK_SERIAL_CI_BMPLC_M }} STM32F103RE build/rplc.bin 
 
       - name: Unit tests
         run: |
+            cd quick_project
             python3 .github/scripts/units.py ${{ secrets.JLINK_SERIAL_CI_BMPLC_M }} STM32F103RE

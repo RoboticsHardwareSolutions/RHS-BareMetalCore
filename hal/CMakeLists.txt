@@ -23,6 +23,12 @@ add_submodule_and_link_library(rhs_hal_cortex)
 add_submodule_and_link_library(rhs_hal_power)
 add_submodule_and_link_library(rhs_hal_version)
 
+if(PLC_TYPE)
+        message("${PLC_TYPE}:")
+else()
+        message("Custom config:")
+endif()
+
 message("\tHAL:")
 if(RHS_HAL_SPEAKER)
         add_submodule_and_link_library(rhs_hal_speaker)

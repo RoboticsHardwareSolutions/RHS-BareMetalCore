@@ -6,7 +6,7 @@
 
 static RHSMutex* rhs_hal_speaker_mutex = NULL;
 
-#if defined(RPLC_XL) || defined(RPLC_L)
+#if defined(BMPLC_XL) || defined(BMPLC_L)
 #    include "stm32f7xx_hal.h"
 TIM_HandleTypeDef htim;
 
@@ -231,13 +231,13 @@ bool rhs_hal_speaker_is_mine(void)
 
 void rhs_hal_speaker_start(float frequency, float volume)
 {
-#if defined(RPLC_XL) || defined(RPLC_L)
+#if defined(BMPLC_XL) || defined(BMPLC_L)
     htim.Init.Period    = rhs_hal_speaker_calculate_autoreload(frequency);
     htim.Instance->ARR  = htim.Init.Period;
     htim.Instance->CCR1 = rhs_hal_speaker_calculate_compare(volume);
 
     HAL_TIM_PWM_Start(&htim, TIM_CHANNEL_1);
-#elif defined(RPLC_M)
+#elif defined(BMPLC_M)
     htim.Init.Period    = rhs_hal_speaker_calculate_autoreload(frequency);
     htim.Instance->ARR  = htim.Init.Period;
     htim.Instance->CCR2 = rhs_hal_speaker_calculate_compare(volume);
@@ -250,9 +250,9 @@ void rhs_hal_speaker_start(float frequency, float volume)
 
 void rhs_hal_speaker_stop(void)
 {
-#if defined(RPLC_XL) || defined(RPLC_L)
+#if defined(BMPLC_XL) || defined(BMPLC_L)
     HAL_TIM_PWM_Stop(&htim, TIM_CHANNEL_1);
-#elif defined(RPLC_M)
+#elif defined(BMPLC_M)
     HAL_TIM_PWM_Stop(&htim, TIM_CHANNEL_2);
 #else
 #    error "Unknown platform"

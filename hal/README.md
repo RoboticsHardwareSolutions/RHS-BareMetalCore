@@ -9,5 +9,5 @@
 - [ ] LL instead STM_HAL
 
 ## rhs_hal_speaker
-- [ ] Merge hardware PWM for all RPLC
+- [ ] Merge hardware PWM for all BMPLC
 

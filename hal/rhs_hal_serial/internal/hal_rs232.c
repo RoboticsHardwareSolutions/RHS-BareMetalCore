@@ -6,7 +6,7 @@
 
 #define TAG "rs232"
 
-#if defined(RPLC_XL) || defined(RPLC_L)
+#if defined(BMPLC_XL) || defined(BMPLC_L)
 
 #    include "stm32f7xx_ll_rcc.h"
 #    include "stm32f7xx_ll_dma.h"
@@ -169,7 +169,7 @@ void rhs_hal_rs232_async_tx_dma_configure(void)
     NVIC_SetPriority(DMA1_Stream3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
     NVIC_EnableIRQ(DMA1_Stream3_IRQn);
 }
-#elif defined(RPLC_M)
+#elif defined(BMPLC_M)
 #    include "stm32f1xx_ll_rcc.h"
 #    include "stm32f1xx_ll_dma.h"
 #    include "stm32f1xx_ll_usart.h"

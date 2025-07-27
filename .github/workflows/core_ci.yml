@@ -1,9 +1,6 @@
 name: RHS Bare Metal Core CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -11,13 +8,13 @@ jobs:
     runs-on: [self-hosted]
     strategy:
       matrix:
-        plc_type: ['RPLC_M', 'RPLC_XL']
+        plc_type: ['BMPLC_M', 'BMPLC_XL']
         include:
-          - plc_type: 'RPLC_M'
+          - plc_type: 'BMPLC_M'
             jlink_serial: 'JLINK_SERIAL_CI_BMPLC_M'
             mcu: 'STM32F103RE'
             build_dir: "build_m"
-          - plc_type: 'RPLC_XL'
+          - plc_type: 'BMPLC_XL'
             jlink_serial: 'JLINK_SERIAL_CI_BMPLC_XL'
             mcu: 'STM32F765ZG'
             build_dir: "build_xl"
@@ -28,7 +25,7 @@ jobs:
       - name: Checkout Quick Project
         uses: actions/checkout@v4
         with:
-          repository: RoboticsHardwareSolutions/RPLC_Quick_Project
+          repository: RoboticsHardwareSolutions/BMPLC_Quick_Project
           path: quick_project
           submodules: 'recursive'
           
@@ -55,7 +52,7 @@ jobs:
       - name: Flash firmware
         run: |
           cd quick_project
-          python3 .github/scripts/flashing.py ${{ secrets[matrix.jlink_serial] }} ${{ matrix.mcu }} ${{ matrix.build_dir }}/rplc.bin 
+          python3 .github/scripts/flashing.py ${{ secrets[matrix.jlink_serial] }} ${{ matrix.mcu }} ${{ matrix.build_dir }}/bmplc.bin 
 
       - name: Unit tests
         run: |

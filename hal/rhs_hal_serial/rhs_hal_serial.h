@@ -11,7 +11,7 @@ typedef enum
 {
     RHSHalSerialIdRS232,
     RHSHalSerialIdRS485,
-#if !defined(RPLC_XL)
+#if !defined(BMPLC_XL)
     RHSHalSerialIdRS422,
 #endif
     RHSHalSerialIdMax,

@@ -35,7 +35,7 @@ static RHSHalIterrupt rhs_hal_interrupt = {};
 
 const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
 
-#if defined(RPLC_XL) || defined(RPLC_L)
+#if defined(BMPLC_XL) || defined(BMPLC_L)
     /* CAN */
     [RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
     [RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
@@ -49,7 +49,7 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdDMA1Stream3] = DMA1_Stream3_IRQn,
     [RHSHalInterruptIdDMA2Stream1] = DMA2_Stream1_IRQn,
     [RHSHalInterruptIdDMA2Stream6] = DMA2_Stream6_IRQn,
-#elif defined(RPLC_M)
+#elif defined(BMPLC_M)
     /* CAN */
     [RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
     [RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
@@ -199,7 +199,7 @@ void CAN1_TX_IRQHandler(void)
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
 }
 
-#    if !defined(RPLC_XL) && !defined(RPLC_L)
+#    if !defined(BMPLC_XL) && !defined(BMPLC_L)
 
 /* CAN 2 RX0 */
 void CAN2_RX0_IRQHandler(void)

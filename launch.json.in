@@ -12,7 +12,7 @@
                 "samplesPerSecond": 4
             },
             "cwd": "${workspaceRoot}",
-            "executable": "${workspaceFolder}/build/rplc.elf",
+            "executable": "${workspaceFolder}/build/bmplc.elf",
             "svdFile": "${workspaceFolder}/@DEVICE_SVD_FILE@",
             "servertype": "jlink",
             "ipAddress": "${input:IPAddressID}",
@@ -45,7 +45,7 @@
                 "samplesPerSecond": 4
             },
             "cwd": "${workspaceRoot}",
-            "executable": "${workspaceFolder}/build/rplc.elf",
+            "executable": "${workspaceFolder}/build/bmplc.elf",
             "svdFile": "${workspaceFolder}/@DEVICE_SVD_FILE@",
             "servertype": "jlink",
             "ipAddress": "${input:IPAddressID}",
@@ -78,7 +78,7 @@
                 "samplesPerSecond": 4
             },
             "cwd": "${workspaceRoot}",
-            "executable": "${workspaceFolder}/build/rplc.elf",
+            "executable": "${workspaceFolder}/build/bmplc.elf",
             "svdFile": "${workspaceFolder}/@DEVICE_SVD_FILE@",
             "servertype": "jlink",
             "interface": "swd",
@@ -110,7 +110,7 @@
                 "samplesPerSecond": 4
             },
             "cwd": "${workspaceRoot}",
-            "executable": "${workspaceFolder}/build/rplc.elf",
+            "executable": "${workspaceFolder}/build/bmplc.elf",
             "svdFile": "${workspaceFolder}/@DEVICE_SVD_FILE@",
             "servertype": "jlink",
             "interface": "swd",

@@ -14,7 +14,7 @@
 - [ ] Divide the execution of processes into parallel and execution with blocking
 
 ## Notification
-- [ ] Add LEDs for RPLC_M
+- [ ] Add LEDs for BMPLC_M
 
 ## usb bridge
 - [ ] Set baudrate

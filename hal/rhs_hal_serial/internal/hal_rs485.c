@@ -5,7 +5,7 @@
 
 #define TAG "rs485"
 
-#if defined(RPLC_XL) || defined(RPLC_L)
+#if defined(BMPLC_XL) || defined(BMPLC_L)
 
 #    include "stm32f7xx_ll_rcc.h"
 #    include "stm32f7xx_ll_dma.h"
@@ -252,7 +252,7 @@ void rhs_hal_rs485_async_rx_dma_stop(void)
     NVIC_DisableIRQ(DMA2_Stream1_IRQn);
 }
 
-#elif defined(RPLC_M)
+#elif defined(BMPLC_M)
 #    include "stm32f1xx_ll_rcc.h"
 #    include "stm32f1xx_ll_dma.h"
 #    include "stm32f1xx_ll_usart.h"

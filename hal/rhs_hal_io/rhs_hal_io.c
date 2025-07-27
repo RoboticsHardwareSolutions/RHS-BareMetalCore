@@ -1,6 +1,6 @@
 #include "rhs_hal_io.h"
 
-#ifdef RPLC_XL
+#ifdef BMPLC_XL
 #    include "stm32f7xx_hal.h"
 #    define KEY0_Pin GPIO_PIN_4
 #    define KEY0_GPIO_Port GPIOE
@@ -33,7 +33,7 @@
 #    define IN4_Pin GPIO_PIN_12
 #    define IN4_GPIO_Port GPIOG
 
-#elif RPLC_L
+#elif BMPLC_L
 #    include "stm32f7xx_hal.h"
 #    define KEY0_Pin GPIO_PIN_4
 #    define KEY0_GPIO_Port GPIOE

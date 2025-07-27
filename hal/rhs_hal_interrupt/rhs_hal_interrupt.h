@@ -11,7 +11,7 @@ typedef void (*RHSHalInterruptISR)(void* context);
 
 typedef enum
 {
-#if defined(RPLC_XL) || defined(RPLC_L)
+#if defined(BMPLC_XL) || defined(BMPLC_L)
     /* CAN */
     RHSHalInterruptIdCAN1Rx0,
     RHSHalInterruptIdCAN1SCE,
@@ -28,7 +28,7 @@ typedef enum
     RHSHalInterruptIdDMA1Stream3,
     RHSHalInterruptIdDMA2Stream1,
     RHSHalInterruptIdDMA2Stream6,
-#elif defined(RPLC_M)
+#elif defined(BMPLC_M)
     /* CAN */
     RHSHalInterruptIdCAN1Rx0,
     RHSHalInterruptIdCAN1SCE,

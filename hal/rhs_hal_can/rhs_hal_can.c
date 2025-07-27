@@ -33,7 +33,7 @@ static uint32_t HAL_RCC_CAN1_CLK_ENABLED = 0;
 
 void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
 {
-#if defined(RPLC_XL) || defined(RPLC_L)
+#if defined(BMPLC_XL) || defined(BMPLC_L)
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     if (canHandle->Instance == CAN1)
     {
@@ -50,7 +50,7 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
         GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
         HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
     }
-#elif defined(RPLC_M)
+#elif defined(BMPLC_M)
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     if (canHandle->Instance == CAN1)
     {
@@ -117,7 +117,7 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
 
 void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
 {
-#if defined(RPLC_XL) || defined(RPLC_L)
+#if defined(BMPLC_XL) || defined(BMPLC_L)
     if (canHandle->Instance == CAN1)
     {
         /* Peripheral clock disable */
@@ -129,7 +129,7 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
         */
         HAL_GPIO_DeInit(GPIOA, GPIO_PIN_11 | GPIO_PIN_12);
     }
-#elif defined(RPLC_M)
+#elif defined(BMPLC_M)
     if (canHandle->Instance == CAN1)
     {
         /* USER CODE BEGIN CAN1_MspDeInit 0 */
@@ -178,7 +178,7 @@ static uint8_t get_can_num_interface(CAN_TypeDef* can)
     {
         return RHSHalCANId1;
     }
-#if !defined(RPLC_XL) && !defined(RPLC_L) && !defined(RPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
     else if (can == CAN2)
     {
         return RHSHalCANId2;
@@ -379,7 +379,7 @@ void rhs_hal_can_init(RHSHalCANId id, uint32_t baud)
         rhs_assert(rcan_start(&rhs_hal_can[id].rcan, (uint32_t) CAN1, baud) == true);
         rhs_hal_can[id].enabled = true;
         break;
-#if !defined(RPLC_XL) && !defined(RPLC_L) && !defined(RPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
     case RHSHalCANId2:
         rhs_assert(rcan_start(&rhs_hal_can[id].rcan, (uint32_t) CAN2, baud) == true);
         rhs_hal_can[id].enabled = true;
@@ -401,7 +401,7 @@ void rhs_hal_can_deinit(RHSHalCANId id)
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN1Tx, NULL, NULL);
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN1Rx0, NULL, NULL);
         break;
-#if !defined(RPLC_XL) && !defined(RPLC_L) && !defined(RPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
     case RHSHalCANId2:
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN2SCE, NULL, NULL);
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN2Tx, NULL, NULL);
@@ -438,7 +438,7 @@ void rhs_hal_can_async_sce(RHSHalCANId id, RHSHalCANAsyncSCECallback callback, v
                                      can_sce_callback,
                                      &rhs_hal_can[id]);
         break;
-#if !defined(RPLC_XL) && !defined(RPLC_L) && !defined(RPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
     case RHSHalCANId2:
         rhs_hal_interrupt_set_isr_ex(RHSHalInterruptIdCAN2SCE,
                                     RHSHalInterruptPriorityLow,
@@ -498,7 +498,7 @@ void rhs_hal_can_tx_cmplt_cb(RHSHalCANId id, RHSHalCANAsyncTxCallback callback, 
     case RHSHalCANId1:
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN1Tx, can_tx_callback, &rhs_hal_can[id]);
         break;
-#if !defined(RPLC_XL) && !defined(RPLC_L) && !defined(RPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
     case RHSHalCANId2:
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN2Tx, can_tx_callback, &rhs_hal_can[id]);
         break;
@@ -525,7 +525,7 @@ void rhs_hal_can_async_rx_start(RHSHalCANId id, RHSHalCANAsyncRxCallback callbac
     case RHSHalCANId1:
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN1Rx0, can_rx_callback, &rhs_hal_can[id]);
         break;
-#if !defined(RPLC_XL) && !defined(RPLC_L) && !defined(RPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
     case RHSHalCANId2:
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN2Rx0, can_rx_callback, &rhs_hal_can[id]);
         break;

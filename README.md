@@ -1,6 +1,6 @@
 # Instruction
 
-0. Just use [RPLC_Quick_Project](https://github.com/RoboticsHardwareSolutions/RPLC_Quick_Project.git) for RPLCs
+0. Just use [BMPLC_Quick_Project](https://github.com/RoboticsHardwareSolutions/BMPLC_Quick_Project.git) for BMPLCs
 
 1. To include this module in your project:
 
@@ -8,12 +8,12 @@
 $ git submodule add https://github.com/RoboticsHardwareSolutions/RHS-BareMetalCore.git thirdparty/rhs
 ```
 
-2. In the top `CMakeLists.txt`, choose your RPLC device and include `rhs.cmake`:
+2. In the top `CMakeLists.txt`, choose your BMPLC device and include `rhs.cmake`:
         
 ```cmake
-set(RPLC_XL ON) # or
-set(RPLC_L ON)  # or
-set(RPLC_M ON)
+set(BMPLC_XL ON) # or
+set(BMPLC_L ON)  # or
+set(BMPLC_M ON)
 
 include(thirdparty/rhs/rhs.cmake)
 ```
@@ -81,7 +81,7 @@ set(SIZE arm-none-eabi-size)
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 # project settings
-project(rplc C CXX ASM)
+project(bmplc C CXX ASM)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 11)
 
@@ -102,10 +102,10 @@ else()
 endif()
 
 ###################### LIBS SETTINGS #########################
-# if you use just RPLC that's enough
+# if you use just BMPLC that's enough
 include_directories(core/inc) # include config files, for example FreeRTOSConfig.h
 
-set(RPLC_M ON) # Set RPLC. If you do not use RPLC, good luck! You have to include header files for HAL config
+set(BMPLC_M ON) # Set BMPLC. If you do not use BMPLC, good luck! You have to include header files for HAL config
 
 include(thirdparty/rhs/rhs.cmake) # include Definitions and functions for RHS
 

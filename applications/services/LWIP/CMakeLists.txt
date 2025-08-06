@@ -57,4 +57,4 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PUBLIC rhs rhs_hal freertos_kernel lwip)
 
-service(ethernet_service "ethernet" 1024)
+service(ethernet_service "ethernet" 2048)

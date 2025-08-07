@@ -144,7 +144,16 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
 {
     int error = 0;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
+    /* Check Flash busy ? */
+    if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
+    {
+        error = -1;
+    }
     if (mt25ql128aba_read(&hqspi, MT25QL128ABA_QPI_MODE, p_data, addr, size) != 0)
+    {
+        error = -1;
+    }
+    if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
     {
         error = -1;
     }

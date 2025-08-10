@@ -35,11 +35,15 @@ extern "C" {
 #endif
 
 #ifndef BIT_CLEAR
-#    define BIT_CLEAR(x, n)    \
+#    define BIT_CLEAR(x, n)         \
         ({                          \
             __typeof__(x) _x = (1); \
             (x) &= ~(_x << (n));    \
         })
+#endif
+
+#ifndef COUNT_OF
+#    define COUNT_OF(x) (sizeof(x) / sizeof(x[0]))
 #endif
 
 #ifdef __cplusplus

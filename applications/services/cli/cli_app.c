@@ -21,9 +21,9 @@ void cli_add_command(Cli* app, const char* name, CliCallback callback, void* con
 {
     CliCommand* command;
     rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
-    for (int i = 0; i < sizeof(app->commands) / sizeof(app->commands[0]); i++)
+    for (int i = 0; i < COUNT_OF(app->commands); i++)
     {
-        if (i == sizeof(app->commands) / sizeof(app->commands[0]))
+        if (i == COUNT_OF(app->commands))
         {
             rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
             return;
@@ -75,7 +75,7 @@ void cli_reset(Cli* app)
 
 void cli_handle_enter(Cli* app)
 {
-    for (int i = 0; i < sizeof(app->commands) / sizeof(app->commands[0]); i++)
+    for (int i = 0; i < COUNT_OF(app->commands); i++)
     {
         if (app->commands[i].name == NULL)
         {
@@ -160,7 +160,7 @@ void cli_commands(char* args, void* context)
 {
     Cli* app = (Cli*) context;
     SEGGER_RTT_printf(0, "Available commands:\r\n");
-    for (int i = 0; i < sizeof(app->commands) / sizeof(app->commands[0]); i++)
+    for (int i = 0; i < COUNT_OF(app->commands); i++)
     {
         if (app->commands[i].name == NULL)
         {

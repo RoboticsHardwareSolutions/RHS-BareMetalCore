@@ -36,6 +36,7 @@ extern const NotificationSequence sequence_reset_sound;
 
 extern const NotificationSequence sequence_success;
 extern const NotificationSequence sequence_error;
+extern const NotificationSequence sequence_imperial_march;
 
 #ifdef __cplusplus
 }

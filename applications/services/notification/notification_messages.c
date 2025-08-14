@@ -50,6 +50,16 @@ const NotificationMessage message_delay_1000 = {
     .data.delay.length = 1000,
 };
 
+const NotificationMessage message_delay_150 = {
+    .type = NotificationMessageTypeDelay,
+    .data.delay.length = 150,
+};
+
+const NotificationMessage message_delay_350 = {
+    .type = NotificationMessageTypeDelay,
+    .data.delay.length = 350,
+};
+
 // Sound
 const NotificationMessage message_sound_off = {
     .type = NotificationMessageTypeSoundOff,
@@ -82,6 +92,59 @@ const NotificationSequence sequence_error = {
     &message_delay_100,
     &message_note_c5,
     &message_delay_100,
+    &message_sound_off,
+    NULL,
+};
+
+const NotificationSequence sequence_imperial_march = {
+    // First phrase: G-G-G-Eb-Bb-G-Eb-Bb-G
+    &message_note_g4,
+    &message_delay_500,
+    &message_sound_off,
+    &message_delay_50,
+    &message_note_g4,
+    &message_delay_500,
+    &message_sound_off,
+    &message_delay_50,
+    &message_note_g4,
+    &message_delay_500,
+    &message_note_ds4,
+    &message_delay_350,
+    &message_note_as4,
+    &message_delay_150,
+    &message_note_g4,
+    &message_delay_500,
+    &message_note_ds4,
+    &message_delay_350,
+    &message_note_as4,
+    &message_delay_150,
+    &message_note_g4,
+    &message_delay_1000,
+    
+    // Second phrase: D-D-D-Eb-Bb-F#-Eb-Bb-G
+    &message_note_d5,
+    &message_delay_500,
+    &message_sound_off,
+    &message_delay_50,
+    &message_note_d5,
+    &message_delay_500,
+    &message_sound_off,
+    &message_delay_50,
+    &message_note_d5,
+    &message_delay_500,
+    &message_note_ds5,
+    &message_delay_350,
+    &message_note_as4,
+    &message_delay_150,
+    &message_note_fs4,
+    &message_delay_500,
+    &message_note_ds4,
+    &message_delay_350,
+    &message_note_as4,
+    &message_delay_150,
+    &message_note_g4,
+    &message_delay_1000,
+    
     &message_sound_off,
     NULL,
 };

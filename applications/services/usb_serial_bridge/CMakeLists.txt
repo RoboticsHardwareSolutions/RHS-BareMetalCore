@@ -16,4 +16,4 @@ target_link_libraries(
         rhs_hal
 )
 
-start_up(cli_vcp_start_up)
+service(vcp_service "usb_serial_bridge" 4096)

@@ -10,21 +10,28 @@
 
 // echo to either Serial0 or Serial1
 // with Serial0 as all lower case, Serial1 as all upper case
-static void echo_serial_port(uint8_t itf, uint8_t buf[], uint32_t count) {
-  uint8_t const case_diff = 'a' - 'A';
+static void echo_serial_port(uint8_t itf, uint8_t buf[], uint32_t count)
+{
+    uint8_t const case_diff = 'a' - 'A';
 
-  for (uint32_t i = 0; i < count; i++) {
-    if (itf == 0) {
-      // echo back 1st port as lower case
-      if (isupper(buf[i])) buf[i] += case_diff;
-    } else {
-      // echo back 2nd port as upper case
-      if (islower(buf[i])) buf[i] -= case_diff;
+    for (uint32_t i = 0; i < count; i++)
+    {
+        if (itf == 0)
+        {
+            // echo back 1st port as lower case
+            if (isupper(buf[i]))
+                buf[i] += case_diff;
+        }
+        else
+        {
+            // echo back 2nd port as upper case
+            if (islower(buf[i]))
+                buf[i] -= case_diff;
+        }
+
+        tud_cdc_n_write_char(itf, buf[i]);
     }
-
-    tud_cdc_n_write_char(itf, buf[i]);
-  }
-  tud_cdc_n_write_flush(itf);
+    tud_cdc_n_write_flush(itf);
 }
 
 static void cdc_task(void)
@@ -53,26 +60,32 @@ static void cdc_task(void)
 
 static inline void usb_init()
 {
+    RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
+    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
     gpio_init(PIN('A', 11), GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
     gpio_init(PIN('A', 12), GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
 
     gpio_write(PIN('A', 11), 0);
     gpio_write(PIN('A', 12), 0);
-    rhs_delay_ms(40);                                   // Wait 4ms
+
+    // GPIOA->ODR &= ~(GPIO_PIN_12 | GPIO_PIN_11);
+
+    rhs_delay_ms(40);  // Wait 4ms
+    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+    RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
+    RCC->APB1RSTR &= ~RCC_APB1RSTR_USBRST;
+
     gpio_init(PIN('A', 11), GPIO_MODE_INPUT_FLOATING);  // D-
     gpio_init(PIN('A', 12), GPIO_MODE_INPUT_FLOATING);  // D+
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;                  // Enable USB clock
 
-    NVIC_SetPriority(USB_LP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
-    NVIC_SetPriority(USB_HP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
-    NVIC_EnableIRQ(USB_LP_IRQn);
-    NVIC_EnableIRQ(USB_HP_IRQn);
     // Note: STM32F103 doesn't have USB_OTG, it has USB FS device only
     // USB peripheral will be configured by TinyUSB
 }
-
+void    descriptor_switch_mode(uint32_t new_mode);
 int32_t vcp_service(void* context)
 {
+    descriptor_switch_mode(1);
     usb_init();
     tusb_init();
 

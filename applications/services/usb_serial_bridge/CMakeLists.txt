@@ -16,4 +16,4 @@ target_link_libraries(
         rhs_hal
 )
 
-service(vcp_service "usb_serial_bridge" 4096)
+# service(vcp_service "usb_serial_bridge" 4096)

@@ -16,6 +16,7 @@ target_link_libraries(
         rhs_hal
         tinyusb
         mongoose
+        usb_serial_bridge
 )
 
 service(rndis_service "rndis" 4096)

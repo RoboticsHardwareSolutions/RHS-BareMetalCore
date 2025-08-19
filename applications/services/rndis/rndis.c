@@ -6,6 +6,8 @@
 #include "tusb.h"
 #include "hal.h"
 
+extern int32_t vcp_service(void* context);
+
 #define TAG "rndis"
 static struct mg_tcpip_if* s_ifp;
 uint8_t                    tud_network_mac_address[6] = {2, 2, 0x84, 0x6A, 0x96, 0};
@@ -47,20 +49,29 @@ static size_t usb_tx(const void* buf, size_t len, struct mg_tcpip_if* ifp)
 
 static inline void usb_init()
 {
+    RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
+    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
     gpio_init(PIN('A', 11), GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
     gpio_init(PIN('A', 12), GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
 
     gpio_write(PIN('A', 11), 0);
     gpio_write(PIN('A', 12), 0);
+
+    // GPIOA->ODR &= ~(GPIO_PIN_12 | GPIO_PIN_11);
+
     rhs_delay_ms(40);  // Wait 4ms
+    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+    RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
+    RCC->APB1RSTR &= ~RCC_APB1RSTR_USBRST;
+
     gpio_init(PIN('A', 11), GPIO_MODE_INPUT_FLOATING);  // D-
     gpio_init(PIN('A', 12), GPIO_MODE_INPUT_FLOATING);  // D+
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;                  // Enable USB clock
 
     NVIC_SetPriority(USB_LP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
     NVIC_SetPriority(USB_HP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
-    NVIC_EnableIRQ(USB_LP_IRQn);
-    NVIC_EnableIRQ(USB_HP_IRQn);
+    // NVIC_EnableIRQ(USB_LP_IRQn);
+    // NVIC_EnableIRQ(USB_HP_IRQn);
     // Note: STM32F103 doesn't have USB_OTG, it has USB FS device only
     // USB peripheral will be configured by TinyUSB
 }
@@ -78,6 +89,8 @@ bool mg_random(void* buf, size_t len)
     return true;
 }
 
+static bool finish = false;
+
 static void fn(struct mg_connection* c, int ev, void* ev_data)
 {
     if (ev == MG_EV_HTTP_MSG)
@@ -88,6 +101,7 @@ static void fn(struct mg_connection* c, int ev, void* ev_data)
             int level = mg_json_get_long(hm->body, "$.level", MG_LL_DEBUG);
             mg_log_set(level);
             mg_http_reply(c, 200, "", "Debug level set to %d\n", level);
+            finish = true;
         }
         else
         {
@@ -121,8 +135,20 @@ int32_t rndis_service(void* context)
     tusb_init();
 
     MG_INFO(("Init done, starting main loop ..."));
-    for (;;)
+    while (!finish)
     {
         mg_mgr_poll(&mgr, 0);
+    }
+
+    MG_INFO(("Finish ..."));
+    mg_mgr_free(&mgr);
+    tusb_deinit(0);
+
+    RHSThread* thread = rhs_thread_alloc_service("bridge", 4096, vcp_service, NULL);
+    rhs_thread_start(thread);
+
+    for (;;)
+    {
+        rhs_delay_ms(1000);
     }
 }

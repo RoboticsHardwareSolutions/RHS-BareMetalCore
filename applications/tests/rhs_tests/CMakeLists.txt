@@ -19,13 +19,6 @@ if(RHS_TESTFLASH_EX)
 else()
         message("\t\tRHS_TESTFLASH_EX\t- OFF")
 endif()
-if(RHS_TEST_LOG_SAVE)
-        message("\t\tRHS_TEST_LOG_SAVE\t- ON")
-        list(APPEND TEST_SOURCES log_save_test.c)
-        start_up(log_save_test_start_up)
-else()
-        message("\t\tRHS_TEST_LOG_SAVE\t- OFF")
-endif()
 
 if(TEST_SOURCES)
         add_library(${PROJECT_NAME}

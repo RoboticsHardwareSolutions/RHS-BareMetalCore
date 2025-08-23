@@ -6,7 +6,7 @@
 #include "tusb.h"
 #include "hal.h"
 
-extern int32_t vcp_service(void* context);
+extern int32_t usb_dual_cdc(void* context);
 
 #define TAG "rndis"
 static struct mg_tcpip_if* s_ifp;
@@ -103,9 +103,75 @@ static void fn(struct mg_connection* c, int ev, void* ev_data)
             mg_http_reply(c, 200, "", "Debug level set to %d\n", level);
             finish = true;
         }
+        else if (mg_match(hm->uri, mg_str("/api/switch-to-vcp"), NULL))
+        {
+            mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
+                         "{\"status\":\"ok\",\"message\":\"Switching to VCP mode. Web interface will be unavailable.\"}");
+            MG_INFO(("Switching to VCP mode - web interface will be unavailable"));
+            finish = true;
+        }
+        else if (mg_match(hm->uri, mg_str("/"), NULL))
+        {
+            const char* html = 
+                "<!DOCTYPE html>"
+                "<html>"
+                "<head>"
+                "    <title>RNDIS Control</title>"
+                "    <meta charset='UTF-8'>"
+                "    <style>"
+                "        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }"
+                "        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }"
+                "        h1 { color: #333; text-align: center; }"
+                "        .switch-container { margin: 30px 0; text-align: center; }"
+                "        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }"
+                "        .switch input { opacity: 0; width: 0; height: 0; }"
+                "        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }"
+                "        .slider:before { position: absolute; content: ''; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }"
+                "        input:checked + .slider { background-color: #2196F3; }"
+                "        input:checked + .slider:before { transform: translateX(26px); }"
+                "        .label { margin: 10px 0; font-size: 18px; font-weight: bold; }"
+                "        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin: 20px 0; display: none; }"
+                "    </style>"
+                "</head>"
+                "<body>"
+                "    <div class='container'>"
+                "        <h1>RNDIS Control Panel</h1>"
+                "        <div class='switch-container'>"
+                "            <div class='label'>Switch to VCP Mode</div>"
+                "            <label class='switch'>"
+                "                <input type='checkbox' id='vcpSwitch' onchange='toggleWarning(this)'>"
+                "                <span class='slider'></span>"
+                "            </label>"
+                "        </div>"
+                "        <div id='warning-text' class='warning'>"
+                "            <strong>Warning!</strong> Switching to VCP mode will make the web interface unavailable. Are you sure you want to continue?<br><br>"
+                "            <button onclick='confirmSwitch()'>Yes, Switch to VCP</button> "
+                "            <button onclick='cancelSwitch()'>Cancel</button>"
+                "        </div>"
+                "    </div>"
+                "    <script>"
+                "        function toggleWarning(checkbox) {"
+                "            var warning = document.getElementById('warning-text');"
+                "            warning.style.display = checkbox.checked ? 'block' : 'none';"
+                "        }"
+                "        function confirmSwitch() {"
+                "            fetch('/api/switch-to-vcp', { method: 'POST' })"
+                "                .then(function(response) { return response.json(); })"
+                "                .then(function(data) { alert('Switching to VCP mode...'); })"
+                "                .catch(function(error) { alert('Error switching to VCP mode'); });"
+                "        }"
+                "        function cancelSwitch() {"
+                "            document.getElementById('vcpSwitch').checked = false;"
+                "            document.getElementById('warning-text').style.display = 'none';"
+                "        }"
+                "    </script>"
+                "</body>"
+                "</html>";
+            mg_http_reply(c, 200, "Content-Type: text/html\r\n", "%s", html);
+        }
         else
         {
-            mg_http_reply(c, 200, "", "hi!!!\n");
+            mg_http_reply(c, 404, "", "Not found\n");
         }
     }
 }
@@ -113,39 +179,39 @@ static void fn(struct mg_connection* c, int ev, void* ev_data)
 int32_t rndis_service(void* context)
 {
     struct mg_mgr mgr;        // Initialise
-    mg_mgr_init(&mgr);        // Mongoose event manager
-    mg_log_set(MG_LL_DEBUG);  // Set log level
+    // mg_mgr_init(&mgr);        // Mongoose event manager
+    // mg_log_set(MG_LL_DEBUG);  // Set log level
 
-    const uint8_t* uid = rhs_hal_version_uid();
+    // const uint8_t* uid = rhs_hal_version_uid();
 
-    MG_INFO(("Init TCP/IP stack ..."));
-    struct mg_tcpip_driver driver = {.tx = usb_tx, .poll = usb_poll};
-    struct mg_tcpip_if     mif    = {.mac                = GENERATE_LOCALLY_ADMINISTERED_MAC(uid),
-                                     .ip                 = mg_htonl(MG_U32(192, 168, 3, 1)),
-                                     .mask               = mg_htonl(MG_U32(255, 255, 255, 0)),
-                                     .enable_dhcp_server = true,
-                                     .driver             = &driver,
-                                     .recv_queue.size    = 4096};
-    s_ifp                         = &mif;
-    mg_tcpip_init(&mgr, &mif);
-    mg_http_listen(&mgr, "tcp://0.0.0.0:80", fn, &mgr);
+    // MG_INFO(("Init TCP/IP stack ..."));
+    // struct mg_tcpip_driver driver = {.tx = usb_tx, .poll = usb_poll};
+    // struct mg_tcpip_if     mif    = {.mac                = GENERATE_LOCALLY_ADMINISTERED_MAC(uid),
+    //                                  .ip                 = mg_htonl(MG_U32(192, 168, 3, 1)),
+    //                                  .mask               = mg_htonl(MG_U32(255, 255, 255, 0)),
+    //                                  .enable_dhcp_server = true,
+    //                                  .driver             = &driver,
+    //                                  .recv_queue.size    = 4096};
+    // s_ifp                         = &mif;
+    // mg_tcpip_init(&mgr, &mif);
+    // mg_http_listen(&mgr, "tcp://0.0.0.0:80", fn, &mgr);
 
-    MG_INFO(("Init USB ..."));
-    usb_init();
-    tusb_init();
+    // MG_INFO(("Init USB ..."));
+    // usb_init();
+    // tusb_init();
 
-    MG_INFO(("Init done, starting main loop ..."));
-    while (!finish)
-    {
-        mg_mgr_poll(&mgr, 0);
-    }
+    // MG_INFO(("Init done, starting main loop ..."));
+    // while (!finish)
+    // {
+    //     mg_mgr_poll(&mgr, 0);
+    // }
 
-    MG_INFO(("Finish ..."));
-    mg_mgr_free(&mgr);
-    tusb_deinit(0);
+    // MG_INFO(("Finish ..."));
+    // mg_mgr_free(&mgr);
+    // tusb_deinit(0);
 
-    RHSThread* thread = rhs_thread_alloc_service("bridge", 4096, vcp_service, NULL);
-    rhs_thread_start(thread);
+    // RHSThread* thread = rhs_thread_alloc_service("bridge", 4096, usb_dual_cdc, NULL);
+    // rhs_thread_start(thread);
 
     for (;;)
     {

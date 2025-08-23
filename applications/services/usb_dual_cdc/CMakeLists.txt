@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.24)
-project(rndis C)
+project(usb_dual_cdc C)
 set(CMAKE_C_STANDARD 11)
 
-add_library(${PROJECT_NAME} STATIC rndis.c)
+add_library(${PROJECT_NAME} STATIC usb_dual_cdc.c)
 
 target_include_directories(
         ${PROJECT_NAME} PUBLIC
@@ -14,9 +14,6 @@ target_link_libraries(
         PRIVATE
         rhs
         rhs_hal
-        tinyusb
-        mongoose
-        usb_dual_cdc
 )
 
-service(rndis_service "rndis" 4096)
+service(usb_dual_cdc "usb_dual_cdc" 4096)

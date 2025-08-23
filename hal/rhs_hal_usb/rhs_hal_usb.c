@@ -1,141 +1,35 @@
 #include <rhs_hal_version.h>
-#include <rhs_hal_usb_i.h>
 #include <rhs_hal_usb.h>
 #include <rhs_hal_power.h>
 #include <rhs.h>
+#include "hal.h"
 
 #include "stm32.h"
 
-#include "usb.h"
-
 #define TAG "RHSHalUsb"
-
-#define USB_RECONNECT_DELAY 500
-
-typedef enum
-{
-    UsbApiEventTypeSetConfig,
-    UsbApiEventTypeGetConfig,
-    UsbApiEventTypeLock,
-    UsbApiEventTypeUnlock,
-    UsbApiEventTypeIsLocked,
-    UsbApiEventTypeEnable,
-    UsbApiEventTypeDisable,
-    UsbApiEventTypeReinit,
-    UsbApiEventTypeSetStateCallback,
-} UsbApiEventType;
-
-typedef struct
-{
-    RHSHalUsbStateCallback callback;
-    void*                  context;
-} UsbApiEventDataStateCallback;
-
-typedef struct
-{
-    RHSHalUsbInterface* interface;
-    void*               context;
-} UsbApiEventDataInterface;
-
-typedef union
-{
-    UsbApiEventDataStateCallback state_callback;
-    UsbApiEventDataInterface     interface;
-} UsbApiEventData;
-
-typedef union
-{
-    bool  bool_value;
-    void* void_value;
-} UsbApiEventReturnData;
-
-typedef struct
-{
-    RHSApiLock             lock;
-    UsbApiEventType        type;
-    UsbApiEventData        data;
-    UsbApiEventReturnData* return_data;
-} UsbApiEventMessage;
-
-typedef struct
-{
-    RHSThread*             thread;
-    RHSMessageQueue*       queue;
-    bool                   enabled;
-    bool                   connected;
-    bool                   mode_lock;
-    bool                   request_pending;
-    RHSHalUsbInterface*    interface;
-    void*                  interface_context;
-    RHSHalUsbStateCallback callback;
-    void*                  callback_context;
-} UsbSrv;
-
-typedef enum
-{
-    UsbEventReset   = (1 << 0),
-    UsbEventRequest = (1 << 1),
-    UsbEventMessage = (1 << 2),
-} UsbEvent;
-
-#define USB_SRV_ALL_EVENTS (UsbEventReset | UsbEventRequest | UsbEventMessage)
-
-static UsbSrv   usb = {0};
-static uint32_t ubuf[0x20];
-usbd_device     udev;
-
-static const struct usb_string_descriptor dev_lang_desc = USB_ARRAY_DESC(USB_LANGID_ENG_US);
-
-static int32_t      rhs_hal_usb_thread(void* context);
-static usbd_respond usb_descriptor_get(usbd_ctlreq* req, void** address, uint16_t* length);
-static void         reset_evt(usbd_device* dev, uint8_t event, uint8_t ep);
-static void         susp_evt(usbd_device* dev, uint8_t event, uint8_t ep);
-static void         wkup_evt(usbd_device* dev, uint8_t event, uint8_t ep);
-
-#if defined(STM32F1)
-static uint8_t connect(bool connect)
-{
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    if (!connect)
-    {
-        GPIO_InitStruct.Pin   = GPIO_PIN_12 | GPIO_PIN_11;
-        GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-        GPIO_InitStruct.Pull  = GPIO_PULLDOWN;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    }
-    else
-    {
-        GPIO_InitStruct.Pin   = GPIO_PIN_12 | GPIO_PIN_11;
-        GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull  = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    }
-    return 0;
-}
-#endif
 
 /* Low-level init */
 void rhs_hal_usb_init(void)
 {
 #if defined(STM32F1)
-    static struct usbd_driver usbd_dev_f1;
-    usbd_dev_f1.getinfo           = usbd_hw.getinfo;
-    usbd_dev_f1.enable            = usbd_hw.enable;
-    usbd_dev_f1.connect           = connect;
-    usbd_dev_f1.setaddr           = usbd_hw.setaddr;
-    usbd_dev_f1.ep_config         = usbd_hw.ep_config;
-    usbd_dev_f1.ep_deconfig       = usbd_hw.ep_deconfig;
-    usbd_dev_f1.ep_read           = usbd_hw.ep_read;
-    usbd_dev_f1.ep_write          = usbd_hw.ep_write;
-    usbd_dev_f1.ep_setstall       = usbd_hw.ep_setstall;
-    usbd_dev_f1.ep_isstalled      = usbd_hw.ep_isstalled;
-    usbd_dev_f1.poll              = usbd_hw.poll;
-    usbd_dev_f1.frame_no          = usbd_hw.frame_no;
-    usbd_dev_f1.get_serialno_desc = usbd_hw.get_serialno_desc;
-    usbd_init(&udev, &usbd_dev_f1, USB_EP0_SIZE, ubuf, sizeof(ubuf));
+    RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
+    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
+    gpio_init(PIN('A', 11), GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
+    gpio_init(PIN('A', 12), GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
+
+    gpio_write(PIN('A', 11), 0);
+    gpio_write(PIN('A', 12), 0);
+
+    rhs_delay_ms(40);  // Wait 4ms
+    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+    RCC->APB1RSTR &= ~RCC_APB1RSTR_USBRST;
+
+    gpio_init(PIN('A', 11), GPIO_MODE_INPUT_FLOATING);  // D-
+    gpio_init(PIN('A', 12), GPIO_MODE_INPUT_FLOATING);  // D+
+
+    NVIC_SetPriority(USB_LP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
+    NVIC_SetPriority(USB_HP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+
 #elif defined(STM32F4)
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -146,455 +40,42 @@ void rhs_hal_usb_init(void)
     GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    usbd_init(&udev, &usbd_hw, USB_EP0_SIZE, ubuf, sizeof(ubuf));
-#endif
-    taskENTER_CRITICAL();
-    usbd_connect(&udev, false);
-    rhs_delay_ms(4);
-    usbd_enable(&udev, true);
-    usbd_connect(&udev, true);
-    taskEXIT_CRITICAL();
-
-    usbd_reg_descr(&udev, usb_descriptor_get);
-    usbd_reg_event(&udev, usbd_evt_susp, susp_evt);
-    usbd_reg_event(&udev, usbd_evt_wkup, wkup_evt);
-    // Reset callback will be enabled after first mode change to avoid getting false reset events
-
-    usb.enabled   = false;
-    usb.interface = NULL;
-#if defined(STM32F1)
-    NVIC_SetPriority(USB_LP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
-    NVIC_SetPriority(USB_HP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
-    NVIC_EnableIRQ(USB_LP_IRQn);
-    NVIC_EnableIRQ(USB_HP_IRQn);
-#elif defined(STM32F4)
     NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
     NVIC_EnableIRQ(OTG_FS_IRQn);
 #endif
-    usb.queue  = rhs_message_queue_alloc(1, sizeof(UsbApiEventMessage));
-    usb.thread = rhs_thread_alloc_service("UsbDriver", 1024, rhs_hal_usb_thread, NULL);
-    rhs_thread_start(usb.thread);
-
     RHS_LOG_I(TAG, "Init OK");
-}
-
-static void rhs_hal_usb_send_message(UsbApiEventMessage* message)
-{
-    rhs_message_queue_put(usb.queue, message, RHSWaitForever);
-    rhs_thread_flags_set(rhs_thread_get_id(usb.thread), UsbEventMessage);
-    api_lock_wait_unlock_and_free(message->lock);
-}
-
-bool rhs_hal_usb_set_config(RHSHalUsbInterface* new_if, void* ctx)
-{
-    UsbApiEventReturnData return_data = {
-        .bool_value = false,
-    };
-
-    UsbApiEventMessage msg = {
-        .lock = api_lock_alloc_locked(),
-        .type = UsbApiEventTypeSetConfig,
-        .data.interface =
-            {
-                .interface = new_if,
-                .context   = ctx,
-            },
-        .return_data = &return_data,
-    };
-
-    rhs_hal_usb_send_message(&msg);
-    return return_data.bool_value;
-}
-
-RHSHalUsbInterface* rhs_hal_usb_get_config(void)
-{
-    UsbApiEventReturnData return_data = {
-        .void_value = NULL,
-    };
-
-    UsbApiEventMessage msg = {
-        .lock        = api_lock_alloc_locked(),
-        .type        = UsbApiEventTypeGetConfig,
-        .return_data = &return_data,
-    };
-
-    rhs_hal_usb_send_message(&msg);
-    return return_data.void_value;
-}
-
-void rhs_hal_usb_lock(void)
-{
-    UsbApiEventMessage msg = {
-        .lock = api_lock_alloc_locked(),
-        .type = UsbApiEventTypeLock,
-    };
-
-    rhs_hal_usb_send_message(&msg);
-}
-
-void rhs_hal_usb_unlock(void)
-{
-    UsbApiEventMessage msg = {
-        .lock = api_lock_alloc_locked(),
-        .type = UsbApiEventTypeUnlock,
-    };
-
-    rhs_hal_usb_send_message(&msg);
-}
-
-bool rhs_hal_usb_is_locked(void)
-{
-    UsbApiEventReturnData return_data = {
-        .bool_value = false,
-    };
-
-    UsbApiEventMessage msg = {
-        .lock        = api_lock_alloc_locked(),
-        .type        = UsbApiEventTypeIsLocked,
-        .return_data = &return_data,
-    };
-
-    rhs_hal_usb_send_message(&msg);
-    return return_data.bool_value;
-}
-
-void rhs_hal_usb_disable(void)
-{
-    UsbApiEventMessage msg = {
-        .lock = api_lock_alloc_locked(),
-        .type = UsbApiEventTypeDisable,
-    };
-
-    rhs_hal_usb_send_message(&msg);
-}
-
-void rhs_hal_usb_enable(void)
-{
-    UsbApiEventMessage msg = {
-        .lock = api_lock_alloc_locked(),
-        .type = UsbApiEventTypeEnable,
-    };
-
-    rhs_hal_usb_send_message(&msg);
 }
 
 void rhs_hal_usb_reinit(void)
 {
-    UsbApiEventMessage msg = {
-        .lock = api_lock_alloc_locked(),
-        .type = UsbApiEventTypeReinit,
-    };
+#if defined(STM32F1)
+    RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
+    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
+    gpio_init(PIN('A', 11), GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
+    gpio_init(PIN('A', 12), GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
 
-    rhs_hal_usb_send_message(&msg);
-}
+    gpio_write(PIN('A', 11), 0);
+    gpio_write(PIN('A', 12), 0);
 
-void rhs_hal_usb_set_state_callback(RHSHalUsbStateCallback cb, void* ctx)
-{
-    UsbApiEventMessage msg = {
-        .lock = api_lock_alloc_locked(),
-        .type = UsbApiEventTypeSetStateCallback,
-        .data.state_callback =
-            {
-                .callback = cb,
-                .context  = ctx,
-            },
-    };
+    rhs_delay_ms(40);  // Wait 40ms
+    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+    RCC->APB1RSTR &= ~RCC_APB1RSTR_USBRST;
 
-    rhs_hal_usb_send_message(&msg);
-}
+    gpio_init(PIN('A', 11), GPIO_MODE_INPUT_FLOATING);  // D-
+    gpio_init(PIN('A', 12), GPIO_MODE_INPUT_FLOATING);  // D+
 
-/* Get device / configuration descriptors */
-static usbd_respond usb_descriptor_get(usbd_ctlreq* req, void** address, uint16_t* length)
-{
-    const uint8_t dtype   = req->wValue >> 8;
-    const uint8_t dnumber = req->wValue & 0xFF;
-    const void*   desc;
-    uint16_t      len = 0;
-    if (usb.interface == NULL)
-        return usbd_fail;
+#elif defined(STM32F4)
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    __HAL_RCC_GPIOA_CLK_ENABLE();
 
-    switch (dtype)
-    {
-    case USB_DTYPE_DEVICE:
-        rhs_thread_flags_set(rhs_thread_get_id(usb.thread), UsbEventRequest);
-        if (usb.callback != NULL)
-        {
-            usb.callback(RHSHalUsbStateEventDescriptorRequest, usb.callback_context);
-        }
-        desc = usb.interface->dev_descr;
-        break;
-    case USB_DTYPE_CONFIGURATION:
-        desc = usb.interface->cfg_descr;
-        len  = ((struct usb_string_descriptor*) (usb.interface->cfg_descr))->wString[0];
-        break;
-    case USB_DTYPE_STRING:
-        if (dnumber == UsbDevLang)
-        {
-            desc = &dev_lang_desc;
-        }
-        else if ((dnumber == UsbDevManuf) && (usb.interface->str_manuf_descr != NULL))
-        {
-            desc = usb.interface->str_manuf_descr;
-        }
-        else if ((dnumber == UsbDevProduct) && (usb.interface->str_prod_descr != NULL))
-        {
-            desc = usb.interface->str_prod_descr;
-        }
-        else if ((dnumber == UsbDevSerial) && (usb.interface->str_serial_descr != NULL))
-        {
-            desc = usb.interface->str_serial_descr;
-        }
-        else
-            return usbd_fail;
-        break;
-    default:
-        return usbd_fail;
-    }
-    if (desc == NULL)
-        return usbd_fail;
-
-    if (len == 0)
-    {
-        len = ((struct usb_header_descriptor*) desc)->bLength;
-    }
-    *address = (void*) desc;
-    *length  = len;
-    return usbd_ack;
-}
-
-static void reset_evt(usbd_device* dev, uint8_t event, uint8_t ep)
-{
-    UNUSED(dev);
-    UNUSED(event);
-    UNUSED(ep);
-    rhs_thread_flags_set(rhs_thread_get_id(usb.thread), UsbEventReset);
-    if (usb.callback != NULL)
-    {
-        usb.callback(RHSHalUsbStateEventReset, usb.callback_context);
-    }
-}
-
-static void susp_evt(usbd_device* dev, uint8_t event, uint8_t ep)
-{
-    UNUSED(dev);
-    UNUSED(event);
-    UNUSED(ep);
-    if ((usb.interface != NULL) && (usb.connected == true))
-    {
-        usb.connected = false;
-        usb.interface->suspend(&udev);
-
-        // rhs_hal_power_insomnia_exit();
-    }
-    if (usb.callback != NULL)
-    {
-        usb.callback(RHSHalUsbStateEventSuspend, usb.callback_context);
-    }
-}
-
-static void wkup_evt(usbd_device* dev, uint8_t event, uint8_t ep)
-{
-    UNUSED(dev);
-    UNUSED(event);
-    UNUSED(ep);
-    if ((usb.interface != NULL) && (usb.connected == false))
-    {
-        usb.connected = true;
-        usb.interface->wakeup(&udev);
-
-        // rhs_hal_power_insomnia_enter();
-    }
-    if (usb.callback != NULL)
-    {
-        usb.callback(RHSHalUsbStateEventWakeup, usb.callback_context);
-    }
-}
-
-static void usb_process_mode_start(RHSHalUsbInterface* interface, void* context)
-{
-    if (usb.interface != NULL)
-    {
-        usb.interface->deinit(&udev);
-    }
-
-    __disable_irq();
-    usb.interface         = interface;
-    usb.interface_context = context;
-    usbd_enable(&udev, true);
-    __enable_irq();
-
-    if (interface != NULL)
-    {
-        interface->init(&udev, interface, context);
-        usbd_reg_event(&udev, usbd_evt_reset, reset_evt);
-        RHS_LOG_I(TAG, "USB Mode change done");
-        usb.enabled = true;
-    }
-}
-
-static void usb_process_mode_change(RHSHalUsbInterface* interface, void* context)
-{
-    if ((interface != usb.interface) || (context != usb.interface_context))
-    {
-        if (usb.enabled)
-        {
-            // Disable current interface
-            susp_evt(&udev, 0, 0);
-            usb.enabled = false;
-
-            taskENTER_CRITICAL();
-            usbd_enable(&udev, false);
-            usbd_connect(&udev, false);
-            taskEXIT_CRITICAL();
-
-            rhs_delay_ms(USB_RECONNECT_DELAY);
-        }
-        usb_process_mode_start(interface, context);
-    }
-}
-
-static void usb_process_mode_reinit(void)
-{
-    // Temporary disable callback to avoid getting false reset events
-    usbd_reg_event(&udev, usbd_evt_reset, NULL);
-    RHS_LOG_I(TAG, "USB Reinit");
-    susp_evt(&udev, 0, 0);
-    usb.enabled = false;
-
-    taskENTER_CRITICAL();
-    usbd_enable(&udev, false);
-    usbd_connect(&udev, false);
-    usbd_enable(&udev, true);
-    taskEXIT_CRITICAL();
-
-    rhs_delay_ms(USB_RECONNECT_DELAY);
-    usb_process_mode_start(usb.interface, usb.interface_context);
-}
-
-static bool usb_process_set_config(RHSHalUsbInterface* interface, void* context)
-{
-    if (usb.mode_lock)
-    {
-        return false;
-    }
-    else
-    {
-        usb_process_mode_change(interface, context);
-        return true;
-    }
-}
-
-static void usb_process_enable(bool enable)
-{
-    if (enable)
-    {
-        if ((!usb.enabled) && (usb.interface != NULL))
-        {
-            usbd_connect(&udev, true);
-            usb.enabled = true;
-            RHS_LOG_I(TAG, "USB Enable");
-        }
-    }
-    else
-    {
-        if (usb.enabled)
-        {
-            susp_evt(&udev, 0, 0);
-            usbd_connect(&udev, false);
-            usb.enabled         = false;
-            usb.request_pending = false;
-            RHS_LOG_I(TAG, "USB Disable");
-        }
-    }
-}
-
-static void usb_process_message(UsbApiEventMessage* message)
-{
-    switch (message->type)
-    {
-    case UsbApiEventTypeSetConfig:
-        message->return_data->bool_value =
-            usb_process_set_config(message->data.interface.interface, message->data.interface.context);
-        break;
-    case UsbApiEventTypeGetConfig:
-        message->return_data->void_value = usb.interface;
-        break;
-    case UsbApiEventTypeLock:
-        RHS_LOG_I(TAG, "Mode lock");
-        usb.mode_lock = true;
-        break;
-    case UsbApiEventTypeUnlock:
-        RHS_LOG_I(TAG, "Mode unlock");
-        usb.mode_lock = false;
-        break;
-    case UsbApiEventTypeIsLocked:
-        message->return_data->bool_value = usb.mode_lock;
-        break;
-    case UsbApiEventTypeDisable:
-        usb_process_enable(false);
-        break;
-    case UsbApiEventTypeEnable:
-        usb_process_enable(true);
-        break;
-    case UsbApiEventTypeReinit:
-        usb_process_mode_reinit();
-        break;
-    case UsbApiEventTypeSetStateCallback:
-        usb.callback         = message->data.state_callback.callback;
-        usb.callback_context = message->data.state_callback.context;
-        break;
-    }
-
-    api_lock_unlock(message->lock);
-}
-
-static int32_t rhs_hal_usb_thread(void* context)
-{
-    UNUSED(context);
-    uint8_t usb_wait_time = 0;
-
-    if (rhs_message_queue_get_count(usb.queue) > 0)
-    {
-        rhs_thread_flags_set(rhs_thread_get_id(usb.thread), UsbEventMessage);
-    }
-
-    while (true)
-    {
-        uint32_t flags = rhs_thread_flags_wait(USB_SRV_ALL_EVENTS, RHSFlagWaitAny, 500);
-
-        {
-            UsbApiEventMessage message;
-            if (rhs_message_queue_get(usb.queue, &message, 0) == RHSStatusOk)
-            {
-                usb_process_message(&message);
-            }
-        }
-
-        if ((flags & RHSFlagError) == 0)
-        {
-            if (flags & UsbEventReset)
-            {
-                if (usb.enabled)
-                {
-                    usb.request_pending = true;
-                    usb_wait_time       = 0;
-                }
-            }
-            if (flags & UsbEventRequest)
-            {
-                usb.request_pending = false;
-            }
-        }
-        else if (usb.request_pending)
-        {
-            usb_wait_time++;
-            if (usb_wait_time > 4)
-            {
-                usb_process_mode_reinit();
-                usb.request_pending = false;
-            }
-        }
-    }
-    return 0;
+    GPIO_InitStruct.Pin       = GPIO_PIN_11 | GPIO_PIN_12;
+    GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull      = GPIO_NOPULL;
+    GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+    NVIC_EnableIRQ(OTG_FS_IRQn);
+#endif
+    RHS_LOG_I(TAG, "Reinit OK");
 }

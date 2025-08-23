@@ -30,7 +30,6 @@
 #endif
 #if RHS_HAL_USB
 #    include "rhs_hal_usb.h"
-#    include "rhs_hal_usb_cdc.h"
 #endif
 
 void rhs_hal_init(void);

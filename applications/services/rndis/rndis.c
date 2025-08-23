@@ -4,7 +4,6 @@
 #include "rndis_i.h"
 #include "mongoose.h"
 #include "tusb.h"
-#include "hal.h"
 
 extern int32_t usb_dual_cdc(void* context);
 
@@ -45,35 +44,6 @@ static size_t usb_tx(const void* buf, size_t len, struct mg_tcpip_if* ifp)
     tud_network_xmit((void*) buf, len);
     (void) ifp;
     return len;
-}
-
-static inline void usb_init()
-{
-    RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
-    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
-    gpio_init(PIN('A', 11), GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
-    gpio_init(PIN('A', 12), GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
-
-    gpio_write(PIN('A', 11), 0);
-    gpio_write(PIN('A', 12), 0);
-
-    // GPIOA->ODR &= ~(GPIO_PIN_12 | GPIO_PIN_11);
-
-    rhs_delay_ms(40);  // Wait 4ms
-    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
-    RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
-    RCC->APB1RSTR &= ~RCC_APB1RSTR_USBRST;
-
-    gpio_init(PIN('A', 11), GPIO_MODE_INPUT_FLOATING);  // D-
-    gpio_init(PIN('A', 12), GPIO_MODE_INPUT_FLOATING);  // D+
-    RCC->APB1ENR |= RCC_APB1ENR_USBEN;                  // Enable USB clock
-
-    NVIC_SetPriority(USB_LP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
-    NVIC_SetPriority(USB_HP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
-    // NVIC_EnableIRQ(USB_LP_IRQn);
-    // NVIC_EnableIRQ(USB_HP_IRQn);
-    // Note: STM32F103 doesn't have USB_OTG, it has USB FS device only
-    // USB peripheral will be configured by TinyUSB
 }
 
 static bool usb_poll(struct mg_tcpip_if* ifp, bool s1)
@@ -179,39 +149,39 @@ static void fn(struct mg_connection* c, int ev, void* ev_data)
 int32_t rndis_service(void* context)
 {
     struct mg_mgr mgr;        // Initialise
-    // mg_mgr_init(&mgr);        // Mongoose event manager
-    // mg_log_set(MG_LL_DEBUG);  // Set log level
+    mg_mgr_init(&mgr);        // Mongoose event manager
+    mg_log_set(MG_LL_DEBUG);  // Set log level
 
-    // const uint8_t* uid = rhs_hal_version_uid();
+    const uint8_t* uid = rhs_hal_version_uid();
 
-    // MG_INFO(("Init TCP/IP stack ..."));
-    // struct mg_tcpip_driver driver = {.tx = usb_tx, .poll = usb_poll};
-    // struct mg_tcpip_if     mif    = {.mac                = GENERATE_LOCALLY_ADMINISTERED_MAC(uid),
-    //                                  .ip                 = mg_htonl(MG_U32(192, 168, 3, 1)),
-    //                                  .mask               = mg_htonl(MG_U32(255, 255, 255, 0)),
-    //                                  .enable_dhcp_server = true,
-    //                                  .driver             = &driver,
-    //                                  .recv_queue.size    = 4096};
-    // s_ifp                         = &mif;
-    // mg_tcpip_init(&mgr, &mif);
-    // mg_http_listen(&mgr, "tcp://0.0.0.0:80", fn, &mgr);
+    MG_INFO(("Init TCP/IP stack ..."));
+    struct mg_tcpip_driver driver = {.tx = usb_tx, .poll = usb_poll};
+    struct mg_tcpip_if     mif    = {.mac                = GENERATE_LOCALLY_ADMINISTERED_MAC(uid),
+                                     .ip                 = mg_htonl(MG_U32(192, 168, 3, 1)),
+                                     .mask               = mg_htonl(MG_U32(255, 255, 255, 0)),
+                                     .enable_dhcp_server = true,
+                                     .driver             = &driver,
+                                     .recv_queue.size    = 4096};
+    s_ifp                         = &mif;
+    mg_tcpip_init(&mgr, &mif);
+    mg_http_listen(&mgr, "tcp://0.0.0.0:80", fn, &mgr);
 
-    // MG_INFO(("Init USB ..."));
-    // usb_init();
-    // tusb_init();
+    MG_INFO(("Init USB ..."));
+    rhs_hal_usb_reinit();
+    tusb_init();
 
-    // MG_INFO(("Init done, starting main loop ..."));
-    // while (!finish)
-    // {
-    //     mg_mgr_poll(&mgr, 0);
-    // }
+    MG_INFO(("Init done, starting main loop ..."));
+    while (!finish)
+    {
+        mg_mgr_poll(&mgr, 0);
+    }
 
-    // MG_INFO(("Finish ..."));
-    // mg_mgr_free(&mgr);
-    // tusb_deinit(0);
+    MG_INFO(("Finish ..."));
+    mg_mgr_free(&mgr);
+    tusb_deinit(0);
 
-    // RHSThread* thread = rhs_thread_alloc_service("bridge", 4096, usb_dual_cdc, NULL);
-    // rhs_thread_start(thread);
+    RHSThread* thread = rhs_thread_alloc_service("bridge", 4096, usb_dual_cdc, NULL);
+    rhs_thread_start(thread);
 
     for (;;)
     {

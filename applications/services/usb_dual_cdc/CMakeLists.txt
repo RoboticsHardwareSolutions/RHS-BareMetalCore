@@ -16,4 +16,4 @@ target_link_libraries(
         rhs_hal
 )
 
-service(usb_dual_cdc "usb_dual_cdc" 4096)
+# service(usb_dual_cdc "usb_dual_cdc" 4096)

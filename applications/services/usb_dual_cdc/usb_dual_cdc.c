@@ -3,7 +3,6 @@
 #include "usb_dual_cdc.h"
 #include "cli.h"
 #include "tusb.h"
-#include "hal.h"
 #include <ctype.h>
 
 #define TAG "UsbCDC"
@@ -61,62 +60,13 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* p_line_coding)
 
 void tud_cdc_send_break_cb(uint8_t itf, uint16_t duration_ms) {}
 
-// static void cdc_task(void)
-// {
-//     for (uint8_t itf = 0; itf < CFG_TUD_CDC; itf++)
-//     {
-//         // connected() check for DTR bit
-//         // Most but not all terminal client set this when making connection
-//         // if ( tud_cdc_n_connected(itf) )
-//         {
-//             if (tud_cdc_n_available(itf))
-//             {
-//                 uint8_t  buf[64];
-//                 uint32_t count = tud_cdc_n_read(itf, buf, sizeof(buf));
-
-//                 // echo back to both serial ports
-//                 echo_serial_port(itf, buf, count);
-//                 // echo_serial_port(1, buf, count);
-//             }
-
-//             // An Event to send Uart status notification
-//             // tud_cdc_notify_uart_state(&uart_state);
-//         }
-//     }
-// }
-
-static inline void usb_init(void)
-{
-    RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
-    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
-    gpio_init(PIN('A', 11), GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
-    gpio_init(PIN('A', 12), GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
-
-    gpio_write(PIN('A', 11), 0);
-    gpio_write(PIN('A', 12), 0);
-
-    rhs_delay_ms(40);  // Wait 40ms
-    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
-    RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
-    RCC->APB1RSTR &= ~RCC_APB1RSTR_USBRST;
-
-    gpio_init(PIN('A', 11), GPIO_MODE_INPUT_FLOATING);  // D-
-    gpio_init(PIN('A', 12), GPIO_MODE_INPUT_FLOATING);  // D+
-    RCC->APB1ENR |= RCC_APB1ENR_USBEN;                  // Enable USB clock
-
-    NVIC_SetPriority(USB_LP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
-    NVIC_SetPriority(USB_HP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
-    // Note: STM32F103 doesn't have USB_OTG, it has USB FS device only
-    // USB peripheral will be configured by TinyUSB
-}
-
 void    descriptor_switch_mode(uint32_t new_mode);
 int32_t usb_dual_cdc(void* context)
 {
     /* Switch descriptor USB */
     descriptor_switch_mode(1);
     /* Reinit hardware USB (PINs and RESET USB) */
-    usb_init();
+    rhs_hal_usb_reinit();
     /* Init TinyUSB */
     tusb_init();
 

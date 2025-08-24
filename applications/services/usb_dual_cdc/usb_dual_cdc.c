@@ -38,27 +38,31 @@ void tud_cdc_tx_complete_cb(uint8_t itf)
     }
 }
 
-void tud_cdc_notify_complete_cb(uint8_t itf) {}
+void tud_cdc_notify_complete_cb(uint8_t itf)
+{
+    RHS_LOG_D(TAG, "Terminal %d notified", itf);
+}
 
 void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 {
-    (void) itf;
-    (void) rts;
-
-    // TODO set some indicator
-    if (tud_cdc_n_connected(itf))
-    {
-        RHS_LOG_D(TAG, "Terminal %d connected %d %d", itf, dtr, rts);
-    }
-    else
-    {
-        RHS_LOG_D(TAG, "Terminal %d disconnected %d %d", itf, dtr, rts);
-    }
+    RHS_LOG_D(TAG, "Terminal %d DTR %d RTS %d", itf, dtr, rts);
 }
 
-void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* p_line_coding) {}
+void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* p_line_coding)
+{
+    RHS_LOG_D(TAG,
+              "Terminal %d line coding changed %d %d %d %d",
+              itf,
+              p_line_coding->bit_rate,
+              p_line_coding->data_bits,
+              p_line_coding->parity,
+              p_line_coding->stop_bits);
+}
 
-void tud_cdc_send_break_cb(uint8_t itf, uint16_t duration_ms) {}
+void tud_cdc_send_break_cb(uint8_t itf, uint16_t duration_ms)
+{
+    RHS_LOG_D(TAG, "Terminal %d send break %d ms", itf, duration_ms);
+}
 
 void    descriptor_switch_mode(uint32_t new_mode);
 int32_t usb_dual_cdc(void* context)

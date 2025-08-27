@@ -1,3 +1,11 @@
+/*
+ * External Flash HAL Implementation
+ * 
+ * This file implements flash operations that are safe to call from both
+ * task context and interrupt context. When called from ISR context,
+ * non-blocking mutex operations are used to avoid deadlocks.
+ */
+
 #include "rhs_hal_flash_ex.h"
 #include "rhs.h"
 #include "mt25ql128aba.h"
@@ -149,62 +157,81 @@ int rhs_hal_flash_ex_init(void)
 
 int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
 {
-    int error = 0;
+    int error = RHS_FLASH_EX_OK;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    if (rhs_mutex_acquire(flash_mutex, portMAX_DELAY) != RHSStatusOk)
+    // Use non-blocking timeout when called from ISR context
+    uint32_t timeout = RHS_IS_ISR() ? 0 : portMAX_DELAY;
+    RHSStatus mutex_status = rhs_mutex_acquire(flash_mutex, timeout);
+    
+    if (mutex_status == RHSStatusErrorResource && RHS_IS_ISR())
     {
-        return -1;
+        // Mutex is busy and we're in ISR - return busy status
+        return RHS_FLASH_EX_BUSY;
+    }
+    else if (mutex_status != RHSStatusOk)
+    {
+        return RHS_FLASH_EX_ERROR;
     }
 
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     }
     if (mt25ql128aba_read(&hqspi, MT25QL128ABA_QPI_MODE, p_data, addr, size) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     }
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     }
 
+    // Only release mutex if we successfully acquired it
     rhs_mutex_release(flash_mutex);
     return error;
 }
 
 int rhs_hal_flash_ex_erase_chip(void)
 {
-    int error = 0;
+    int error = RHS_FLASH_EX_OK;
 
-    if (rhs_mutex_acquire(flash_mutex, portMAX_DELAY) != RHSStatusOk)
+    // Use non-blocking timeout when called from ISR context
+    uint32_t timeout = RHS_IS_ISR() ? 0 : portMAX_DELAY;
+    RHSStatus mutex_status = rhs_mutex_acquire(flash_mutex, timeout);
+    
+    if (mutex_status == RHSStatusErrorResource && RHS_IS_ISR())
     {
-        return -1;
+        // Mutex is busy and we're in ISR - return busy status
+        return RHS_FLASH_EX_BUSY;
+    }
+    else if (mutex_status != RHSStatusOk)
+    {
+        return RHS_FLASH_EX_ERROR;
     }
 
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     } /* Enable write operations */
     else if (mt25ql128aba_write_enable(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     }
     else
     {
         /* Issue Chip erase command */
         if (mt25ql128aba_chip_erase(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
         {
-            error = -1;
+            error = RHS_FLASH_EX_ERROR;
         }
     }
 
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, MT25QL128ABA_BULK_ERASE_MAX_TIME) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     }
 
     rhs_mutex_release(flash_mutex);
@@ -216,12 +243,21 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
 {
     uint32_t end_addr, current_size, current_addr;
     uint8_t* write_data;
-    int      error = 0;
+    int      error = RHS_FLASH_EX_OK;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    if (rhs_mutex_acquire(flash_mutex, portMAX_DELAY) != RHSStatusOk)
+    // Use non-blocking timeout when called from ISR context
+    uint32_t timeout = RHS_IS_ISR() ? 0 : portMAX_DELAY;
+    RHSStatus mutex_status = rhs_mutex_acquire(flash_mutex, timeout);
+    
+    if (mutex_status == RHSStatusErrorResource && RHS_IS_ISR())
     {
-        return -1;
+        // Mutex is busy and we're in ISR - return busy status
+        return RHS_FLASH_EX_BUSY;
+    }
+    else if (mutex_status != RHSStatusOk)
+    {
+        return RHS_FLASH_EX_ERROR;
     }
 
     /* Calculation of the size between the write address and the end of the page */
@@ -242,22 +278,22 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
     {
         if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
         {
-            error = -1;
+            error = RHS_FLASH_EX_ERROR;
             break;
         }
         if (mt25ql128aba_write_enable(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
         {
-            error = -1;
+            error = RHS_FLASH_EX_ERROR;
             break;
         }
         if (mt25ql128aba_page_program(&hqspi, MT25QL128ABA_QPI_MODE, write_data, current_addr, current_size) != 0)
         {
-            error = -1;
+            error = RHS_FLASH_EX_ERROR;
             break;
         }
         if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
         {
-            error = -1;
+            error = RHS_FLASH_EX_ERROR;
             break;
         }
 
@@ -274,19 +310,28 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
 
 int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
 {
-    int      error = 0;
+    int      error = RHS_FLASH_EX_OK;
     uint32_t current_size, current_addr;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    if (rhs_mutex_acquire(flash_mutex, portMAX_DELAY) != RHSStatusOk)
+    // Use non-blocking timeout when called from ISR context
+    uint32_t timeout = RHS_IS_ISR() ? 0 : portMAX_DELAY;
+    RHSStatus mutex_status = rhs_mutex_acquire(flash_mutex, timeout);
+    
+    if (mutex_status == RHSStatusErrorResource && RHS_IS_ISR())
     {
-        return -1;
+        // Mutex is busy and we're in ISR - return busy status
+        return RHS_FLASH_EX_BUSY;
+    }
+    else if (mutex_status != RHSStatusOk)
+    {
+        return RHS_FLASH_EX_ERROR;
     }
 
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     }
     else
     {
@@ -296,19 +341,19 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
         {
             if (mt25ql128aba_write_enable(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
             {
-                error = -1;
+                error = RHS_FLASH_EX_ERROR;
                 break;
             }
             if (mt25ql128aba_block_erase(&hqspi, MT25QL128ABA_QPI_MODE, current_addr, MT25QL128ABA_ERASE_4K))
             {
-                error = -1;
+                error = RHS_FLASH_EX_ERROR;
                 break;
             }
             if (mt25ql128aba_auto_polling_mem_ready(&hqspi,
                                                     MT25QL128ABA_QPI_MODE,
                                                     MT25QL128ABA_SUBSECTOR_4K_ERASE_MAX_TIME) != 0)
             {
-                error = -1;
+                error = RHS_FLASH_EX_ERROR;
                 break;
             }
             current_addr += MT25QL128ABA_SUBSECTOR_4K;

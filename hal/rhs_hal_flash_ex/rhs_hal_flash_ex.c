@@ -1,6 +1,6 @@
 /*
  * External Flash HAL Implementation
- * 
+ *
  * This file implements flash operations that are safe to call from both
  * task context and interrupt context. When called from ISR context,
  * non-blocking mutex operations are used to avoid deadlocks.
@@ -160,16 +160,12 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
     int error = RHS_FLASH_EX_OK;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    // Use non-blocking timeout when called from ISR context
-    uint32_t timeout = RHS_IS_ISR() ? 0 : portMAX_DELAY;
-    RHSStatus mutex_status = rhs_mutex_acquire(flash_mutex, timeout);
-    
-    if (mutex_status == RHSStatusErrorResource && RHS_IS_ISR())
+    if (RHS_IS_IRQ_MODE())
     {
-        // Mutex is busy and we're in ISR - return busy status
-        return RHS_FLASH_EX_BUSY;
+        if (rhs_mutex_get_owner(flash_mutex) != NULL)
+            return RHS_FLASH_EX_BUSY;
     }
-    else if (mutex_status != RHSStatusOk)
+    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
     {
         return RHS_FLASH_EX_ERROR;
     }
@@ -188,8 +184,11 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
         error = RHS_FLASH_EX_ERROR;
     }
 
-    // Only release mutex if we successfully acquired it
-    rhs_mutex_release(flash_mutex);
+    // Only release mutex if we successfully acquired it (not in IRQ mode)
+    if (!RHS_IS_IRQ_MODE())
+    {
+        rhs_mutex_release(flash_mutex);
+    }
     return error;
 }
 
@@ -197,16 +196,12 @@ int rhs_hal_flash_ex_erase_chip(void)
 {
     int error = RHS_FLASH_EX_OK;
 
-    // Use non-blocking timeout when called from ISR context
-    uint32_t timeout = RHS_IS_ISR() ? 0 : portMAX_DELAY;
-    RHSStatus mutex_status = rhs_mutex_acquire(flash_mutex, timeout);
-    
-    if (mutex_status == RHSStatusErrorResource && RHS_IS_ISR())
+    if (RHS_IS_IRQ_MODE())
     {
-        // Mutex is busy and we're in ISR - return busy status
-        return RHS_FLASH_EX_BUSY;
+        if (rhs_mutex_get_owner(flash_mutex) != NULL)
+            return RHS_FLASH_EX_BUSY;
     }
-    else if (mutex_status != RHSStatusOk)
+    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
     {
         return RHS_FLASH_EX_ERROR;
     }
@@ -234,7 +229,10 @@ int rhs_hal_flash_ex_erase_chip(void)
         error = RHS_FLASH_EX_ERROR;
     }
 
-    rhs_mutex_release(flash_mutex);
+    if (!RHS_IS_IRQ_MODE())
+    {
+        rhs_mutex_release(flash_mutex);
+    }
     /* Return BSP status */
     return error;
 }
@@ -246,16 +244,12 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
     int      error = RHS_FLASH_EX_OK;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    // Use non-blocking timeout when called from ISR context
-    uint32_t timeout = RHS_IS_ISR() ? 0 : portMAX_DELAY;
-    RHSStatus mutex_status = rhs_mutex_acquire(flash_mutex, timeout);
-    
-    if (mutex_status == RHSStatusErrorResource && RHS_IS_ISR())
+    if (RHS_IS_IRQ_MODE())
     {
-        // Mutex is busy and we're in ISR - return busy status
-        return RHS_FLASH_EX_BUSY;
+        if (rhs_mutex_get_owner(flash_mutex) != NULL)
+            return RHS_FLASH_EX_BUSY;
     }
-    else if (mutex_status != RHSStatusOk)
+    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
     {
         return RHS_FLASH_EX_ERROR;
     }
@@ -304,7 +298,10 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
             ((current_addr + MT25QL128ABA_PAGE_SIZE) > end_addr) ? (end_addr - current_addr) : MT25QL128ABA_PAGE_SIZE;
     } while ((current_addr < end_addr));
 
-    rhs_mutex_release(flash_mutex);
+    if (!RHS_IS_IRQ_MODE())
+    {
+        rhs_mutex_release(flash_mutex);
+    }
     return error;
 }
 
@@ -314,16 +311,12 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
     uint32_t current_size, current_addr;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    // Use non-blocking timeout when called from ISR context
-    uint32_t timeout = RHS_IS_ISR() ? 0 : portMAX_DELAY;
-    RHSStatus mutex_status = rhs_mutex_acquire(flash_mutex, timeout);
-    
-    if (mutex_status == RHSStatusErrorResource && RHS_IS_ISR())
+    if (RHS_IS_IRQ_MODE())
     {
-        // Mutex is busy and we're in ISR - return busy status
-        return RHS_FLASH_EX_BUSY;
+        if (rhs_mutex_get_owner(flash_mutex) != NULL)
+            return RHS_FLASH_EX_BUSY;
     }
-    else if (mutex_status != RHSStatusOk)
+    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
     {
         return RHS_FLASH_EX_ERROR;
     }
@@ -357,11 +350,13 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
                 break;
             }
             current_addr += MT25QL128ABA_SUBSECTOR_4K;
-            current_size =
-                (current_size > MT25QL128ABA_SUBSECTOR_4K) ? current_size - MT25QL128ABA_SUBSECTOR_4K : 0;
+            current_size = (current_size > MT25QL128ABA_SUBSECTOR_4K) ? current_size - MT25QL128ABA_SUBSECTOR_4K : 0;
         } while (current_size);
     }
-    rhs_mutex_release(flash_mutex);
+    if (!RHS_IS_IRQ_MODE())
+    {
+        rhs_mutex_release(flash_mutex);
+    }
     /* Return BSP status */
     return error;
 }

@@ -76,9 +76,31 @@ void flash_ex_test(char* args, void* context)
     runit_counter_assert_passes   = 0;
     runit_counter_assert_failures = 0;
 
-    runit_assert(erase_all() == 0);
-    runit_assert(check_erased_data() == 0);
-    runit_assert(random_test() == 0);
+    // Show help if user enters '?' or 'help'
+    if (args != NULL && (strcmp(args, "?") == 0 || strcmp(args, "help") == 0))
+    {
+        printf("Flash External Commands:\n");
+        printf("Usage:\n");
+        printf("  flash_ex_test              - Run the flash external tests\n");
+        printf("  flash_ex_test -full        - Run the full flash external erase tests\n");
+        printf("  flash_ex_test ?            - Show this help\n");
+        printf("Examples:\n");
+        printf("  flash_ex_test\n");
+        return;
+    }
+
+    if (args == NULL)
+    {
+        runit_assert(erase_all() == 0);
+        runit_assert(check_erased_data() == 0);
+        runit_assert(random_test() == 0);
+    }
+    else if (strstr(args, "-full") == args)
+    {
+        uint32_t time = rhs_get_tick();
+        rhs_hal_flash_ex_erase_chip();
+        RHS_LOG_D(TAG, "Full chip erase took %u", rhs_get_tick() - time);
+    }
 
     runit_report();
 }

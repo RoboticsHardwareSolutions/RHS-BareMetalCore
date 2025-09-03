@@ -9,12 +9,3 @@
      UUID[4] ^ UUID[5],                         \
      UUID[6] ^ UUID[7] ^ UUID[8],               \
      UUID[9] ^ UUID[10] ^ UUID[11]}
-
-
-typedef struct {
-    uint8_t type;
-} RndisMessage;
-
-struct Rndis {
-    RHSMessageQueue* queue;
-};

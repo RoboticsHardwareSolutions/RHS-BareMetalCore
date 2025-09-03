@@ -4,6 +4,7 @@
 #include "rndis_i.h"
 #include "mongoose.h"
 #include "tusb.h"
+#include "usb_descriptors_cdc_net.h"
 
 extern int32_t usb_dual_cdc(void* context);
 
@@ -140,6 +141,8 @@ static void fn(struct mg_connection* c, int ev, void* ev_data)
     }
 }
 
+extern void descriptor_switch_mode(tusb_desc_device_t* new_desc, uint8_t const** new_config, char const** new_string_desc_arr);
+
 int32_t rndis_service(void* context)
 {
     struct mg_mgr mgr;        // Initialise
@@ -147,6 +150,9 @@ int32_t rndis_service(void* context)
     mg_log_set(MG_LL_DEBUG);  // Set log level
 
     const uint8_t* uid = rhs_hal_version_uid();
+    
+    descriptor_switch_mode((tusb_desc_device_t*) &desc_cdc_net, (uint8_t const**) configuration_arr,
+                           (char const**) string_desc_cdc_net_arr);
 
     MG_INFO(("Init TCP/IP stack ..."));
     struct mg_tcpip_driver driver = {.tx = usb_tx, .poll = usb_poll};

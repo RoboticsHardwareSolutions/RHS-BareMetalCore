@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 project(rndis C)
 set(CMAKE_C_STANDARD 11)
 
-add_library(${PROJECT_NAME} STATIC rndis.c)
+add_library(${PROJECT_NAME} STATIC rndis.c usb_descriptors_cdc_net.c)
 
 target_include_directories(
         ${PROJECT_NAME} PUBLIC

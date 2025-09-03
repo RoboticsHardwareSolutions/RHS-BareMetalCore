@@ -4,6 +4,7 @@
 #include "cli.h"
 #include "tusb.h"
 #include <ctype.h>
+#include "usb_descriptors_cdc.h"
 
 #define TAG "UsbCDC"
 
@@ -64,11 +65,12 @@ void tud_cdc_send_break_cb(uint8_t itf, uint16_t duration_ms)
     RHS_LOG_D(TAG, "Terminal %d send break %d ms", itf, duration_ms);
 }
 
-void    descriptor_switch_mode(uint32_t new_mode);
+extern void descriptor_switch_mode(tusb_desc_device_t* new_desc, uint8_t const** new_config, char const** new_string_desc_arr);
 int32_t usb_dual_cdc(void* context)
 {
     /* Switch descriptor USB */
-    descriptor_switch_mode(1);
+    descriptor_switch_mode((tusb_desc_device_t*) &desc_device_cdc, (uint8_t const*[]) {dual_cdc_configuration},
+                           (char const**) string_desc_dual_cdc_arr);
     /* Reinit hardware USB (PINs and RESET USB) */
     rhs_hal_usb_reinit();
     /* Init TinyUSB */

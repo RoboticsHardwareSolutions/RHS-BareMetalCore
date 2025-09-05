@@ -24,17 +24,6 @@ void descriptor_switch_mode(tusb_desc_device_t* new_desc, uint8_t const** new_co
         string_desc_arr = NULL;  // or set to a default string descriptor array if available
 }
 
-// String Descriptor Index
-enum
-{
-    STRID_LANGID = 0,
-    STRID_MANUFACTURER,
-    STRID_PRODUCT,
-    STRID_SERIAL,
-    STRID_INTERFACE,
-    STRID_MAC
-};
-
 // Invoked when received GET DEVICE DESCRIPTOR
 // Application return pointer to descriptor
 uint8_t const* tud_descriptor_device_cb(void)

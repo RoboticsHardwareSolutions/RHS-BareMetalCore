@@ -11,17 +11,6 @@
     (0x4000 | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 1) | _PID_MAP(HID, 2) | _PID_MAP(MIDI, 3) | _PID_MAP(VENDOR, 4) | \
      _PID_MAP(ECM_RNDIS, 5) | _PID_MAP(NCM, 5))
 
-// String Descriptor Index
-enum
-{
-    STRID_LANGID = 0,
-    STRID_MANUFACTURER,
-    STRID_PRODUCT,
-    STRID_SERIAL,
-    STRID_INTERFACE,
-    STRID_MAC
-};
-
 // Network configuration enums
 enum
 {

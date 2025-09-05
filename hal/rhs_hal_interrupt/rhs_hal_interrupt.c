@@ -313,6 +313,17 @@ void USB_HP_CAN1_TX_IRQHandler(void)
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
 #    if defined(LIBUSB_STM32)
     usbd_poll(&udev);
+#    elif defined(TINYUSB)
+    tud_int_handler(0);
+#    endif
+}
+
+void USBWakeUp_IRQHandler(void)
+{
+#    if defined(LIBUSB_STM32)
+
+#    elif defined(TINYUSB)
+    tud_int_handler(0);
 #    endif
 }
 

@@ -29,6 +29,7 @@ void rhs_hal_usb_init(void)
 
     NVIC_SetPriority(USB_LP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
     NVIC_SetPriority(USB_HP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+    NVIC_SetPriority(OTG_FS_WKUP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
 
 #elif defined(STM32F4)
     GPIO_InitTypeDef GPIO_InitStruct = {0};

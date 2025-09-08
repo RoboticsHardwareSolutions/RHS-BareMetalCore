@@ -30,6 +30,8 @@ void rhs_hal_usb_reinit(void);
 
 void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface);
 
+RHSHalUsbInterface* rhs_hal_usb_get_interface(void);
+
 #ifdef __cplusplus
 }
 #endif

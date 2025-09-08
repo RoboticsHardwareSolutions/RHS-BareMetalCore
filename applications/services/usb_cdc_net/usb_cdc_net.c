@@ -1,6 +1,6 @@
 #include "rhs.h"
 #include "rhs_hal.h"
-#include "rndis.h"
+#include "usb_cdc_net.h"
 #include "mongoose.h"
 #include "tusb.h"
 
@@ -164,7 +164,7 @@ static RHSHalUsbInterface usb_cdc_net_desc = {
     .string_desc_arr   = (char const* const*) string_desc_cdc_net_arr,
 };
 
-#define TAG "rndis"
+#define TAG "cdc_net"
 static struct mg_tcpip_if* s_ifp;
 uint8_t                    tud_network_mac_address[6] = {2, 2, 0x84, 0x6A, 0x96, 0};
 
@@ -221,129 +221,128 @@ static void fn(struct mg_connection* c, int ev, void* ev_data)
         {
             const char* html =
                 "<!DOCTYPE html>"
-                "<html lang='ru'>"
+                "<html lang='en'>"
                 "<head>"
-                "    <title>Добро пожаловать в RHS PLC</title>"
+                "    <title>RHS PLC</title>"
                 "    <meta charset='UTF-8'>"
                 "    <meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                 "    <style>"
-                "        * { margin: 0; padding: 0; box-sizing: border-box; }"
                 "        body { "
-                "            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; "
-                "            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); "
-                "            min-height: 100vh; "
-                "            display: flex; "
-                "            justify-content: center; "
-                "            align-items: center; "
+                "            font-family: Arial, sans-serif; "
+                "            background: #f5f5f5; "
+                "            margin: 0; "
+                "            padding: 20px; "
                 "        }"
-                "        .welcome-container { "
-                "            background: rgba(255, 255, 255, 0.95); "
-                "            padding: 50px; "
-                "            border-radius: 20px; "
-                "            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); "
+                "        .container { "
+                "            max-width: 400px; "
+                "            margin: 50px auto; "
+                "            background: white; "
+                "            padding: 30px; "
+                "            border-radius: 8px; "
+                "            box-shadow: 0 2px 10px rgba(0,0,0,0.1); "
                 "            text-align: center; "
-                "            max-width: 500px; "
-                "            width: 90%; "
-                "            backdrop-filter: blur(10px); "
-                "        }"
-                "        .logo { "
-                "            width: 80px; "
-                "            height: 80px; "
-                "            background: linear-gradient(45deg, #667eea, #764ba2); "
-                "            border-radius: 50%; "
-                "            margin: 0 auto 30px; "
-                "            display: flex; "
-                "            align-items: center; "
-                "            justify-content: center; "
-                "            color: white; "
-                "            font-size: 30px; "
-                "            font-weight: bold; "
                 "        }"
                 "        h1 { "
                 "            color: #333; "
-                "            font-size: 2.5em; "
-                "            margin-bottom: 20px; "
-                "            font-weight: 300; "
+                "            margin: 0 0 10px 0; "
+                "            font-size: 24px; "
                 "        }"
                 "        .subtitle { "
                 "            color: #666; "
-                "            font-size: 1.2em; "
                 "            margin-bottom: 30px; "
-                "            line-height: 1.6; "
+                "            font-size: 14px; "
                 "        }"
-                "        .info-grid { "
-                "            display: grid; "
-                "            grid-template-columns: 1fr 1fr; "
-                "            gap: 20px; "
-                "            margin: 30px 0; "
+                "        .info { "
+                "            text-align: left; "
+                "            margin: 20px 0; "
                 "        }"
                 "        .info-item { "
-                "            background: #f8f9ff; "
-                "            padding: 20px; "
-                "            border-radius: 10px; "
-                "            border-left: 4px solid #667eea; "
+                "            margin: 10px 0; "
+                "            padding: 8px 0; "
+                "            border-bottom: 1px solid #eee; "
                 "        }"
                 "        .info-label { "
-                "            color: #667eea; "
-                "            font-weight: bold; "
-                "            font-size: 0.9em; "
-                "            text-transform: uppercase; "
-                "            letter-spacing: 1px; "
+                "            color: #888; "
+                "            font-size: 12px; "
                 "        }"
                 "        .info-value { "
                 "            color: #333; "
-                "            font-size: 1.1em; "
-                "            margin-top: 5px; "
+                "            font-weight: bold; "
                 "        }"
-                "        .footer { "
-                "            margin-top: 30px; "
-                "            color: #999; "
-                "            font-size: 0.9em; "
+                "        .exit-button { "
+                "            background: #dc3545; "
+                "            color: white; "
+                "            border: none; "
+                "            padding: 10px 20px; "
+                "            border-radius: 4px; "
+                "            cursor: pointer; "
+                "            margin-top: 20px; "
+                "            text-decoration: none; "
+                "            display: inline-block; "
                 "        }"
-                "        @keyframes fadeIn { "
-                "            from { opacity: 0; transform: translateY(20px); } "
-                "            to { opacity: 1; transform: translateY(0); } "
-                "        }"
-                "        .welcome-container { "
-                "            animation: fadeIn 0.8s ease-out; "
-                "        }"
-                "        @media (max-width: 600px) { "
-                "            .info-grid { grid-template-columns: 1fr; } "
-                "            h1 { font-size: 2em; } "
-                "            .welcome-container { padding: 30px; } "
+                "        .exit-button:hover { "
+                "            background: #c82333; "
                 "        }"
                 "    </style>"
                 "</head>"
                 "<body>"
-                "    <div class='welcome-container'>"
-                "        <div class='logo'>RHS</div>"
-                "        <h1>Добро пожаловать!</h1>"
-                "        <p class='subtitle'>Система управления промышленными контроллерами<br>Robotics Hardware Solutions</p>"
-                "        <div class='info-grid'>"
+                "    <div class='container'>"
+                "        <h1>RHS PLC</h1>"
+                "        <p class='subtitle'>Industrial Controller Management System</p>"
+                "        <div class='info'>"
                 "            <div class='info-item'>"
-                "                <div class='info-label'>Статус</div>"
-                "                <div class='info-value'>Онлайн</div>"
+                "                <div class='info-label'>Status</div>"
+                "                <div class='info-value'>Online</div>"
                 "            </div>"
                 "            <div class='info-item'>"
-                "                <div class='info-label'>IP адрес</div>"
+                "                <div class='info-label'>IP Address</div>"
                 "                <div class='info-value'>192.168.3.1</div>"
                 "            </div>"
                 "            <div class='info-item'>"
-                "                <div class='info-label'>Интерфейс</div>"
+                "                <div class='info-label'>Interface</div>"
                 "                <div class='info-value'>RNDIS/Ethernet</div>"
                 "            </div>"
                 "            <div class='info-item'>"
-                "                <div class='info-label'>Версия</div>"
+                "                <div class='info-label'>Version</div>"
                 "                <div class='info-value'>v1.0.0</div>"
                 "            </div>"
                 "        </div>"
-                "        <div class='footer'>"
-                "            <p>© 2025 Robotics Hardware Solutions. Все права защищены.</p>"
-                "        </div>"
+                "        <a href='/exit' class='exit-button'>Exit</a>"
                 "    </div>"
                 "</body>"
                 "</html>";
             mg_http_reply(c, 200, "Content-Type: text/html\r\n", "%s", html);
+        }
+        else if (mg_match(hm->uri, mg_str("/exit"), NULL))
+        {
+            // Handle exit button click
+            finish = true;
+            const char* response = 
+                "<!DOCTYPE html>"
+                "<html lang='en'>"
+                "<head>"
+                "    <title>Exit</title>"
+                "    <meta charset='UTF-8'>"
+                "    <style>"
+                "        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }"
+                "        .message { color: #667eea; font-size: 1.5em; margin-bottom: 20px; }"
+                "        .info { color: #666; font-size: 14px; text-align: left; max-width: 400px; margin: 0 auto; }"
+                "    </style>"
+                "</head>"
+                "<body>"
+                "    <div class='message'>Application is shutting down...</div>"
+                "    <div class='info'>"
+                "        <h3>What happens next:</h3>"
+                "        <ul>"
+                "            <li>Device will be reconfigured</li>"
+                "            <li>Network interface will be disconnected</li>"
+                "            <li>Control will be available via RTT terminal</li>"
+                "        </ul>"
+                "        <p><strong>Note:</strong> VCP (Virtual COM Port) control is not implemented yet</p>"
+                "    </div>"
+                "</body>"
+                "</html>";
+            mg_http_reply(c, 200, "Content-Type: text/html\r\n", "%s", response);
         }
         else
         {
@@ -352,14 +351,14 @@ static void fn(struct mg_connection* c, int ev, void* ev_data)
     }
 }
 
-int32_t rndis_service(void* context)
+int32_t cdc_net_service(void* context)
 {
     struct mg_mgr mgr;        // Initialise
     mg_mgr_init(&mgr);        // Mongoose event manager
     mg_log_set(MG_LL_DEBUG);  // Set log level
 
     const uint8_t* uid = rhs_hal_version_uid();
-
+    RHSHalUsbInterface* prev_intf = rhs_hal_usb_get_interface();
     rhs_hal_usb_set_interface(&usb_cdc_net_desc);
 
     MG_INFO(("Init TCP/IP stack ..."));
@@ -387,4 +386,6 @@ int32_t rndis_service(void* context)
     MG_INFO(("Finish ..."));
     mg_mgr_free(&mgr);
     tusb_deinit(0);
+    rhs_hal_usb_set_interface(prev_intf);
+    while(1){rhs_delay_ms(1000);} // FIXME to do application
 }

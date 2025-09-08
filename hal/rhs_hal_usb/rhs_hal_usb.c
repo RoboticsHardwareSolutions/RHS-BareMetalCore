@@ -81,18 +81,25 @@ void rhs_hal_usb_reinit(void)
     RHS_LOG_I(TAG, "Reinit OK");
 }
 
-extern void descriptor_switch_mode(tusb_desc_device_t* new_desc,
-                                   uint8_t const**     new_config,
-                                   char const**        new_string_desc_arr);
+extern void               descriptor_switch_mode(tusb_desc_device_t* new_desc,
+                                                 uint8_t const**     new_config,
+                                                 char const**        new_string_desc_arr);
+static RHSHalUsbInterface s_usb_desc;
 
 void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface)
 {
-    rhs_assert(iface);
-    rhs_assert(iface->device_desc);
-    rhs_assert(iface->configuration_arr);
-    rhs_assert(iface->string_desc_arr);
+    if (iface != NULL)
+    {
+        // TODO init deinit interface
+        // TODO chech if iface different from current
+        descriptor_switch_mode((tusb_desc_device_t*) iface->device_desc,
+                               (uint8_t const**) iface->configuration_arr,
+                               (char const**) iface->string_desc_arr);
+    }
+    s_usb_desc = *iface;
+}
 
-    descriptor_switch_mode((tusb_desc_device_t*) iface->device_desc,
-                           (uint8_t const**) iface->configuration_arr,
-                           (char const**) iface->string_desc_arr);
+RHSHalUsbInterface* rhs_hal_usb_get_interface(void)
+{
+    return &s_usb_desc;
 }

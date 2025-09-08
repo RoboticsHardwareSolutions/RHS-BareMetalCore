@@ -45,13 +45,14 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 {
     (void) langid;
     static uint16_t _desc_str[32];
-    unsigned int chr_count = 0;
+    unsigned int    chr_count = 0;
 
     if (STRID_LANGID == index)
     {
         memcpy(&_desc_str[1], string_desc_arr[STRID_LANGID], 2);
         chr_count = 1;
     }
+#if CFG_TUD_ECM_RNDIS || CFG_TUD_NCM
     else if (STRID_MAC == index)
     {
         // Convert MAC address into UTF-16
@@ -62,6 +63,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
             _desc_str[1 + chr_count++] = "0123456789ABCDEF"[(tud_network_mac_address[i] >> 0) & 0xf];
         }
     }
+#endif
     else
     {
         // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.

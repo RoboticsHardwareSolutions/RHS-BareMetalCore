@@ -14,7 +14,6 @@ target_link_libraries(
         PRIVATE
         rhs
         rhs_hal
-        usb_dual_cdc
 )
 
 start_up(cli_vcp_start_up)

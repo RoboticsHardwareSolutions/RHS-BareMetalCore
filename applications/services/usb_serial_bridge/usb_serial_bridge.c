@@ -1,6 +1,5 @@
 #include "rhs.h"
 #include "rhs_hal.h"
-#include "usb_dual_cdc.h"
 #include "usb_serial_bridge.h"
 #include "cli.h"
 #include "tusb.h"

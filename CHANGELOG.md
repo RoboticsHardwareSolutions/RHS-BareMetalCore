@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.0.3] - 2025-09-09
+
+### Added
+- Records test suite with comprehensive test coverage
+- RHS_TEST_RECORDS configuration option for device templates
+- New records_test module for testing record creation, existence checking, and cleanup
+
 ## [0.0.2] - 2025-09-08
 
 ### Added

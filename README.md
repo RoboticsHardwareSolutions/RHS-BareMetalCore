@@ -137,15 +137,6 @@ add_subdirectory(thirdparty)
 add_subdirectory(rlibs)
 ```
 
-
-# TODO
-
-- [ ] Add generation for applications
-- [services](applications/services/README.md)
-- [tests](applications/tests/README.md)
-- [core](core/README.md)
-- [hal](hal/README.md)
-
 # RHS Core Library
 
 ## Custom Logging

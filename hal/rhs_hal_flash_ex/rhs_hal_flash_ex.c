@@ -1,9 +1,18 @@
+/*
+ * External Flash HAL Implementation
+ *
+ * This file implements flash operations that are safe to call from both
+ * task context and interrupt context. When called from ISR context,
+ * non-blocking mutex operations are used to avoid deadlocks.
+ */
+
 #include "rhs_hal_flash_ex.h"
 #include "rhs.h"
 #include "mt25ql128aba.h"
 
 #if defined(BMPLC_XL) || defined(BMPLC_L)
 QSPI_HandleTypeDef hqspi;
+static RHSMutex*   flash_mutex = NULL;
 
 static void quadspi_init(void)
 {
@@ -135,6 +144,12 @@ void HAL_QSPI_MspDeInit(QSPI_HandleTypeDef* qspiHandle)
 
 int rhs_hal_flash_ex_init(void)
 {
+    flash_mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
+    if (flash_mutex == NULL)
+    {
+        return -1;
+    }
+
     quadspi_init();
     mt25ql128aba_init(&hqspi);
     return 0;
@@ -142,48 +157,81 @@ int rhs_hal_flash_ex_init(void)
 
 int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
 {
-    int error = 0;
+    int error = RHS_FLASH_EX_OK;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
+
+    if (RHS_IS_IRQ_MODE())
+    {
+        if (rhs_mutex_get_owner(flash_mutex) != NULL)
+            return RHS_FLASH_EX_BUSY;
+    }
+    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+    {
+        return RHS_FLASH_EX_ERROR;
+    }
+
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     }
     if (mt25ql128aba_read(&hqspi, MT25QL128ABA_QPI_MODE, p_data, addr, size) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     }
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
+    }
+
+    // Only release mutex if we successfully acquired it (not in IRQ mode)
+    if (!RHS_IS_IRQ_MODE())
+    {
+        rhs_mutex_release(flash_mutex);
     }
     return error;
 }
 
 int rhs_hal_flash_ex_erase_chip(void)
 {
-    int error = 0;
+    int error = RHS_FLASH_EX_OK;
+
+    if (RHS_IS_IRQ_MODE())
+    {
+        if (rhs_mutex_get_owner(flash_mutex) != NULL)
+            return RHS_FLASH_EX_BUSY;
+    }
+    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+    {
+        return RHS_FLASH_EX_ERROR;
+    }
+
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     } /* Enable write operations */
     else if (mt25ql128aba_write_enable(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     }
     else
     {
         /* Issue Chip erase command */
         if (mt25ql128aba_chip_erase(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
         {
-            error = -1;
+            error = RHS_FLASH_EX_ERROR;
         }
     }
 
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, MT25QL128ABA_BULK_ERASE_MAX_TIME) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
+    }
+
+    if (!RHS_IS_IRQ_MODE())
+    {
+        rhs_mutex_release(flash_mutex);
     }
     /* Return BSP status */
     return error;
@@ -193,8 +241,18 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
 {
     uint32_t end_addr, current_size, current_addr;
     uint8_t* write_data;
-    int      error = 0;
+    int      error = RHS_FLASH_EX_OK;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
+
+    if (RHS_IS_IRQ_MODE())
+    {
+        if (rhs_mutex_get_owner(flash_mutex) != NULL)
+            return RHS_FLASH_EX_BUSY;
+    }
+    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+    {
+        return RHS_FLASH_EX_ERROR;
+    }
 
     /* Calculation of the size between the write address and the end of the page */
     current_size = MT25QL128ABA_PAGE_SIZE - (addr % MT25QL128ABA_PAGE_SIZE);
@@ -214,22 +272,22 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
     {
         if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
         {
-            error = -1;
+            error = RHS_FLASH_EX_ERROR;
             break;
         }
         if (mt25ql128aba_write_enable(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
         {
-            error = -1;
+            error = RHS_FLASH_EX_ERROR;
             break;
         }
         if (mt25ql128aba_page_program(&hqspi, MT25QL128ABA_QPI_MODE, write_data, current_addr, current_size) != 0)
         {
-            error = -1;
+            error = RHS_FLASH_EX_ERROR;
             break;
         }
         if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
         {
-            error = -1;
+            error = RHS_FLASH_EX_ERROR;
             break;
         }
 
@@ -239,18 +297,34 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
         current_size =
             ((current_addr + MT25QL128ABA_PAGE_SIZE) > end_addr) ? (end_addr - current_addr) : MT25QL128ABA_PAGE_SIZE;
     } while ((current_addr < end_addr));
+
+    if (!RHS_IS_IRQ_MODE())
+    {
+        rhs_mutex_release(flash_mutex);
+    }
     return error;
 }
 
 int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
 {
-    int      error = 0;
+    int      error = RHS_FLASH_EX_OK;
     uint32_t current_size, current_addr;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
+
+    if (RHS_IS_IRQ_MODE())
+    {
+        if (rhs_mutex_get_owner(flash_mutex) != NULL)
+            return RHS_FLASH_EX_BUSY;
+    }
+    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+    {
+        return RHS_FLASH_EX_ERROR;
+    }
+
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
     {
-        error = -1;
+        error = RHS_FLASH_EX_ERROR;
     }
     else
     {
@@ -260,26 +334,29 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
         {
             if (mt25ql128aba_write_enable(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
             {
-                error = -1;
+                error = RHS_FLASH_EX_ERROR;
                 break;
             }
             if (mt25ql128aba_block_erase(&hqspi, MT25QL128ABA_QPI_MODE, current_addr, MT25QL128ABA_ERASE_4K))
             {
-                error = -1;
+                error = RHS_FLASH_EX_ERROR;
                 break;
             }
             if (mt25ql128aba_auto_polling_mem_ready(&hqspi,
                                                     MT25QL128ABA_QPI_MODE,
                                                     MT25QL128ABA_SUBSECTOR_4K_ERASE_MAX_TIME) != 0)
             {
-                error = -1;
+                error = RHS_FLASH_EX_ERROR;
                 break;
             }
             current_addr += MT25QL128ABA_SUBSECTOR_4K;
             current_size = (current_size > MT25QL128ABA_SUBSECTOR_4K) ? current_size - MT25QL128ABA_SUBSECTOR_4K : 0;
         } while (current_size);
     }
-
+    if (!RHS_IS_IRQ_MODE())
+    {
+        rhs_mutex_release(flash_mutex);
+    }
     /* Return BSP status */
     return error;
 }

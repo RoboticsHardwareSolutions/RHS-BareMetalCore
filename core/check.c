@@ -7,6 +7,9 @@
 #include "kernel.h"
 #include "log.h"
 #include "rhs_hal_power.h"
+#if defined(TIMESTAMPER_RTC)
+#    include "rhs_hal_rtc.h"
+#endif
 
 #ifdef STM32F765xx
 #    include "stm32f7xx.h"
@@ -35,14 +38,28 @@ typedef struct __attribute__((packed))
                    "MRSNE %[ptr], PSP \n" \
                    : [ptr] "=r"(_x))
 
-__attribute__((weak)) void rhs_log_save(char* str, ...) {}
+static void rhs_save_stack_info(void)
+{
+    stack_ptr_t* stack_ptr;
+    STORE_STACK_PTR(stack_ptr);
+
+    if (rhs_log_save)
+    {
+        rhs_log_save("r0=%08lX r1=%08lX r2=%08lX r3=%08lX r12=%08lX lr=%08lX pc=%08lX psr=%08lX",
+                     (unsigned long) stack_ptr->r0,
+                     (unsigned long) stack_ptr->r1,
+                     (unsigned long) stack_ptr->r2,
+                     (unsigned long) stack_ptr->r3,
+                     (unsigned long) stack_ptr->r12,
+                     (unsigned long) stack_ptr->lr,
+                     (unsigned long) stack_ptr->pc,
+                     (unsigned long) stack_ptr->psr);
+    }
+}
 
 _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
 {
     __disable_irq();
-    stack_ptr_t* stack_ptr;
-    STORE_STACK_PTR(stack_ptr);
-
     bool isr = RHS_IS_IRQ_MODE();
 
     if (!isr)
@@ -60,23 +77,29 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
     }
 #if defined(TIMESTAMPER_RTC)
     {
-        extern void rhs_hal_rtc_get_timestamp(uint64_t* out_seconds, uint32_t* out_mseconds);
-        uint64_t    seconds;
-        rhs_hal_rtc_get_timestamp(&seconds, (uint32_t[]) {0});
-        rhs_log_save("%u: Message: %s. file: %s, line: %d;", (uint32_t) seconds, m, context.file, context.line);
+        datetime_t datetime;
+        rhs_hal_rtc_get_datetime(&datetime);
+        if (rhs_log_save)
+        {
+            rhs_log_save("%04u-%02u-%02u %02u:%02u:%02u: msg: %s. file: %s, line: %d;",
+                         (uint32_t) datetime.year,
+                         (uint32_t) datetime.month,
+                         (uint32_t) datetime.day,
+                         (uint32_t) datetime.hours,
+                         (uint32_t) datetime.minutes,
+                         (uint32_t) datetime.seconds,
+                         m,
+                         context.file,
+                         context.line);
+        }
     }
 #else
-    rhs_log_save("%u: Message: %s. file: %s, line: %d;", rhs_get_tick(), m, context.file, context.line);
+    if (rhs_log_save)
+    {
+        rhs_log_save("%u: msg: %s. file: %s, line: %d;", rhs_get_tick(), m, context.file, context.line);
+    }
 #endif
-    rhs_log_save("Stack: r0=%08lX r1=%08lX r2=%08lX r3=%08lX r12=%08lX lr=%08lX pc=%08lX psr=%08lX",
-                 (unsigned long) stack_ptr->r0,
-                 (unsigned long) stack_ptr->r1,
-                 (unsigned long) stack_ptr->r2,
-                 (unsigned long) stack_ptr->r3,
-                 (unsigned long) stack_ptr->r12,
-                 (unsigned long) stack_ptr->lr,
-                 (unsigned long) stack_ptr->pc,
-                 (unsigned long) stack_ptr->psr);
+    rhs_save_stack_info();
     RHS_LOG_D("Assert", "Message: %s. Called from file: %s, line: %d\n", m, context.file, context.line);
     if (debug)
     {

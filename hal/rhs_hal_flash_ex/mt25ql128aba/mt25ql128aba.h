@@ -4,9 +4,9 @@
 extern QSPI_HandleTypeDef hqspi;
 
 /** MT25QL128ABA Timing configuration **/
-#define MT25QL128ABA_SECTOR_64K (uint32_t) (64 * 256)    /* 256 sectors of 64KBytes     */
-#define MT25QL128ABA_SUBSECTOR_32K (uint32_t) (32 * 256) /* 512 subsectors of 32KBytes  */
-#define MT25QL128ABA_SUBSECTOR_4K (uint32_t) (4 * 256)   /* 1024 subsectors of 4KBytes  */
+#define MT25QL128ABA_SECTOR_64K (uint32_t) (64 * 1024)    /* 256 sectors of 64KBytes     */
+#define MT25QL128ABA_SUBSECTOR_32K (uint32_t) (32 * 1024) /* 512 subsectors of 32KBytes  */
+#define MT25QL128ABA_SUBSECTOR_4K (uint32_t) (4 * 1024)   /* 1024 subsectors of 4KBytes  */
 
 #define MT25QL128ABA_FLASH_SIZE (uint32_t) (128 * 1024 * 1024 / 8) /* 128 Mbits => 16MBytes        */
 #define MT25QL128ABA_PAGE_SIZE (uint32_t) 256                      /* 65536 pages of 256 Bytes    */

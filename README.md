@@ -145,3 +145,42 @@ add_subdirectory(rlibs)
 - [tests](applications/tests/README.md)
 - [core](core/README.md)
 - [hal](hal/README.md)
+
+# RHS Core Library
+
+## Custom Logging
+
+The library provides a weak implementation of `rhs_log_save()` function that allows you to customize logging behavior for critical errors and assertions.
+
+### How to implement custom logging
+
+To define your own logging behavior, simply implement the `rhs_log_save` function in your project:
+
+```c
+#include <stdarg.h>
+#include <stdio.h>
+
+void rhs_log_save(char* str, ...) {
+    va_list args;
+    va_start(args, str);
+    
+    // Example: Print to console
+    vprintf(str, args);
+    
+    // Example: Save to flash memory
+    // flash_write_log(formatted_string);
+    
+    // Example: Send via UART
+    // uart_send_log(formatted_string);
+    
+    va_end(args);
+}
+```
+
+### Usage
+
+The logging function is automatically called by:
+- `rhs_assert()` - when assertion fails
+- `rhs_crash()` - when system crash is triggered
+
+If you don't implement `rhs_log_save()`, no logging will occur (weak function will be empty).

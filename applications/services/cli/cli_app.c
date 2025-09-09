@@ -150,23 +150,23 @@ void cli_command_uptime(char* args, void* context)
 
 void cli_command_free(char* args, void* context)
 {
-    RHS_LOG_I(TAG, "total_heap: %d", memmgr_get_total_heap());
-    RHS_LOG_I(TAG, "minimum_free_heap: %d", memmgr_get_minimum_free_heap());
-    RHS_LOG_I(TAG, "free_heap: %d", memmgr_get_free_heap());
-    RHS_LOG_I(TAG, "isr_ticks: %d", rhs_hal_interrupt_get_time_in_isr_total());
+    printf("total_heap: %d\r\n", memmgr_get_total_heap());
+    printf("minimum_free_heap: %d\r\n", memmgr_get_minimum_free_heap());
+    printf("free_heap: %d\r\n", memmgr_get_free_heap());
+    printf("isr_ticks: %d\r\n", rhs_hal_interrupt_get_time_in_isr_total());
 }
 
 void cli_commands(char* args, void* context)
 {
     Cli* app = (Cli*) context;
-    SEGGER_RTT_printf(0, "Available commands:\r\n");
+    printf("Available commands:\r\n");
     for (int i = 0; i < COUNT_OF(app->commands); i++)
     {
         if (app->commands[i].name == NULL)
         {
             break;
         }
-        SEGGER_RTT_printf(0, "%s\r\n", app->commands[i].name);
+        printf("%s\r\n", app->commands[i].name);
     }
 }
 
@@ -174,12 +174,12 @@ void cli_command_log(char* args, void* context)
 {
     if (args == NULL)
     {
-        RHS_LOG_I(TAG, "log level is %d", rhs_log_get_level());
+        printf("log level is %d\r\n", rhs_log_get_level());
     }
     else if (strlen(args) == 1 && args[0] >= '0' && args[0] <= '6')
     {
         rhs_log_set_level(args[0] - '0');
-        RHS_LOG_I(TAG, "log level is %d", rhs_log_get_level());
+        printf("log level is %d\r\n", rhs_log_get_level());
     }
     else
     {
@@ -187,44 +187,24 @@ void cli_command_log(char* args, void* context)
         /* Start of non paramemters section */
         if (separator == NULL || *(separator + 1) == 0)
         {
-            if (strstr(args, "-l") == args)
-            {
-                uint16_t s = rhs_count_saved_log();
-                for (int i = 0; i < s; i++)
-                {
-                    SEGGER_RTT_printf(0, "%s\r\n", rhs_read_saved_log(i));
-                }
-                return;
-            }
-            if (strstr(args, "-clear") == args)
-            {
-                rhs_erase_saved_log();
-                printf("Log erased\r\n");
-                return;
-            }
-            RHS_LOG_E(TAG, "Invalid argument");
+            printf("Invalid argument\r\n");
             return;
         }
         /* End of non paramemters section */
         else if (strstr(args, "-e") == args)
         {
             rhs_log_exclude_tag(separator + 1);
-            RHS_LOG_I(TAG, "TAG %s was excluded", separator + 1);
+            printf("%s was excluded\r\n", separator + 1);
             return;
         }
         else if (strstr(args, "-ue") == args)
         {
             rhs_log_unexclude_tag(separator + 1);
-            RHS_LOG_I(TAG, "TAG %s was unexcluded", separator + 1);
-            return;
-        }
-        else if (strstr(args, "-s") == args)
-        {
-            rhs_log_save(separator + 1);
+            printf("%s was unexcluded\r\n", separator + 1);
             return;
         }
 
-        RHS_LOG_E(TAG, "Invalid argument");
+        printf("Invalid argument\r\n");
     }
 }
 
@@ -236,20 +216,19 @@ void cli_command_reset(char* args, void* context)
 void cli_command_uid(char* args, void* context)
 {
     const uint8_t* uid = rhs_hal_version_uid();
-    RHS_LOG_I(TAG,
-              "UID %02X%02X-%02X%02X-%02X%02X%02X%02X-%02X%02X%02X%02X",
-              uid[0],
-              uid[1],  // 16 - bit
-              uid[2],
-              uid[3],  // 16 - bit
-              uid[4],
-              uid[5],
-              uid[6],
-              uid[7],  // 32 - bits
-              uid[8],
-              uid[9],
-              uid[10],
-              uid[11]  // 32 - bits
+    printf("UID %02X%02X-%02X%02X-%02X%02X%02X%02X-%02X%02X%02X%02X",
+           uid[0],
+           uid[1],  // 16 - bit
+           uid[2],
+           uid[3],  // 16 - bit
+           uid[4],
+           uid[5],
+           uid[6],
+           uid[7],  // 32 - bits
+           uid[8],
+           uid[9],
+           uid[10],
+           uid[11]  // 32 - bits
     );
 }
 
@@ -261,26 +240,25 @@ void cli_command_top(char* args, void* context)
     rhs_thread_enumerate(thread_list);
     count = rhs_thread_list_size(thread_list);
 
-    RHS_LOG_I(TAG, "Total run count: %u", count);
-    RHS_LOG_I(TAG, "%-32s %-10s %-5s %-6s %-10s", "Task Name", "State", "Prio", "RunTime", "StackMinFree");
+    printf("Total run count: %u\r\n", count);
+    printf("%-32s %-10s %-5s %-6s %-10s\r\n", "Task Name", "State", "Prio", "RunTime", "StackMinFree");
 
     for (size_t i = 0; i < count; i++)
     {
         RHSThreadListItem* item = rhs_thread_list_at(thread_list, i);
-        RHS_LOG_I(TAG,
-                  "%-32s %-10s %-3d %-4s %-5d",
-                  item->name,
-                  item->state,
-                  item->priority,
-                  item->cpu < 1 ? "<1%"
-                                : (
-                                      {
-                                          char buffer[12];
-                                          itoa(item->cpu, buffer, 10);
-                                          strcat(buffer, "%");
-                                          buffer;
-                                      }),
-                  item->stack_min_free);
+        printf("%-32s %-10s %-3d %-4s %-5d\r\n",
+               item->name,
+               item->state,
+               item->priority,
+               item->cpu < 1 ? "<1%"
+                             : (
+                                   {
+                                       char buffer[12];
+                                       itoa(item->cpu, buffer, 10);
+                                       strcat(buffer, "%");
+                                       buffer;
+                                   }),
+               item->stack_min_free);
     }
 
     rhs_thread_list_destroy(thread_list);

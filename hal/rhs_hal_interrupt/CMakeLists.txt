@@ -11,6 +11,16 @@ target_include_directories(
 
 target_link_libraries(${PROJECT_NAME} PUBLIC rhs)
 
+if(TARGET usb_core AND TARGET tinyusb)
+        message(FATAL_ERROR "USB core and TinyUSB are both linked. Please choose one.")
+endif()
+
 if(TARGET usb_core)
         target_link_libraries(${PROJECT_NAME} PUBLIC usb_core)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC LIBUSB_STM32)
+endif()
+
+if(TARGET tinyusb)
+        target_link_libraries(${PROJECT_NAME} PUBLIC tinyusb)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC TINYUSB)
 endif()

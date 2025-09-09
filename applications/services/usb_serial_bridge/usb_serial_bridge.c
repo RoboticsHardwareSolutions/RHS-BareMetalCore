@@ -2,10 +2,11 @@
 #include "rhs_hal.h"
 #include "usb_serial_bridge.h"
 #include "cli.h"
+#include "tusb.h"
 
 #define TAG "UsbSerialBridge"
 
-#define USB_CDC_PKT_LEN CDC_DATA_SZ
+#define USB_CDC_PKT_LEN CFG_TUD_CDC_RX_BUFSIZE
 #define USB_UART_RX_BUF_SIZE (USB_CDC_PKT_LEN * 5)
 
 typedef enum
@@ -55,14 +56,14 @@ static void vcp_on_cdc_tx_complete(void* context);
 static void vcp_on_cdc_rx(void* context);
 static void vcp_state_callback(void* context, uint8_t state);
 static void vcp_on_cdc_control_line(void* context, uint8_t state);
-static void vcp_on_line_config(void* context, struct usb_cdc_line_coding* config);
+// static void vcp_on_line_config(void* context, struct usb_cdc_line_coding* config);
 
 static const CdcCallbacks cdc_cb = {
     vcp_on_cdc_tx_complete,
     vcp_on_cdc_rx,
     vcp_state_callback,
     vcp_on_cdc_control_line,
-    vcp_on_line_config,
+    // vcp_on_line_config,
 };
 
 static void serial_rx_cb(RHSHalSerialRxEvent event, void* context)
@@ -80,8 +81,8 @@ static void serial_rx_cb(RHSHalSerialRxEvent event, void* context)
 
 static void usb_serial_vcp_init(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
 {
-    rhs_hal_usb_unlock();
-    rhs_assert(rhs_hal_usb_set_config(&usb_cdc_dual, NULL) == true);
+    // rhs_hal_usb_unlock();
+    // rhs_assert(rhs_hal_usb_set_config(&usb_cdc_dual, NULL) == true);
     rhs_hal_cdc_set_callbacks(vcp_ch, (CdcCallbacks*) &cdc_cb, usb_serial);
 }
 
@@ -257,8 +258,8 @@ static int32_t usb_serial_worker(void* context)
     rhs_mutex_free(usb_serial->usb_mutex);
     rhs_semaphore_free(usb_serial->tx_sem);
 
-    rhs_hal_usb_unlock();
-    rhs_assert(rhs_hal_usb_set_config(&usb_cdc_single, NULL) == true);
+    // rhs_hal_usb_unlock();
+    // rhs_assert(rhs_hal_usb_set_config(&usb_cdc_single, NULL) == true);
 
     return 0;
 }
@@ -394,7 +395,7 @@ void cli_vcp_start_up(void)
 
     // TODO cli_vcp
     // This is a stub
-    rhs_hal_usb_unlock();
-    rhs_assert(rhs_hal_usb_set_config(&usb_cdc_single, NULL) == true);
+    // rhs_hal_usb_unlock();
+    // rhs_assert(rhs_hal_usb_set_config(&usb_cdc_dual, NULL) == true);
     // rhs_hal_cdc_set_callbacks(0, (CdcCallbacks*) &cdc_cb, cli_vcp);
 }

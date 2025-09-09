@@ -182,6 +182,14 @@ void rhs_hal_interrupt_set_isr_ex(RHSHalInterruptId       index,
         // Post ISR clear
     }
 }
+
+#if defined(LIBUSB_STM32)
+#    include "usbd_core.h"
+extern usbd_device udev;
+#elif defined(TINYUSB)
+#    include "tusb.h"
+#endif
+
 #ifdef STM32F765xx
 /* CAN 1 RX0 */
 void CAN1_RX0_IRQHandler(void)
@@ -244,14 +252,13 @@ void DMA2_Stream6_IRQHandler(void)
 
 #elif defined(STM32F407xx) || defined(STM32F405xx)
 
-#    include "usbd_core.h"
-
-extern usbd_device udev;
-
-
 void OTG_FS_IRQHandler(void)
 {
+#    if defined(LIBUSB_STM32)
     usbd_poll(&udev);
+#    elif defined(TINYUSB)
+#        error "TinyUSB not implemented"
+#    endif
 }
 
 /* CAN 1 RX0 */
@@ -288,23 +295,36 @@ void CAN2_TX_IRQHandler(void)
 
 #elif STM32F103xE
 
-#    include "usbd_core.h"
-
-extern usbd_device udev;
-
 extern void HW_IPCC_Tx_Handler(void);
 extern void HW_IPCC_Rx_Handler(void);
 
 void USB_LP_CAN1_RX0_IRQHandler(void)
 {
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Rx0);
+#    if defined(LIBUSB_STM32)
     usbd_poll(&udev);
+#    elif defined(TINYUSB)
+    tud_int_handler(0);
+#    endif
 }
 
 void USB_HP_CAN1_TX_IRQHandler(void)
 {
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
+#    if defined(LIBUSB_STM32)
     usbd_poll(&udev);
+#    elif defined(TINYUSB)
+    tud_int_handler(0);
+#    endif
+}
+
+void USBWakeUp_IRQHandler(void)
+{
+#    if defined(LIBUSB_STM32)
+
+#    elif defined(TINYUSB)
+    tud_int_handler(0);
+#    endif
 }
 
 /* CAN 1 RX0 */

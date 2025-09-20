@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [0.0.4] - 2025-09-20
+
+### Added
+- New ethernet network service (`eth_net`) with HTTP and TCP listener support
+
+### Removed
+- LWIP network stack dependency 
+
 ## [0.0.3] - 2025-09-09
 
 ### Added

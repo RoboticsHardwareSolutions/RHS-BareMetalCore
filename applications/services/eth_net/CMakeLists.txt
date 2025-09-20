@@ -21,7 +21,6 @@ target_link_libraries(
         PRIVATE
         rhs
         rhs_hal
-        rpc
 )
 
 service(eth_net_service "eth_net" 16384)

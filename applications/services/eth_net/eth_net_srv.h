@@ -5,8 +5,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "mongoose.h"
-#include "rpc.h"
-#include "hal.h"
 
 typedef struct
 {

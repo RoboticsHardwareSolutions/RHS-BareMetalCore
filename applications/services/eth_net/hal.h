@@ -1,6 +1,12 @@
 #pragma once
 
+#if defined(STM32F407xx)
 #include <stm32f407xx.h>
+#elif defined(STM32F765xx)
+#include <stm32f765xx.h>
+#else
+#error "Device not specified"
+#endif
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -13,10 +19,10 @@
 #define PINNO(pin) (pin & 255)
 #define PINBANK(pin) (pin >> 8)
 
-enum { GPIO_MODE_INPUT, GPIO_MODE_OUTPUT, GPIO_MODE_AF, GPIO_MODE_ANALOG };
-enum { GPIO_OTYPE_PUSH_PULL, GPIO_OTYPE_OPEN_DRAIN };
-enum { GPIO_SPEED_LOW, GPIO_SPEED_MEDIUM, GPIO_SPEED_HIGH, GPIO_SPEED_INSANE };
-enum { GPIO_PULL_NONE, GPIO_PULL_UP, GPIO_PULL_DOWN };
+enum { MG_GPIO_MODE_INPUT, MG_GPIO_MODE_OUTPUT, MG_GPIO_MODE_AF, MG_GPIO_MODE_ANALOG };
+enum { MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_OTYPE_OPEN_DRAIN };
+enum { MG_GPIO_SPEED_LOW, MG_GPIO_SPEED_MEDIUM, MG_GPIO_SPEED_HIGH, MG_GPIO_SPEED_INSANE };
+enum { MG_GPIO_PULL_NONE, MG_GPIO_PULL_UP, MG_GPIO_PULL_DOWN };
 #define GPIO(N) ((GPIO_TypeDef *) (0x40020000 + 0x400 * (N)))
 
 static GPIO_TypeDef *gpio_bank(uint16_t pin) { return GPIO(PINBANK(pin)); }
@@ -45,12 +51,12 @@ static inline void gpio_init(uint16_t pin, uint8_t mode, uint8_t type,
   SETBITS(gpio->MODER, 3UL << (n * 2), ((uint32_t) mode) << (n * 2));
 }
 static inline void gpio_input(uint16_t pin) {
-  gpio_init(pin, GPIO_MODE_INPUT, GPIO_OTYPE_PUSH_PULL, GPIO_SPEED_HIGH,
-            GPIO_PULL_NONE, 0);
+  gpio_init(pin, MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH,
+            MG_GPIO_PULL_NONE, 0);
 }
 static inline void gpio_output(uint16_t pin) {
-  gpio_init(pin, GPIO_MODE_OUTPUT, GPIO_OTYPE_PUSH_PULL, GPIO_SPEED_HIGH,
-            GPIO_PULL_NONE, 0);
+  gpio_init(pin, MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH,
+            MG_GPIO_PULL_NONE, 0);
 }
 
 #define UUID ((uint8_t *) UID_BASE)  // Unique 96-bit chip ID. TRM 39.1

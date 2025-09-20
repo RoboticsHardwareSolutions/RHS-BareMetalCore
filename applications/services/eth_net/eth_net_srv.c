@@ -1,5 +1,6 @@
 #include "eth_net.h"
 #include "eth_net_srv.h"
+#include "hal.h"
 
 static void ethernet_init(void)
 {
@@ -20,10 +21,10 @@ static void ethernet_init(void)
     for (size_t i = 0; i < sizeof(pins) / sizeof(pins[0]); i++)
     {
         gpio_init(pins[i],
-                  GPIO_MODE_AF,
-                  GPIO_OTYPE_PUSH_PULL,
-                  GPIO_SPEED_INSANE,
-                  GPIO_PULL_NONE,
+                  MG_GPIO_MODE_AF,
+                  MG_GPIO_OTYPE_PUSH_PULL,
+                  MG_GPIO_SPEED_INSANE,
+                  MG_GPIO_PULL_NONE,
                   11);  // 11 is the Ethernet function
     }
     NVIC_EnableIRQ(ETH_IRQn);                // Setup Ethernet IRQ handler

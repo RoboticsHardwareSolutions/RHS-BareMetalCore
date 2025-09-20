@@ -20,9 +20,6 @@ void rhs_hal_init(void)
 #endif
 #if RHS_HAL_CAN
 #endif
-#if RHS_HAL_NETWORK
-    rhs_hal_network_init();
-#endif
 #if RHS_HAL_RANDOM
     rhs_hal_random_init();
 #endif

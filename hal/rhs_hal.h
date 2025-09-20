@@ -22,9 +22,6 @@
 #if RHS_HAL_CAN
 #    include "rhs_hal_can.h"
 #endif
-#if RHS_HAL_NETWORK
-#    include "rhs_hal_network.h"
-#endif
 #if RHS_HAL_RANDOM
 #    include "rhs_hal_random.h"
 #endif

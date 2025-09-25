@@ -9,9 +9,25 @@ target_include_directories(
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 
+# Check if tinyusb and mongoose targets are available
 if(NOT TARGET tinyusb OR NOT TARGET mongoose)
     message(FATAL_ERROR "tinyusb and mongoose libraries must be available to build usb_cdc_net")
 endif()
+
+# Enable RNDIS and ECM support in TinyUSB
+target_compile_definitions(tinyusb PUBLIC -DCFG_TUD_ECM_RNDIS=1)
+
+# Configure Mongoose options
+target_compile_definitions(
+        mongoose
+        PUBLIC
+        -DMG_ENABLE_TCPIP=1
+        -DMG_ENABLE_CUSTOM_MILLIS=0
+        -DMG_ENABLE_CUSTOM_RANDOM=1
+        -DMG_ENABLE_PACKED_FS=1
+        -DMG_IO_SIZE=512
+        -DMG_ENABLE_LINES=1
+)
 
 target_link_libraries(
         ${PROJECT_NAME}
@@ -22,6 +38,4 @@ target_link_libraries(
         mongoose
 )
 
-target_compile_definitions(tinyusb PUBLIC -DCFG_TUD_ECM_RNDIS=1)
-
-service(cdc_net_service "cdc_net" 4096)
+start_up(usb_cdc_net_start)

@@ -3,6 +3,7 @@
 #include "usb_serial_bridge.h"
 #include "cli.h"
 #include "tusb.h"
+#include "rhs_hal_usb_cdc.h"
 
 #define TAG "UsbSerialBridge"
 
@@ -82,7 +83,7 @@ static void serial_rx_cb(RHSHalSerialRxEvent event, void* context)
 static void usb_serial_vcp_init(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
 {
     // rhs_hal_usb_unlock();
-    // rhs_assert(rhs_hal_usb_set_config(&usb_cdc_dual, NULL) == true);
+    rhs_hal_usb_set_interface(&usb_cdc_desc);
     rhs_hal_cdc_set_callbacks(vcp_ch, (CdcCallbacks*) &cdc_cb, usb_serial);
 }
 
@@ -370,7 +371,7 @@ UsbSerialBridge* usb_serial_enable(UsbSerialConfig* cfg)
 {
     UsbSerialBridge* usb_serial = malloc(sizeof(UsbSerialBridge));
     memcpy(&(usb_serial->cfg_new), cfg, sizeof(UsbSerialConfig));
-
+    
     usb_serial->thread = rhs_thread_alloc("UsbSerialWorker", 1024, usb_serial_worker, usb_serial);
 
     rhs_thread_start(usb_serial->thread);

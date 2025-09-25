@@ -20,6 +20,8 @@ typedef struct {
     void (*ctrl_line_callback)(void* context, CdcCtrlLine ctrl_lines);
 } CdcCallbacks;
 
+extern RHSHalUsbInterface usb_cdc_desc;
+
 void rhs_hal_cdc_set_callbacks(uint8_t if_num, CdcCallbacks* cb, void* context);
 
 struct usb_cdc_line_coding* rhs_hal_cdc_get_port_settings(uint8_t if_num);

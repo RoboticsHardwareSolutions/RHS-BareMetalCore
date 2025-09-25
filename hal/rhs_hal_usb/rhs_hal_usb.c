@@ -43,6 +43,8 @@ void rhs_hal_usb_init(void)
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
     NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
     NVIC_EnableIRQ(OTG_FS_IRQn);
+#else
+#    error "Unknown platform"
 #endif
     RHS_LOG_I(TAG, "Init OK");
 }
@@ -77,17 +79,45 @@ void rhs_hal_usb_reinit(void)
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
     NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
     NVIC_EnableIRQ(OTG_FS_IRQn);
+#else
+#    error "Unknown platform"
 #endif
     RHS_LOG_I(TAG, "Reinit OK");
 }
 
-extern void               descriptor_switch_mode(tusb_desc_device_t* new_desc,
-                                                 uint8_t const**     new_config,
-                                                 char const**        new_string_desc_arr);
-static RHSHalUsbInterface s_usb_desc;
+void rhs_hal_usb_disable(void)
+{
+#if defined(STM32F1)
+    RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
+    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
+    gpio_init(PIN('A', 11), GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
+    gpio_init(PIN('A', 12), GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
+
+    gpio_write(PIN('A', 11), 0);
+    gpio_write(PIN('A', 12), 0);
+
+#elif defined(STM32F4)
+#    error "Not implemented"
+#else
+#    error "Unknown platform"
+#endif
+}
+
+extern void descriptor_switch_mode(tusb_desc_device_t* new_desc,
+                                   uint8_t const**     new_config,
+                                   char const**        new_string_desc_arr);
+
+static RHSHalUsbInterface* s_usb_desc = NULL;
 
 void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface)
 {
+    if (iface == s_usb_desc)
+        return;
+    if (s_usb_desc != NULL)
+    {
+        if (s_usb_desc->deinit)
+            s_usb_desc->deinit();
+    }
     if (iface != NULL)
     {
         // TODO init deinit interface
@@ -95,11 +125,14 @@ void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface)
         descriptor_switch_mode((tusb_desc_device_t*) iface->device_desc,
                                (uint8_t const**) iface->configuration_arr,
                                (char const**) iface->string_desc_arr);
+
+        if (iface->init)
+            iface->init();
     }
-    s_usb_desc = *iface;
+    s_usb_desc = iface;
 }
 
 RHSHalUsbInterface* rhs_hal_usb_get_interface(void)
 {
-    return &s_usb_desc;
+    return s_usb_desc;
 }

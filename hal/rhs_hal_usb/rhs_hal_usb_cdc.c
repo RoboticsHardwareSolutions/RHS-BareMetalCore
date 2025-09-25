@@ -81,12 +81,6 @@ static char const* string_desc_dual_cdc_arr[] = {
     // STRID_MAC index is handled separately
 };
 
-static RHSHalUsbInterface usb_cdc_desc = {
-    .device_desc       = &desc_device_cdc,
-    .configuration_arr = (uint8_t const* const[]) {dual_cdc_configuration},
-    .string_desc_arr   = (char const* const*) string_desc_dual_cdc_arr,
-};
-
 static volatile bool          connected             = false;
 static volatile CdcCallbacks* callbacks[IF_NUM_MAX] = {NULL};
 static void*                  cb_ctx[IF_NUM_MAX];
@@ -142,20 +136,48 @@ void tud_cdc_send_break_cb(uint8_t itf, uint16_t duration_ms)
     RHS_LOG_D(TAG, "Terminal %d send break %d ms", itf, duration_ms);
 }
 
-int32_t usb_dual_cdc(void* context)
-{
-    /* Switch descriptor USB */
-    rhs_hal_usb_set_interface(&usb_cdc_desc);
+static int32_t usb_dual_cdc(void* context);
 
+static RHSThread* thread;
+static bool       finish = false;
+
+static void cdc_init(void)
+{
+    thread = rhs_thread_alloc("CDCDual", 4096, usb_dual_cdc, NULL);
+    finish = false;
+    rhs_thread_start(thread);
+}
+
+static void cdc_deinit(void)
+{
+    finish = true;
+    rhs_hal_usb_disable();
+    rhs_thread_join(thread);
+    rhs_thread_free(thread);
+    RHS_LOG_D(TAG, "USB CDC application finished");
+}
+
+RHSHalUsbInterface usb_cdc_desc = {
+    .init              = cdc_init,
+    .deinit            = cdc_deinit,
+    .device_desc       = &desc_device_cdc,
+    .configuration_arr = (uint8_t const* const[]) {dual_cdc_configuration},
+    .string_desc_arr   = (char const* const*) string_desc_dual_cdc_arr,
+};
+
+static int32_t usb_dual_cdc(void* context)
+{
     /* Reinit hardware USB (PINs and RESET USB) */
     rhs_hal_usb_reinit();
     /* Init TinyUSB */
-    tusb_init();
+    tusb_init(); // TODO check is not initialized
 
-    while (1)
+    while (!finish)
     {
-        tud_task();  // tinyusb device task
+        tud_task_ext(1, false);  // tinyusb device task
     }
+    tusb_deinit(0);
+    RHS_LOG_D(TAG, "USB CDC application finished");
 }
 
 void rhs_hal_cdc_set_callbacks(uint8_t if_num, CdcCallbacks* cb, void* context)

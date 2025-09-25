@@ -10,7 +10,7 @@ typedef struct RHSHalUsbInterface RHSHalUsbInterface;
 
 struct RHSHalUsbInterface
 {
-    void (*init)(RHSHalUsbInterface* intf, void* ctx);
+    void (*init)(void);
     void (*deinit)(void);
     void (*wakeup)(void);
     void (*suspend)(void);
@@ -23,6 +23,8 @@ struct RHSHalUsbInterface
 /** USB device low-level initialization
  */
 void rhs_hal_usb_init(void);
+
+void rhs_hal_usb_disable(void);
 
 /** Restart USB device
  */

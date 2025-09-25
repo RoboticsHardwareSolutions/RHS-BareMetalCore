@@ -3,6 +3,15 @@
 #include "usb_cdc_net.h"
 #include "mongoose.h"
 #include "tusb.h"
+#include "cli.h"
+
+struct CdcNet
+{
+    RHSThread* thread;
+    bool       finish;
+};
+
+static RHSTimer* timer;
 
 // Helper macro for MAC generation
 #define GENERATE_LOCALLY_ADMINISTERED_MAC(UUID) \
@@ -210,8 +219,6 @@ bool mg_random(void* buf, size_t len)
     return true;
 }
 
-static bool finish = false;
-
 static void fn(struct mg_connection* c, int ev, void* ev_data)
 {
     if (ev == MG_EV_HTTP_MSG)
@@ -219,105 +226,104 @@ static void fn(struct mg_connection* c, int ev, void* ev_data)
         struct mg_http_message* hm = (struct mg_http_message*) ev_data;
         if (mg_match(hm->uri, mg_str("/"), NULL))
         {
-            const char* html =
-                "<!DOCTYPE html>"
-                "<html lang='en'>"
-                "<head>"
-                "    <title>RHS PLC</title>"
-                "    <meta charset='UTF-8'>"
-                "    <meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                "    <style>"
-                "        body { "
-                "            font-family: Arial, sans-serif; "
-                "            background: #f5f5f5; "
-                "            margin: 0; "
-                "            padding: 20px; "
-                "        }"
-                "        .container { "
-                "            max-width: 400px; "
-                "            margin: 50px auto; "
-                "            background: white; "
-                "            padding: 30px; "
-                "            border-radius: 8px; "
-                "            box-shadow: 0 2px 10px rgba(0,0,0,0.1); "
-                "            text-align: center; "
-                "        }"
-                "        h1 { "
-                "            color: #333; "
-                "            margin: 0 0 10px 0; "
-                "            font-size: 24px; "
-                "        }"
-                "        .subtitle { "
-                "            color: #666; "
-                "            margin-bottom: 30px; "
-                "            font-size: 14px; "
-                "        }"
-                "        .info { "
-                "            text-align: left; "
-                "            margin: 20px 0; "
-                "        }"
-                "        .info-item { "
-                "            margin: 10px 0; "
-                "            padding: 8px 0; "
-                "            border-bottom: 1px solid #eee; "
-                "        }"
-                "        .info-label { "
-                "            color: #888; "
-                "            font-size: 12px; "
-                "        }"
-                "        .info-value { "
-                "            color: #333; "
-                "            font-weight: bold; "
-                "        }"
-                "        .exit-button { "
-                "            background: #dc3545; "
-                "            color: white; "
-                "            border: none; "
-                "            padding: 10px 20px; "
-                "            border-radius: 4px; "
-                "            cursor: pointer; "
-                "            margin-top: 20px; "
-                "            text-decoration: none; "
-                "            display: inline-block; "
-                "        }"
-                "        .exit-button:hover { "
-                "            background: #c82333; "
-                "        }"
-                "    </style>"
-                "</head>"
-                "<body>"
-                "    <div class='container'>"
-                "        <h1>RHS PLC</h1>"
-                "        <p class='subtitle'>Industrial Controller Management System</p>"
-                "        <div class='info'>"
-                "            <div class='info-item'>"
-                "                <div class='info-label'>Status</div>"
-                "                <div class='info-value'>Online</div>"
-                "            </div>"
-                "            <div class='info-item'>"
-                "                <div class='info-label'>IP Address</div>"
-                "                <div class='info-value'>192.168.3.1</div>"
-                "            </div>"
-                "            <div class='info-item'>"
-                "                <div class='info-label'>Interface</div>"
-                "                <div class='info-value'>RNDIS/Ethernet</div>"
-                "            </div>"
-                "            <div class='info-item'>"
-                "                <div class='info-label'>Version</div>"
-                "                <div class='info-value'>v1.0.0</div>"
-                "            </div>"
-                "        </div>"
-                "        <a href='/exit' class='exit-button'>Exit</a>"
-                "    </div>"
-                "</body>"
-                "</html>";
+            const char* html = "<!DOCTYPE html>"
+                               "<html lang='en'>"
+                               "<head>"
+                               "    <title>RHS PLC</title>"
+                               "    <meta charset='UTF-8'>"
+                               "    <meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                               "    <style>"
+                               "        body { "
+                               "            font-family: Arial, sans-serif; "
+                               "            background: #f5f5f5; "
+                               "            margin: 0; "
+                               "            padding: 20px; "
+                               "        }"
+                               "        .container { "
+                               "            max-width: 400px; "
+                               "            margin: 50px auto; "
+                               "            background: white; "
+                               "            padding: 30px; "
+                               "            border-radius: 8px; "
+                               "            box-shadow: 0 2px 10px rgba(0,0,0,0.1); "
+                               "            text-align: center; "
+                               "        }"
+                               "        h1 { "
+                               "            color: #333; "
+                               "            margin: 0 0 10px 0; "
+                               "            font-size: 24px; "
+                               "        }"
+                               "        .subtitle { "
+                               "            color: #666; "
+                               "            margin-bottom: 30px; "
+                               "            font-size: 14px; "
+                               "        }"
+                               "        .info { "
+                               "            text-align: left; "
+                               "            margin: 20px 0; "
+                               "        }"
+                               "        .info-item { "
+                               "            margin: 10px 0; "
+                               "            padding: 8px 0; "
+                               "            border-bottom: 1px solid #eee; "
+                               "        }"
+                               "        .info-label { "
+                               "            color: #888; "
+                               "            font-size: 12px; "
+                               "        }"
+                               "        .info-value { "
+                               "            color: #333; "
+                               "            font-weight: bold; "
+                               "        }"
+                               "        .exit-button { "
+                               "            background: #dc3545; "
+                               "            color: white; "
+                               "            border: none; "
+                               "            padding: 10px 20px; "
+                               "            border-radius: 4px; "
+                               "            cursor: pointer; "
+                               "            margin-top: 20px; "
+                               "            text-decoration: none; "
+                               "            display: inline-block; "
+                               "        }"
+                               "        .exit-button:hover { "
+                               "            background: #c82333; "
+                               "        }"
+                               "    </style>"
+                               "</head>"
+                               "<body>"
+                               "    <div class='container'>"
+                               "        <h1>RHS PLC</h1>"
+                               "        <p class='subtitle'>Industrial Controller Management System</p>"
+                               "        <div class='info'>"
+                               "            <div class='info-item'>"
+                               "                <div class='info-label'>Status</div>"
+                               "                <div class='info-value'>Online</div>"
+                               "            </div>"
+                               "            <div class='info-item'>"
+                               "                <div class='info-label'>IP Address</div>"
+                               "                <div class='info-value'>192.168.3.1</div>"
+                               "            </div>"
+                               "            <div class='info-item'>"
+                               "                <div class='info-label'>Interface</div>"
+                               "                <div class='info-value'>RNDIS/Ethernet</div>"
+                               "            </div>"
+                               "            <div class='info-item'>"
+                               "                <div class='info-label'>Version</div>"
+                               "                <div class='info-value'>v1.0.0</div>"
+                               "            </div>"
+                               "        </div>"
+                               "        <a href='/exit' class='exit-button'>Exit</a>"
+                               "    </div>"
+                               "</body>"
+                               "</html>";
             mg_http_reply(c, 200, "Content-Type: text/html\r\n", "%s", html);
         }
         else if (mg_match(hm->uri, mg_str("/exit"), NULL))
         {
             // Handle exit button click
-            finish = true;
-            const char* response = 
+            rhs_timer_start(timer, 100);  // Start timer to allow response to be sent
+            const char* response =
                 "<!DOCTYPE html>"
                 "<html lang='en'>"
                 "<head>"
@@ -351,14 +357,16 @@ static void fn(struct mg_connection* c, int ev, void* ev_data)
     }
 }
 
-int32_t cdc_net_service(void* context)
+static int32_t cdc_net_application(void* context)
 {
     struct mg_mgr mgr;        // Initialise
     mg_mgr_init(&mgr);        // Mongoose event manager
     mg_log_set(MG_LL_DEBUG);  // Set log level
 
-    const uint8_t* uid = rhs_hal_version_uid();
+    CdcNet*             cdc_net   = (CdcNet*) context;
+    const uint8_t*      uid       = rhs_hal_version_uid();
     RHSHalUsbInterface* prev_intf = rhs_hal_usb_get_interface();
+
     rhs_hal_usb_set_interface(&usb_cdc_net_desc);
 
     MG_INFO(("Init TCP/IP stack ..."));
@@ -371,14 +379,14 @@ int32_t cdc_net_service(void* context)
                                      .recv_queue.size    = 4096};
     s_ifp                         = &mif;
     mg_tcpip_init(&mgr, &mif);
-    mg_http_listen(&mgr, "tcp://0.0.0.0:80", fn, &mgr);
+    mg_http_listen(&mgr, "tcp://0.0.0.0:80", fn, cdc_net);
 
     MG_INFO(("Init USB ..."));
     rhs_hal_usb_reinit();
     tusb_init();
 
     MG_INFO(("Init done, starting main loop ..."));
-    while (!finish)
+    while (!cdc_net->finish)
     {
         mg_mgr_poll(&mgr, 0);
     }
@@ -387,5 +395,72 @@ int32_t cdc_net_service(void* context)
     mg_mgr_free(&mgr);
     tusb_deinit(0);
     rhs_hal_usb_set_interface(prev_intf);
-    while(1){rhs_delay_ms(1000);} // FIXME to do application
+}
+
+void timer_cb(void* context)
+{
+    CdcNet* cdc_net = (CdcNet*) context;
+    usb_cdc_net_disable(cdc_net);
+}
+
+CdcNet* usb_cdc_net_enable(void)
+{
+    CdcNet* cdc_net = malloc(sizeof(CdcNet));
+    cdc_net->finish = false;
+    cdc_net->thread = rhs_thread_alloc("CDCNetApp", 4096, cdc_net_application, cdc_net);
+    rhs_thread_start(cdc_net->thread);
+    if (timer == NULL)
+        timer = rhs_timer_alloc(timer_cb, RHSTimerTypeOnce, cdc_net);
+    return cdc_net;
+}
+
+void usb_cdc_net_disable(CdcNet* cdc_net)
+{
+    rhs_assert(cdc_net);
+    cdc_net->finish = true;
+    rhs_thread_join(cdc_net->thread);
+    rhs_thread_free(cdc_net->thread);
+    free(cdc_net);
+}
+
+void web_app(char* args, void* context)
+{
+    (void) context;
+    static CdcNet* cdc_net = NULL;
+
+    if (args == NULL)
+    {
+        printf("web_start: missing argument\r\n");
+    }
+    else if (strstr(args, "start") == args)
+    {
+        cdc_net = usb_cdc_net_enable();
+        if (cdc_net == NULL)
+        {
+            printf("web_start: failed to start\r\n");
+            return;
+        }
+        printf("web_start: started\r\n");
+    }
+    else if (strstr(args, "stop") == args)
+    {
+        if (cdc_net == NULL)
+        {
+            printf("web_start: not running\r\n");
+            return;
+        }
+        usb_cdc_net_disable(cdc_net);
+        cdc_net = NULL;
+    }
+    else
+    {
+        printf("Invalid argument '%s'\r\n", args);
+    }
+}
+
+void usb_cdc_net_start(void)
+{
+    Cli* cli = rhs_record_open(RECORD_CLI);
+    cli_add_command(cli, "web_app", web_app, NULL);
+    rhs_record_close(RECORD_CLI);
 }

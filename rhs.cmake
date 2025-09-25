@@ -31,6 +31,10 @@ set(RHS_STARTUP_COUNT "const short RHS_START_UP_COUNT = (sizeof(RHS_START_UP) / 
 # Initialize startup section
 file(APPEND "${RHS_OUTPUT_FILE}" "${RHS_STARTUP_BEGIN}\n${RHS_STARTUP_END}\n${RHS_STARTUP_COUNT}")
 
+# Global lists to track registered services and startup hooks
+set(RHS_REGISTERED_SERVICES "" CACHE INTERNAL "List of registered services")
+set(RHS_REGISTERED_STARTUPS "" CACHE INTERNAL "List of registered startup hooks")
+
 # Internal helper function to update file content efficiently
 function(_rhs_update_file_content marker_begin marker_end new_content)
     file(READ "${RHS_OUTPUT_FILE}" FILE_CONTENT)
@@ -68,12 +72,16 @@ function(service service_handler service_name stack_size)
     
     file(WRITE "${RHS_OUTPUT_FILE}" "${FILE_CONTENT}")
     
+    # Save service info to global list
+    set(service_info "${service_name}:${service_handler}:${stack_size}")
+    list(APPEND RHS_REGISTERED_SERVICES "${service_info}")
+    set(RHS_REGISTERED_SERVICES "${RHS_REGISTERED_SERVICES}" CACHE INTERNAL "List of registered services")
+    
     # Only link to rhs if it exists in this project
     if(TARGET rhs)
         target_link_libraries(rhs PUBLIC ${PROJECT_NAME})
     endif()
     
-    message(STATUS "Registered FreeRTOS service: ${service_name} (${service_handler}, ${stack_size} bytes)")
 endfunction()
 
 # Register a startup hook (initialization function)
@@ -95,10 +103,48 @@ function(start_up start_func)
     
     file(WRITE "${RHS_OUTPUT_FILE}" "${FILE_CONTENT}")
     
+    # Save startup hook info to global list
+    list(APPEND RHS_REGISTERED_STARTUPS "${start_func}")
+    set(RHS_REGISTERED_STARTUPS "${RHS_REGISTERED_STARTUPS}" CACHE INTERNAL "List of registered startup hooks")
+    
     # Only link to rhs if it exists in this project
     if(TARGET rhs)
         target_link_libraries(rhs PUBLIC ${PROJECT_NAME})
     endif()
     
-    message(STATUS "Registered startup hook: ${start_func}")
+endfunction()
+
+# Report function to display all registered services and startup hooks
+function(report)
+    message(STATUS "=== RHS Registration Report ===")
+    
+    # Report services
+    list(LENGTH RHS_REGISTERED_SERVICES services_count)
+    if(services_count GREATER 0)
+        message(STATUS "Registered FreeRTOS Services (${services_count}):")
+        foreach(service_info IN LISTS RHS_REGISTERED_SERVICES)
+            string(REPLACE ":" ";" service_parts "${service_info}")
+            list(GET service_parts 0 service_name)
+            list(GET service_parts 1 service_handler)
+            list(GET service_parts 2 stack_size)
+            message(STATUS "  - ${service_name}: ${service_handler} (${stack_size} bytes)")
+        endforeach()
+    else()
+        message(STATUS "No FreeRTOS services registered.")
+    endif()
+    
+    message(STATUS "")
+    
+    # Report startup hooks
+    list(LENGTH RHS_REGISTERED_STARTUPS startups_count)
+    if(startups_count GREATER 0)
+        message(STATUS "Registered Startup Hooks (${startups_count}):")
+        foreach(startup_func IN LISTS RHS_REGISTERED_STARTUPS)
+            message(STATUS "  - ${startup_func}")
+        endforeach()
+    else()
+        message(STATUS "No startup hooks registered.")
+    endif()
+    
+    message(STATUS "=== End Report ===")
 endfunction()

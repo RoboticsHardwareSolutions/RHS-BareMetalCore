@@ -77,6 +77,20 @@ void rhs_hal_i2c_bus_handle_event(const RHSHalI2cBusHandle* handle, RHSHalI2cBus
         LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_7, LL_GPIO_MODE_ALTERNATE);
         LL_GPIO_SetPinOutputType(GPIOB, LL_GPIO_PIN_7, LL_GPIO_OUTPUT_OPENDRAIN);
         LL_GPIO_SetPinSpeed(GPIOB, LL_GPIO_PIN_7, LL_GPIO_SPEED_FREQ_LOW);
+#elif defined(STM32F407xx)
+        // Enable GPIOB clock
+        LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
+
+        // Configure PB8 (SCL) and PB9 (SDA) as alternate function open drain
+        LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_8, LL_GPIO_MODE_ALTERNATE);
+        LL_GPIO_SetAFPin_8_15(GPIOB, LL_GPIO_PIN_8, LL_GPIO_AF_4);
+        LL_GPIO_SetPinOutputType(GPIOB, LL_GPIO_PIN_8, LL_GPIO_OUTPUT_OPENDRAIN);
+        LL_GPIO_SetPinSpeed(GPIOB, LL_GPIO_PIN_8, LL_GPIO_SPEED_FREQ_LOW);
+
+        LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_9, LL_GPIO_MODE_ALTERNATE);
+        LL_GPIO_SetAFPin_8_15(GPIOB, LL_GPIO_PIN_9, LL_GPIO_AF_4);
+        LL_GPIO_SetPinOutputType(GPIOB, LL_GPIO_PIN_9, LL_GPIO_OUTPUT_OPENDRAIN);
+        LL_GPIO_SetPinSpeed(GPIOB, LL_GPIO_PIN_9, LL_GPIO_SPEED_FREQ_LOW);
 #elif defined(STM32F765xx)
         // Enable GPIOB clock
         LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
@@ -95,7 +109,7 @@ void rhs_hal_i2c_bus_handle_event(const RHSHalI2cBusHandle* handle, RHSHalI2cBus
         LL_GPIO_SetPinSpeed(GPIOB, LL_GPIO_PIN_9, LL_GPIO_SPEED_FREQ_LOW);
 #endif
 
-#if defined(STM32F103xE)
+#if defined(STM32F103xE) || defined(STM32F407xx)
         LL_I2C_InitTypeDef I2C_InitStruct;
         I2C_InitStruct.PeripheralMode  = LL_I2C_MODE_I2C;
         I2C_InitStruct.ClockSpeed      = 100000;  // 100kHz
@@ -127,11 +141,14 @@ void rhs_hal_i2c_bus_handle_event(const RHSHalI2cBusHandle* handle, RHSHalI2cBus
     {
         LL_I2C_GenerateStopCondition(handle->bus->i2c);
         LL_I2C_Disable(handle->bus->i2c);
-        
+
         // GPIO deinitialization for I2C1: PB8 (SCL), PB9 (SDA) - set to analog mode
 #if defined(STM32F103xE)
         LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_6, LL_GPIO_MODE_ANALOG);
         LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_7, LL_GPIO_MODE_ANALOG);
+#elif defined(STM32F407xx)
+        LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_8, LL_GPIO_MODE_ANALOG);
+        LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_9, LL_GPIO_MODE_ANALOG);
 #elif defined(STM32F765xx)
         LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_8, LL_GPIO_MODE_ANALOG);
         LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_9, LL_GPIO_MODE_ANALOG);

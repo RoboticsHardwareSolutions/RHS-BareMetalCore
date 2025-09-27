@@ -58,59 +58,65 @@ EepromStatus eeprom_write(const EepromType* eeprom, uint16_t address, const uint
         return EepromStatusInvalidParam;
     }
 
-    // Check if size exceeds page size
-    if (size > eeprom->page_size)
-    {
-        return EepromStatusInvalidParam;
-    }
-
-    // Check if address is within EEPROM range
+    // Check if write would exceed EEPROM memory bounds
     if (address + size > eeprom->size)
     {
         return EepromStatusInvalidParam;
     }
 
-    // Check if write crosses page boundary
-    uint16_t page_start = (address / eeprom->page_size) * eeprom->page_size;
-    uint16_t page_end   = page_start + eeprom->page_size;
-    if (address + size > page_end)
+    size_t remaining = size;
+    uint16_t current_address = address;
+    const uint8_t* current_data = data;
+
+    while (remaining > 0)
     {
-        return EepromStatusInvalidParam;
+        // Calculate how much we can write in current page
+        uint16_t page_start = (current_address / eeprom->page_size) * eeprom->page_size;
+        uint16_t page_end = page_start + eeprom->page_size;
+        uint16_t bytes_to_page_end = page_end - current_address;
+        
+        // Write only what fits in current page
+        size_t bytes_to_write = (remaining < bytes_to_page_end) ? remaining : bytes_to_page_end;
+
+        // Prepare address buffer
+        uint8_t addr_buf[2] = {(uint8_t) ((current_address >> 8) & 0xFF), (uint8_t) (current_address & 0xFF)};
+
+        // Write address first, then data without STOP condition
+        bool success = rhs_hal_i2c_tx_ext(eeprom->i2c_handle,
+                                          eeprom->i2c_address,
+                                          false,
+                                          addr_buf,
+                                          2,
+                                          RHSHalI2cBeginStart,
+                                          RHSHalI2cEndPause,
+                                          eeprom->timeout_ms);
+
+        if (success)
+        {
+            // Write data with STOP condition
+            success = rhs_hal_i2c_tx_ext(eeprom->i2c_handle,
+                                         eeprom->i2c_address,
+                                         false,
+                                         current_data,
+                                         bytes_to_write,
+                                         RHSHalI2cBeginResume,
+                                         RHSHalI2cEndStop,
+                                         eeprom->timeout_ms);
+        }
+
+        if (!success)
+        {
+            return EepromStatusError;
+        }
+
+        // Wait for write completion
+        rhs_delay_ms(eeprom->write_delay_ms);
+
+        // Update pointers and counters for next page
+        remaining -= bytes_to_write;
+        current_address += bytes_to_write;
+        current_data += bytes_to_write;
     }
-
-    // Prepare address buffer
-    uint8_t addr_buf[2] = {(uint8_t) ((address >> 8) & 0xFF), (uint8_t) (address & 0xFF)};
-
-    // Write address first, then data without STOP condition
-    bool success = rhs_hal_i2c_tx_ext(eeprom->i2c_handle,
-                                      eeprom->i2c_address,
-                                      false,
-                                      addr_buf,
-                                      2,
-                                      RHSHalI2cBeginStart,
-                                      RHSHalI2cEndPause,
-                                      eeprom->timeout_ms);
-
-    if (success)
-    {
-        // Write data with STOP condition
-        success = rhs_hal_i2c_tx_ext(eeprom->i2c_handle,
-                                     eeprom->i2c_address,
-                                     false,
-                                     data,
-                                     size,
-                                     RHSHalI2cBeginResume,
-                                     RHSHalI2cEndStop,
-                                     eeprom->timeout_ms);
-    }
-
-    if (!success)
-    {
-        return EepromStatusError;
-    }
-
-    // Wait for write completion
-    rhs_delay_ms(eeprom->write_delay_ms);
 
     return EepromStatusOk;
 }

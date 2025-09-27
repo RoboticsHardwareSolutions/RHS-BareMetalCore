@@ -16,6 +16,9 @@
 #if RHS_HAL_IO
 #    include "rhs_hal_io.h"
 #endif
+#if RHS_HAL_I2C
+#    include "rhs_hal_i2c.h"
+#endif
 #if RHS_HAL_SERIAL
 #    include "rhs_hal_serial.h"
 #endif

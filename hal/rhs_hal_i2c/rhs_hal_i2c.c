@@ -2,26 +2,16 @@
 #include "rhs.h"
 #include "rhs_hal_cortex.h"
 
-#if defined(STM32F103xE)
-#    include <stm32f1xx_ll_gpio.h>
-#elif defined(STM32F407xx)
-#    include <stm32f4xx_ll_gpio.h>
-#elif defined(STM32F765xx)
-#    include <stm32f7xx_ll_gpio.h>
-#else
-#    error "Unsupported platform"
-#endif
-
 #define TAG "rhs_hal_i2c"
 
-void rhs_hal_i2c_init(RHSHalI2cBus* bus)
+void rhs_hal_i2c_init(const RHSHalI2cBusHandle* handle)
 {
-    bus->callback(bus, RHSHalI2cBusEventInit);
+    handle->bus->callback(handle->bus, RHSHalI2cBusEventInit);
 }
 
-void rhs_hal_i2c_deinit(RHSHalI2cBus* bus)
+void rhs_hal_i2c_deinit(const RHSHalI2cBusHandle* handle)
 {
-    bus->callback(bus, RHSHalI2cBusEventDeinit);
+    handle->bus->callback(handle->bus, RHSHalI2cBusEventDeinit);
 }
 
 void rhs_hal_i2c_acquire(const RHSHalI2cBusHandle* handle)
@@ -86,13 +76,6 @@ static bool rhs_hal_i2c_wait_for_end(I2C_TypeDef* i2c, RHSHalI2cEnd end, RHSHalC
 
     if (wait_for_stop)
     {
-        while (!LL_I2C_IsActiveFlag_STOP(i2c))
-        {
-            if (rhs_hal_cortex_timer_is_expired(timer))
-            {
-                return false;
-            }
-        }
     }
     else
     {
@@ -236,17 +219,40 @@ static bool rhs_hal_i2c_transfer(I2C_TypeDef*      i2c,
     {
         bool should_stop = rhs_hal_cortex_timer_is_expired(timer) || rhs_hal_i2c_transfer_is_aborted(i2c);
 
-        if (read && LL_I2C_IsActiveFlag_RXNE(i2c))
+        if (read)
         {
-            *data = LL_I2C_ReceiveData8(i2c);
-            data++;
-            size--;
+            if (size == 1 && end == RHSHalI2cEndStop)
+            {
+                // Disable ACK for the last byte
+                LL_I2C_AcknowledgeNextData(i2c, LL_I2C_NACK);
+            }
+
+            if (LL_I2C_IsActiveFlag_RXNE(i2c))
+            {
+                *data = LL_I2C_ReceiveData8(i2c);
+                data++;
+                size--;
+            }
         }
-        else if (!read && LL_I2C_IsActiveFlag_TXE(i2c))  // STM32F1/F4 use TXE instead of TXIS
+        else
         {
-            LL_I2C_TransmitData8(i2c, *data);
-            data++;
-            size--;
+            if (LL_I2C_IsActiveFlag_TXE(i2c))
+            {
+                LL_I2C_TransmitData8(i2c, *data);
+                data++;
+                size--;
+            }
+            if (size == 0)
+            {
+                // All data sent, ensure BTF is set before ending
+                while (!LL_I2C_IsActiveFlag_BTF(i2c))
+                {
+                    if (rhs_hal_cortex_timer_is_expired(timer) || rhs_hal_i2c_transfer_is_aborted(i2c))
+                    {
+                        break;
+                    }
+                }
+            }
         }
 
         // Exit on timeout or premature stop, probably caused by a nacked address or byte
@@ -255,6 +261,12 @@ static bool rhs_hal_i2c_transfer(I2C_TypeDef*      i2c,
             ret = size == 0;  // If the transfer was over, still a success
             break;
         }
+    }
+
+    // Generate STOP condition if needed
+    if (end == RHSHalI2cEndStop)
+    {
+        LL_I2C_GenerateStopCondition(i2c);
     }
 
     if (ret)
@@ -324,6 +336,8 @@ static bool rhs_hal_i2c_transaction(I2C_TypeDef*      i2c,
         return false;
     }
 
+    LL_I2C_AcknowledgeNextData(i2c, LL_I2C_ACK);
+
     // Generate START condition if needed
     if (start_signal == 0 || start_signal == 1 || start_signal == 2 || start_signal == 3)
     {  // Any start type
@@ -369,12 +383,6 @@ static bool rhs_hal_i2c_transaction(I2C_TypeDef*      i2c,
     if (!rhs_hal_i2c_transfer(i2c, data, size, end, read, timer))
     {
         return false;
-    }
-
-    // Generate STOP condition if needed
-    if (end == RHSHalI2cEndStop)
-    {
-        LL_I2C_GenerateStopCondition(i2c);
     }
 
     return true;

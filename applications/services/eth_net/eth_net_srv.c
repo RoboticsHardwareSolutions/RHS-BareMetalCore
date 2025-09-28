@@ -42,8 +42,46 @@ static EthNet* eth_net_alloc(void)
 
     mg_log_set(MG_LL_DEBUG);     // Set log level
     mg_mgr_init(&eth_net->mgr);  // and attach it to the interface
-    MG_TCPIP_DRIVER_INIT(&eth_net->mgr);
 
+    {
+        static struct mg_tcpip_driver_stm32f_data driver_data_;
+        static struct mg_tcpip_if                 mif_;
+
+        // Initialize config with default values from compile-time macros
+        EthNetConfig config = {.ip       = MG_TCPIP_IP,
+                               .mask     = MG_TCPIP_MASK,
+                               .gateway  = MG_TCPIP_GW,
+                               .phy_addr = MG_TCPIP_PHY_ADDR,
+                               .mdc_cr   = MG_DRIVER_MDC_CR};
+
+        // Set default MAC address
+        MG_SET_MAC_ADDRESS(config.mac);
+
+        // Call user configuration function (weak)
+        if (eth_net_set_config_on_startup)
+        {
+            eth_net_set_config_on_startup(&config);
+        }
+
+        // Apply configuration
+        driver_data_.mdc_cr   = config.mdc_cr;
+        driver_data_.phy_addr = config.phy_addr;
+        mif_.ip               = config.ip;
+        mif_.mask             = config.mask;
+        mif_.gw               = config.gateway;
+        mif_.driver           = &mg_tcpip_driver_stm32f;
+        mif_.driver_data      = &driver_data_;
+
+        // Copy MAC address
+        for (int i = 0; i < 6; i++)
+        {
+            mif_.mac[i] = config.mac[i];
+        }
+
+        MG_ENABLE_ETH_IRQ();
+        mg_tcpip_init(&eth_net->mgr, &mif_);
+        MG_INFO(("Driver: stm32f, MAC: %M", mg_print_mac, mif_.mac));
+    }
     return eth_net;
 }
 

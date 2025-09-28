@@ -16,6 +16,7 @@ typedef struct
     uint8_t                   i2c_address;     ///< I2C address of EEPROM (7-bit)
     uint32_t                  size;            ///< Total EEPROM size in bytes
     uint16_t                  page_size;       ///< Page size in bytes
+    uint8_t                   address_size;    ///< Address size in bytes (1 or 2)
     uint8_t                   write_delay_ms;  ///< Write delay after page write (ms)
     uint32_t                  timeout_ms;      ///< I2C timeout in milliseconds
 } EepromType;

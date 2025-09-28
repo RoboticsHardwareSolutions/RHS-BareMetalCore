@@ -22,6 +22,12 @@ EepromStatus eeprom_init(EepromType* eeprom)
         return EepromStatusInvalidParam;
     }
 
+    // Validate address size (must be 1 or 2 bytes)
+    if (eeprom->address_size != 1 && eeprom->address_size != 2)
+    {
+        return EepromStatusInvalidParam;
+    }
+
     return EepromStatusOk;
 }
 
@@ -37,13 +43,26 @@ EepromStatus eeprom_read(const EepromType* eeprom, uint16_t address, uint8_t* da
         return EepromStatusInvalidParam;
     }
 
-    // Convert address to big-endian format (MSB first)
-    uint8_t addr_buf[2] = {(uint8_t) ((address >> 8) & 0xFF), (uint8_t) (address & 0xFF)};
+    // Prepare address buffer according to address size
+    uint8_t addr_buf[2];
+    size_t addr_buf_size;
+    
+    if (eeprom->address_size == 1)
+    {
+        addr_buf[0] = (uint8_t)(address & 0xFF);
+        addr_buf_size = 1;
+    }
+    else // address_size == 2
+    {
+        addr_buf[0] = (uint8_t)((address >> 8) & 0xFF);  // MSB first
+        addr_buf[1] = (uint8_t)(address & 0xFF);
+        addr_buf_size = 2;
+    }
 
     bool success = rhs_hal_i2c_trx(eeprom->i2c_handle,
                                    eeprom->i2c_address,
                                    addr_buf,
-                                   sizeof(addr_buf),
+                                   addr_buf_size,
                                    data,
                                    size,
                                    eeprom->timeout_ms);
@@ -78,15 +97,28 @@ EepromStatus eeprom_write(const EepromType* eeprom, uint16_t address, const uint
         // Write only what fits in current page
         size_t bytes_to_write = (remaining < bytes_to_page_end) ? remaining : bytes_to_page_end;
 
-        // Prepare address buffer
-        uint8_t addr_buf[2] = {(uint8_t) ((current_address >> 8) & 0xFF), (uint8_t) (current_address & 0xFF)};
+        // Prepare address buffer according to address size
+        uint8_t addr_buf[2];
+        size_t addr_buf_size;
+        
+        if (eeprom->address_size == 1)
+        {
+            addr_buf[0] = (uint8_t)(current_address & 0xFF);
+            addr_buf_size = 1;
+        }
+        else // address_size == 2
+        {
+            addr_buf[0] = (uint8_t)((current_address >> 8) & 0xFF);  // MSB first
+            addr_buf[1] = (uint8_t)(current_address & 0xFF);
+            addr_buf_size = 2;
+        }
 
         // Write address first, then data without STOP condition
         bool success = rhs_hal_i2c_tx_ext(eeprom->i2c_handle,
                                           eeprom->i2c_address,
                                           false,
                                           addr_buf,
-                                          2,
+                                          addr_buf_size,
                                           RHSHalI2cBeginStart,
                                           RHSHalI2cEndPause,
                                           eeprom->timeout_ms);

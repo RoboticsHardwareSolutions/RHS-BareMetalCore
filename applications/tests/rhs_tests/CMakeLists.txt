@@ -25,6 +25,12 @@ if(RHS_TESTFLASH_EX)
 else()
         message("\t\tRHS_TESTFLASH_EX\t- OFF")
 endif()
+if(RHS_TEST_I2C)
+        message("\t\tRHS_TEST_I2C\t- ON")
+        add_subdirectory(i2c_test)
+else()
+        message("\t\tRHS_TEST_I2C\t- OFF")
+endif()
 
 if(TEST_SOURCES)
         add_library(${PROJECT_NAME}

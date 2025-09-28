@@ -95,6 +95,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 add_subdirectory(hal)
+add_subdirectory(drivers)
 add_subdirectory(applications)
 
 message("\tLAUNCHER:")

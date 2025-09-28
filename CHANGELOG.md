@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.0.5] - 2025-09-27
+### Added
+- New RHS_HAL_I2C support with configuration and initialization
+- EEPROM driver with read, write, and erase functionalities with I2C communication
+- New module with drivers and RHS_DRIVER_EEPROM configuration option for device templates
+
 ## [0.0.4] - 2025-09-20
 
 ### Added

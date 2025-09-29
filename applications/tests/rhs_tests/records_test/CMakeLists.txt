@@ -17,4 +17,4 @@ target_link_libraries(${PROJECT_NAME}
         cli
 )
 
-start_up(rhs_records_test_start_up)
+test(rhs_records_test)

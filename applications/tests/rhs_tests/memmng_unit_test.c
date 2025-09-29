@@ -47,7 +47,7 @@ void alloc_test(void)
     free(ptr);
 }
 
-void rhs_memmgr_test(char* args, void* context)
+void memmgr_test(char* args, void* context)
 {
     runit_counter_assert_passes = 0;
     runit_counter_assert_failures = 0;
@@ -57,9 +57,9 @@ void rhs_memmgr_test(char* args, void* context)
     runit_report();
 }
 
-void rhs_memmgr_test_start_up(void)
+void rhs_memmgr_test(void)
 {
     Cli *cli = rhs_record_open(RECORD_CLI);
-    cli_add_command(cli, "mem_test", rhs_memmgr_test, NULL);
+    cli_add_command(cli, "mem_test", memmgr_test, NULL);
     rhs_record_close(RECORD_CLI);
 }

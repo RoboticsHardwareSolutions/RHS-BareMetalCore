@@ -212,6 +212,8 @@ function(rhs_report)
         message(STATUS "No startup hooks registered.")
     endif()
 
+    message(STATUS "")
+
     # Report test functions
     list(LENGTH RHS_REGISTERED_TESTS tests_count)
     if(tests_count GREATER 0)

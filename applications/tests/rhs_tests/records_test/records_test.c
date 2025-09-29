@@ -35,7 +35,7 @@ void records_test(char* args, void* context)
     runit_report();
 }
 
-void rhs_records_test_start_up(void)
+void rhs_records_test(void)
 {
     Cli *cli = rhs_record_open(RECORD_CLI);
     cli_add_command(cli, "records_test", records_test, NULL);

@@ -71,7 +71,7 @@ static int random_test(void)
     return 0;
 }
 
-void flash_ex_test(char* args, void* context)
+void run_flash_ex_test(char* args, void* context)
 {
     runit_counter_assert_passes   = 0;
     runit_counter_assert_failures = 0;
@@ -105,9 +105,9 @@ void flash_ex_test(char* args, void* context)
     runit_report();
 }
 
-void flash_ex_test_start_up(void)
+void flash_ex_test(void)
 {
     Cli* cli = rhs_record_open(RECORD_CLI);
-    cli_add_command(cli, "flash_ex_test", flash_ex_test, NULL);
+    cli_add_command(cli, "flash_ex_test", run_flash_ex_test, NULL);
     rhs_record_close(RECORD_CLI);
 }

@@ -124,5 +124,3 @@ if(TARGET rhs_hal_rtc)
         target_link_libraries(${PROJECT_NAME} PRIVATE rhs_hal_rtc)
         target_compile_definitions(${PROJECT_NAME} PUBLIC -DTIMESTAMPER_RTC)
 endif()
-
-report()

@@ -21,3 +21,8 @@ typedef void (*RHSInternalOnStartHook)(void);
 
 extern const short RHS_START_UP_COUNT;
 extern const RHSInternalOnStartHook RHS_START_UP[];
+
+typedef void (*RHSInternalOnTestHook)(void);
+
+extern const short RHS_TESTS_COUNT;
+extern const RHSInternalOnTestHook RHS_TESTS[];

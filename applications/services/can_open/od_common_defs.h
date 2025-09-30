@@ -39,8 +39,14 @@ typedef enum
 
 typedef struct
 {
+    uint8_t sub;
+    uint8_t size;
+} PDOSubField;
+
+typedef struct
+{
     uint16_t index;
-    uint8_t  subindex;
+    uint8_t  sub;
     uint8_t  size;
 } ODFieldType;
 
@@ -51,6 +57,21 @@ extern const ODFieldType od_device_vendor;
 extern const ODFieldType od_device_code;
 extern const ODFieldType od_device_revision;
 extern const ODFieldType od_device_serial;
+
+/* SDO server parameter */
+extern const ODFieldType od_sdo_stx;
+extern const ODFieldType od_sdo_srx;
+extern const ODFieldType od_sdo_srv_id;
+
+#define SET_SDO_COMMUNICATION(co, OD, id)                                                                            \
+    can_open_set_field((co), (OD), od_sdo_stx.index, od_sdo_stx.sub, (uint32_t[]) {0x600 + (id)}, sizeof(uint32_t)); \
+    can_open_set_field((co), (OD), od_sdo_srx.index, od_sdo_srx.sub, (uint32_t[]) {0x580 + (id)}, sizeof(uint32_t)); \
+    can_open_set_field((co), (OD), od_sdo_srv_id.index, od_sdo_srv_id.sub, (uint8_t[]) {(id)}, sizeof(uint8_t));
+
+#define RESET_SDO_COMMUNICATION(co, OD)                                                                   \
+    can_open_set_field((co), (OD), od_sdo_stx.index, od_sdo_stx.sub, (uint32_t[]) {0}, sizeof(uint32_t)); \
+    can_open_set_field((co), (OD), od_sdo_srx.index, od_sdo_srx.sub, (uint32_t[]) {0}, sizeof(uint32_t)); \
+    can_open_set_field((co), (OD), od_sdo_srv_id.index, od_sdo_srv_id.sub, (uint8_t[]) {0}, sizeof(uint8_t));
 
 /* TxPDO fields. Add NumPDOType to index to get RxPDO(N) */
 extern const ODFieldType od_rx_pdo_cfg;

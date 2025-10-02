@@ -28,6 +28,8 @@ typedef struct
  */
 __attribute__((weak)) void rhs_log_save(char* str, ...);
 
+__attribute__((weak)) void rhs_crash_action(void);
+
 _Noreturn void __rhs_crash_implementation(CallContext context, char* m);
 
 #define rhs_assert(x)                                  \

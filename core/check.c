@@ -60,6 +60,10 @@ static void rhs_save_stack_info(void)
 _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
 {
     __disable_irq();
+    
+    if (rhs_crash_action)
+        rhs_crash_action();
+
     bool isr = RHS_IS_IRQ_MODE();
 
     if (!isr)

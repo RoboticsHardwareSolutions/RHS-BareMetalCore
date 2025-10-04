@@ -22,6 +22,7 @@ typedef enum
 {
     EthNetApiEventTypeSetHttp = 0,
     EthNetApiEventTypeSetTcp  = 1,
+    EthNetApiEventTypeRestart = 2,
 } EthNetApiEventType;
 
 typedef struct

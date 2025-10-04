@@ -2,6 +2,7 @@
 
 #include "rhs.h"
 #include "rhs_hal.h"
+#include "cli.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "mongoose.h"
@@ -34,6 +35,11 @@ typedef struct
 
 struct EthNet
 {
-    struct mg_mgr    mgr;  // Initialise Mongoose event manager
-    RHSMessageQueue* queue;
+    struct mg_mgr*      mgr;          // Initialise Mongoose event manager
+    struct mg_tcpip_if* ifp;          // Builtin TCP/IP stack only. Interface pointer
+    void*               driver_data;  // Driver-specific data
+    EthNetConfig        config;
+    Cli*                cli;
+    RHSThread*          thread;
+    RHSMessageQueue*    queue;
 };

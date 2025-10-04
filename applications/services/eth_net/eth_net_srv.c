@@ -36,11 +36,11 @@ static void ethernet_deinit(void)
 {
     // Disable Ethernet IRQ handler
     NVIC_DisableIRQ(ETH_IRQn);
-    
+
     // Disable Ethernet MAC clocks
     RCC->AHB1ENR &= ~(RCC_AHB1ENR_ETHMACEN | RCC_AHB1ENR_ETHMACTXEN | RCC_AHB1ENR_ETHMACRXEN);
     SYSCFG->PMC &= ~SYSCFG_PMC_MII_RMII_SEL;  // Use RMII. Goes first!
-    
+
     // Reset GPIO pins to default state
 #if defined(STM32F407xx) || defined(STM32F765xx)
     uint16_t pins[] = {PIN('A', 1),   // ETH_RMII_REF_CLK
@@ -52,7 +52,7 @@ static void ethernet_deinit(void)
                        PIN('C', 1),   // ETH_RMII_MDC
                        PIN('C', 4),   // ETH_RMII_RXD0
                        PIN('C', 5)};  // ETH_RMII_RXD1
-    
+
     for (size_t i = 0; i < sizeof(pins) / sizeof(pins[0]); i++)
     {
         gpio_init(pins[i],
@@ -65,19 +65,15 @@ static void ethernet_deinit(void)
 #endif
 }
 
-static void eth_net_init_tcpip(struct mg_mgr* mgr)
+static void eth_net_init_tcpip(EthNet* eth_net)
 {
-    static struct mg_tcpip_driver_stm32f_data driver_data_;
-    static struct mg_tcpip_if                 mif_;
-    memset(&driver_data_, 0, sizeof(driver_data_));
-    memset(&mif_, 0, sizeof(mif_));
+    struct mg_tcpip_if*                 ifp         = eth_net->ifp;
+    struct mg_tcpip_driver_stm32f_data* driver_data = (struct mg_tcpip_driver_stm32f_data*) eth_net->driver_data;
+    rhs_assert(eth_net && ifp && driver_data);
 
-    // Initialize config with default values from compile-time macros
-    EthNetConfig config = {.ip       = MG_TCPIP_IP,
-                           .mask     = MG_TCPIP_MASK,
-                           .gateway  = MG_TCPIP_GW,
-                           .phy_addr = MG_TCPIP_PHY_ADDR,
-                           .mdc_cr   = MG_DRIVER_MDC_CR};
+    // Clear interface and driver data structures
+    memset(eth_net->ifp, 0, sizeof(struct mg_tcpip_if));
+    memset(eth_net->driver_data, 0, sizeof(struct mg_tcpip_driver_stm32f_data));
 
     // Set default MAC address
     MG_SET_MAC_ADDRESS(config.mac);
@@ -85,67 +81,79 @@ static void eth_net_init_tcpip(struct mg_mgr* mgr)
     // Call user configuration function (weak)
     if (eth_net_set_config_on_startup)
     {
-        eth_net_set_config_on_startup(&config);
+        eth_net_set_config_on_startup(&eth_net->config);
     }
 
     // Apply configuration
-    driver_data_.mdc_cr   = config.mdc_cr;
-    driver_data_.phy_addr = config.phy_addr;
-    mif_.ip               = config.ip;
-    mif_.mask             = config.mask;
-    mif_.gw               = config.gateway;
-    mif_.driver           = &mg_tcpip_driver_stm32f;
-    mif_.driver_data      = &driver_data_;
+    driver_data->mdc_cr   = eth_net->config.mdc_cr;
+    driver_data->phy_addr = eth_net->config.phy_addr;
+    ifp->ip               = eth_net->config.ip;
+    ifp->mask             = eth_net->config.mask;
+    ifp->gw               = eth_net->config.gateway;
+    ifp->driver           = &mg_tcpip_driver_stm32f;
+    ifp->driver_data      = driver_data;
 
     // Copy MAC address
     for (int i = 0; i < 6; i++)
     {
-        mif_.mac[i] = config.mac[i];
+        eth_net->ifp->mac[i] = eth_net->config.mac[i];
     }
 
     // Initialize TCP/IP interface
-    mg_tcpip_init(mgr, &mif_);
-    MG_INFO(("Driver: stm32f, MAC: %M", mg_print_mac, mif_.mac));
+    mg_tcpip_init(eth_net->mgr, ifp);
+    MG_INFO(("Driver: stm32f, MAC: %M", mg_print_mac, ifp->mac));
 }
 
 static void eth_net_restart_mgr(EthNet* eth_net)
 {
     // Stop current TCP/IP interface
-    mg_mgr_free(&eth_net->mgr);
-    
+    mg_mgr_free(eth_net->mgr);
+
     // Deinitialize hardware Ethernet peripheral
     // ethernet_deinit();
-    
+
     // Give hardware time to settle after deinit
     // rhs_delay_ms(500);
-    
+
     // Reinitialize hardware and TCP/IP interface
     // ethernet_init();
-    
+
     // Give PHY time to initialize and link to come up
     // rhs_delay_ms(1000);
-    
-    mg_mgr_init(&eth_net->mgr);
+
+    mg_mgr_init(eth_net->mgr);
     MG_ENABLE_ETH_IRQ();
 
-    eth_net_init_tcpip(&eth_net->mgr);
-    
+    eth_net_init_tcpip(eth_net);
+
     MG_INFO(("Network manager restarted"));
 }
 
 static EthNet* eth_net_alloc(void)
 {
-    EthNet* eth_net = malloc(sizeof(EthNet));
-    eth_net->queue  = rhs_message_queue_alloc(1, sizeof(EthNetApiEventMessage));
+    EthNet* eth_net      = malloc(sizeof(EthNet));
+    eth_net->cli         = rhs_record_open(RECORD_CLI);
+    eth_net->mgr         = malloc(sizeof(struct mg_mgr));
+    eth_net->ifp         = malloc(sizeof(struct mg_tcpip_if));
+    eth_net->driver_data = malloc(sizeof(struct mg_tcpip_driver_stm32f_data));
+    eth_net->thread      = rhs_thread_get_current();
+    eth_net->queue       = rhs_message_queue_alloc(1, sizeof(EthNetApiEventMessage));
+
+    // Initialize config with default values from compile-time macros
+    eth_net->config.ip       = MG_TCPIP_IP;
+    eth_net->config.mask     = MG_TCPIP_MASK;
+    eth_net->config.gateway  = MG_TCPIP_GW;
+    eth_net->config.phy_addr = MG_TCPIP_PHY_ADDR;
+    eth_net->config.mdc_cr   = MG_DRIVER_MDC_CR;
 
     // Initialise Mongoose network stack
     ethernet_init();
 
-    mg_log_set(MG_LL_VERBOSE);     // Set log level
-    mg_mgr_init(&eth_net->mgr);  // and attach it to the interface
+    mg_log_set(MG_LL_VERBOSE);  // Set log level
+    mg_mgr_init(eth_net->mgr);  // and attach it to the interface
 
     MG_ENABLE_ETH_IRQ();
-    eth_net_init_tcpip(&eth_net->mgr);
+    eth_net_init_tcpip(eth_net);
 
     return eth_net;
 }
@@ -170,33 +178,95 @@ void eth_net_start_listener(EthNet* eth_net, const char* uri, mg_event_handler_t
 
 void eth_net_restart_manager(EthNet* eth_net)
 {
-    EthNetApiEventMessage msg = {.lock = NULL, .type = EthNetApiEventTypeRestart, .data = {0}};
+    RHSThread* thread = rhs_thread_get_current();
+    RHSApiLock lock   = NULL;
+
+    if (thread != eth_net->thread)
+    {
+        lock = api_lock_alloc_locked();
+    }
+
+    EthNetApiEventMessage msg = {.lock = lock, .type = EthNetApiEventTypeRestart, .data = {0}};
     rhs_message_queue_put(eth_net->queue, &msg, RHSWaitForever);
-    // api_lock_wait_unlock_and_free(msg.lock);
-    // eth_net_restart_mgr(eth_net);
+
+    if (thread != eth_net->thread)
+    {
+        api_lock_wait_unlock_and_free(msg.lock);
+    }
+}
+
+void eth_net_cli_command(char* args, void* context)
+{
+    EthNet* eth_net = (EthNet*) context;
+    if (args == NULL)
+    {
+        return;
+    }
+    else
+    {
+        char* separator = strchr(args, ' ');
+        if (separator == NULL || *(separator + 1) == 0)
+        {
+            if (strstr(args, "-restart") == args)
+            {
+                // Restart network manager
+                eth_net_restart_manager(eth_net);
+                return;
+            }
+            printf("Invalid argument\n");
+            return;
+        }
+        else if (strstr(args, "-ip") == args)
+        {
+            // Parse IP address from string like "192.168.1.100"
+            char*        ip_str = separator + 1;
+            unsigned int a, b, c, d;
+
+            if (sscanf(ip_str, "%u.%u.%u.%u", &a, &b, &c, &d) == 4)
+            {
+                if (a <= 255 && b <= 255 && c <= 255 && d <= 255)
+                {
+                    // Update IP address in config
+                    eth_net->config.ip = MG_IPV4(a, b, c, d);
+
+                    printf("IP address will be changed to %u.%u.%u.%u\n", a, b, c, d);
+                    printf("Restarting network manager...\n");
+
+                    // Restart network manager to apply new IP
+                    eth_net_restart_manager(eth_net);
+                    return;
+                }
+            }
+
+            printf("Invalid IP address format. Expected: eth -ip 192.168.1.100\n");
+            return;
+        }
+        printf("Invalid argument\n");
+    }
 }
 
 int32_t eth_net_service(void* context)
 {
     EthNet* app = eth_net_alloc();
     rhs_record_create(RECORD_ETH_NET, app);
+    cli_add_command(app->cli, "eth", eth_net_cli_command, app);
 
     EthNetApiEventMessage msg;
     MG_INFO(("Starting event loop"));
     for (;;)
     {
-        mg_mgr_poll(&app->mgr, 1);  // Infinite event loop
+        mg_mgr_poll(app->mgr, 1);  // Infinite event loop
 
         if (rhs_message_queue_get(app->queue, &msg, 0) == RHSStatusOk)
         {
             if (msg.type == EthNetApiEventTypeSetHttp)
             {
-                mg_http_listen(&app->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
+                mg_http_listen(app->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
                 MG_INFO(("HTTP server started"));
             }
             else if (msg.type == EthNetApiEventTypeSetTcp)
             {
-                mg_listen(&app->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
+                mg_listen(app->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
                 MG_INFO(("Starting TCP server on %d", msg.data.interface.uri));
             }
             else if (msg.type == EthNetApiEventTypeRestart)

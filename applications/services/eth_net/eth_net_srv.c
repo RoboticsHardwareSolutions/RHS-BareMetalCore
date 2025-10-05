@@ -1,6 +1,7 @@
 #include "eth_net.h"
 #include "eth_net_srv.h"
 #include "hal.h"
+#include "stm32f_eth_driver.h"
 
 static void ethernet_init(void)
 {
@@ -29,7 +30,24 @@ static void ethernet_init(void)
     }
     NVIC_EnableIRQ(ETH_IRQn);                // Setup Ethernet IRQ handler
     SYSCFG->PMC |= SYSCFG_PMC_MII_RMII_SEL;  // Use RMII. Goes first!
+    
+    // Enable Ethernet MAC clocks
     RCC->AHB1ENR |= RCC_AHB1ENR_ETHMACEN | RCC_AHB1ENR_ETHMACTXEN | RCC_AHB1ENR_ETHMACRXEN;
+    
+    // Perform hardware reset of Ethernet MAC peripheral
+    RCC->AHB1RSTR |= RCC_AHB1RSTR_ETHMACRST;
+    
+    // Wait until reset is applied
+    while ((RCC->AHB1RSTR & RCC_AHB1RSTR_ETHMACRST) == 0)
+        ;
+    
+    // Release reset
+    RCC->AHB1RSTR &= ~RCC_AHB1RSTR_ETHMACRST;
+    
+    // Wait until reset is released and MAC registers return to default values
+    while ((RCC->AHB1RSTR & RCC_AHB1RSTR_ETHMACRST) != 0 || (ETH->MACCR & 0x00008000) == 0)
+        ;
+    
 }
 
 static void ethernet_deinit(void)
@@ -68,12 +86,12 @@ static void ethernet_deinit(void)
 static void eth_net_init_tcpip(EthNet* eth_net)
 {
     struct mg_tcpip_if*                 ifp         = eth_net->ifp;
-    struct mg_tcpip_driver_stm32f_data* driver_data = (struct mg_tcpip_driver_stm32f_data*) eth_net->driver_data;
+    struct stm32f_eth_driver_data* driver_data = (struct stm32f_eth_driver_data*) eth_net->driver_data;
     rhs_assert(eth_net && ifp && driver_data);
 
     // Clear interface and driver data structures
     memset(eth_net->ifp, 0, sizeof(struct mg_tcpip_if));
-    memset(eth_net->driver_data, 0, sizeof(struct mg_tcpip_driver_stm32f_data));
+    memset(eth_net->driver_data, 0, sizeof(struct stm32f_eth_driver_data));
 
     // Set default MAC address
     MG_SET_MAC_ADDRESS(config.mac);
@@ -90,7 +108,7 @@ static void eth_net_init_tcpip(EthNet* eth_net)
     ifp->ip               = eth_net->config.ip;
     ifp->mask             = eth_net->config.mask;
     ifp->gw               = eth_net->config.gateway;
-    ifp->driver           = &mg_tcpip_driver_stm32f;
+    ifp->driver           = &stm32f_eth_tcpip_driver;
     ifp->driver_data      = driver_data;
 
     // Copy MAC address
@@ -106,6 +124,8 @@ static void eth_net_init_tcpip(EthNet* eth_net)
 
 static void eth_net_restart_mgr(EthNet* eth_net)
 {
+    eth_net->mgr->ifp->state = MG_TCPIP_STATE_DOWN;
+    mg_mgr_poll(eth_net->mgr, 0);
     // Stop current TCP/IP interface
     mg_mgr_free(eth_net->mgr);
 
@@ -122,7 +142,6 @@ static void eth_net_restart_mgr(EthNet* eth_net)
     // rhs_delay_ms(1000);
 
     mg_mgr_init(eth_net->mgr);
-    MG_ENABLE_ETH_IRQ();
 
     eth_net_init_tcpip(eth_net);
 
@@ -135,7 +154,7 @@ static EthNet* eth_net_alloc(void)
     eth_net->cli         = rhs_record_open(RECORD_CLI);
     eth_net->mgr         = malloc(sizeof(struct mg_mgr));
     eth_net->ifp         = malloc(sizeof(struct mg_tcpip_if));
-    eth_net->driver_data = malloc(sizeof(struct mg_tcpip_driver_stm32f_data));
+    eth_net->driver_data = malloc(sizeof(struct stm32f_eth_driver_data));
     eth_net->thread      = rhs_thread_get_current();
     eth_net->queue       = rhs_message_queue_alloc(1, sizeof(EthNetApiEventMessage));
 
@@ -152,7 +171,6 @@ static EthNet* eth_net_alloc(void)
     mg_log_set(MG_LL_VERBOSE);  // Set log level
     mg_mgr_init(eth_net->mgr);  // and attach it to the interface
 
-    MG_ENABLE_ETH_IRQ();
     eth_net_init_tcpip(eth_net);
 
     return eth_net;

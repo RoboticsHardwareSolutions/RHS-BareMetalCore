@@ -1,5 +1,6 @@
 #include "eth_net.h"
 #include "eth_net_srv.h"
+#include "eth_net_listeners.h"
 #include "hal.h"
 
 static void ethernet_init(void)
@@ -29,24 +30,23 @@ static void ethernet_init(void)
     }
     NVIC_EnableIRQ(ETH_IRQn);                // Setup Ethernet IRQ handler
     SYSCFG->PMC |= SYSCFG_PMC_MII_RMII_SEL;  // Use RMII. Goes first!
-    
+
     // Enable Ethernet MAC clocks
     RCC->AHB1ENR |= RCC_AHB1ENR_ETHMACEN | RCC_AHB1ENR_ETHMACTXEN | RCC_AHB1ENR_ETHMACRXEN;
-    
+
     // Perform hardware reset of Ethernet MAC peripheral
     RCC->AHB1RSTR |= RCC_AHB1RSTR_ETHMACRST;
-    
+
     // Wait until reset is applied
     while ((RCC->AHB1RSTR & RCC_AHB1RSTR_ETHMACRST) == 0)
         ;
-    
+
     // Release reset
     RCC->AHB1RSTR &= ~RCC_AHB1RSTR_ETHMACRST;
-    
+
     // Wait until reset is released and MAC registers return to default values
     while ((RCC->AHB1RSTR & RCC_AHB1RSTR_ETHMACRST) != 0 || (ETH->MACCR & 0x00008000) == 0)
         ;
-    
 }
 
 static void ethernet_deinit(void)
@@ -156,6 +156,7 @@ static EthNet* eth_net_alloc(void)
     eth_net->driver_data = malloc(sizeof(struct mg_tcpip_driver_stm32f_data));
     eth_net->thread      = rhs_thread_get_current();
     eth_net->queue       = rhs_message_queue_alloc(1, sizeof(EthNetApiEventMessage));
+    eth_net->listeners   = NULL;  // Initialize listeners list
 
     // Initialize config with default values from compile-time macros
     eth_net->config.ip       = MG_TCPIP_IP;
@@ -167,7 +168,7 @@ static EthNet* eth_net_alloc(void)
     // Initialise Mongoose network stack
     ethernet_init();
 
-    mg_log_set(MG_LL_VERBOSE);  // Set log level
+    mg_log_set(MG_LL_DEBUG);  // Set log level
     mg_mgr_init(eth_net->mgr);  // and attach it to the interface
 
     eth_net_init_tcpip(eth_net);
@@ -279,22 +280,32 @@ int32_t eth_net_service(void* context)
             if (msg.type == EthNetApiEventTypeSetHttp)
             {
                 mg_http_listen(app->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
-                MG_INFO(("HTTP server started"));
+                MG_INFO(("HTTP server started on %s", msg.data.interface.uri));
+
+                // Add listener to the buffer for later restoration
+                eth_net_listeners_add(&app->listeners, EthNetListenerTypeHttp, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
             }
             else if (msg.type == EthNetApiEventTypeSetTcp)
             {
                 mg_listen(app->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
-                MG_INFO(("Starting TCP server on %d", msg.data.interface.uri));
+                MG_INFO(("TCP server started on %s", msg.data.interface.uri));
+
+                // Add listener to the buffer for later restoration
+                eth_net_listeners_add(&app->listeners, EthNetListenerTypeTcp, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
             }
             else if (msg.type == EthNetApiEventTypeRestart)
             {
-                //  eth_net_restart_mgr(app);
-
+                // eth_net_restart_mgr(app);
                 struct mg_connection* c;
                 app->mgr->ifp->ip = app->config.ip;
+
+                // Close all existing connections
                 for (c = app->mgr->conns; c != NULL; c = c->next)
                     c->is_closing = 1;
                 mg_mgr_poll(app->mgr, 0);
+
+                // Restore all registered listeners
+                eth_net_listeners_restore(app->listeners, app->mgr);
             }
 
             if (msg.lock)

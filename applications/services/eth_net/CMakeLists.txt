@@ -27,7 +27,10 @@ rhs_ip_to_mongoose_format("${RHS_ETH_NET_IP}" MG_TCPIP_IP_VALUE)
 rhs_ip_to_mongoose_format("${RHS_ETH_NET_GATEWAY}" MG_TCPIP_GW_VALUE)
 rhs_ip_to_mongoose_format("${RHS_ETH_NET_NETMASK}" MG_TCPIP_MASK_VALUE)
 
-add_library(${PROJECT_NAME} STATIC eth_net_srv.c)
+add_library(${PROJECT_NAME} STATIC 
+    eth_net_srv.c
+    eth_net_listeners.c
+)
 
 target_include_directories(
         ${PROJECT_NAME} PUBLIC

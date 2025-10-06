@@ -6,6 +6,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "mongoose.h"
+#include "eth_net_listeners.h"
 
 typedef struct
 {
@@ -42,4 +43,5 @@ struct EthNet
     Cli*                cli;
     RHSThread*          thread;
     RHSMessageQueue*    queue;
+    EthNetListener*     listeners;    // Linked list of registered listeners
 };

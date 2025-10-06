@@ -48,7 +48,7 @@ target_compile_definitions(
         MG_ARCH=MG_ARCH_FREERTOS
         MG_ENABLE_CUSTOM_RANDOM=1
         MG_ENABLE_TCPIP=1
-        MG_ENABLE_DRIVER_STM32F=0
+        MG_ENABLE_DRIVER_STM32F=1
         # MG_ENABLE_TCPIP_DRIVER_INIT if 1 (by default), call MG_TCPIP_DRIVER_INIT(&mgr) in mg_mgr_init().
         # If 0, call it manually later. Useful if you need several mgr, e.g. for dual interfaces (Eth + USB + WiFi)
         MG_ENABLE_TCPIP_DRIVER_INIT=0
@@ -74,9 +74,6 @@ target_link_libraries(
         PRIVATE
         rhs
         rhs_hal
-        stm32f_eth_driver
 )
 
 service(eth_net_service "eth_net" 16384)
-
-add_subdirectory(stm32f_eth_driver)

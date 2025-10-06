@@ -1,7 +1,6 @@
 #include "eth_net.h"
 #include "eth_net_srv.h"
 #include "hal.h"
-#include "stm32f_eth_driver.h"
 
 static void ethernet_init(void)
 {
@@ -86,12 +85,12 @@ static void ethernet_deinit(void)
 static void eth_net_init_tcpip(EthNet* eth_net)
 {
     struct mg_tcpip_if*                 ifp         = eth_net->ifp;
-    struct stm32f_eth_driver_data* driver_data = (struct stm32f_eth_driver_data*) eth_net->driver_data;
+    struct mg_tcpip_driver_stm32f_data* driver_data = (struct mg_tcpip_driver_stm32f_data*) eth_net->driver_data;
     rhs_assert(eth_net && ifp && driver_data);
 
     // Clear interface and driver data structures
     memset(eth_net->ifp, 0, sizeof(struct mg_tcpip_if));
-    memset(eth_net->driver_data, 0, sizeof(struct stm32f_eth_driver_data));
+    memset(eth_net->driver_data, 0, sizeof(struct mg_tcpip_driver_stm32f_data));
 
     // Set default MAC address
     MG_SET_MAC_ADDRESS(config.mac);
@@ -108,7 +107,7 @@ static void eth_net_init_tcpip(EthNet* eth_net)
     ifp->ip               = eth_net->config.ip;
     ifp->mask             = eth_net->config.mask;
     ifp->gw               = eth_net->config.gateway;
-    ifp->driver           = &stm32f_eth_tcpip_driver;
+    ifp->driver           = &mg_tcpip_driver_stm32f;
     ifp->driver_data      = driver_data;
 
     // Copy MAC address
@@ -154,7 +153,7 @@ static EthNet* eth_net_alloc(void)
     eth_net->cli         = rhs_record_open(RECORD_CLI);
     eth_net->mgr         = malloc(sizeof(struct mg_mgr));
     eth_net->ifp         = malloc(sizeof(struct mg_tcpip_if));
-    eth_net->driver_data = malloc(sizeof(struct stm32f_eth_driver_data));
+    eth_net->driver_data = malloc(sizeof(struct mg_tcpip_driver_stm32f_data));
     eth_net->thread      = rhs_thread_get_current();
     eth_net->queue       = rhs_message_queue_alloc(1, sizeof(EthNetApiEventMessage));
 
@@ -289,7 +288,13 @@ int32_t eth_net_service(void* context)
             }
             else if (msg.type == EthNetApiEventTypeRestart)
             {
-                eth_net_restart_mgr(app);
+                //  eth_net_restart_mgr(app);
+
+                struct mg_connection* c;
+                app->mgr->ifp->ip = app->config.ip;
+                for (c = app->mgr->conns; c != NULL; c = c->next)
+                    c->is_closing = 1;
+                mg_mgr_poll(app->mgr, 0);
             }
 
             if (msg.lock)

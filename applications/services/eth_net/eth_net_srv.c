@@ -193,7 +193,9 @@ void eth_net_get_config(EthNet* eth_net, EthNetConfig* config)
         return;
 
     // Copy current configuration to the provided config structure
-    *config = eth_net->config;
+    config->ip      = eth_net->mgr->ifp->ip;
+    config->mask    = eth_net->mgr->ifp->mask;
+    config->gateway = eth_net->mgr->ifp->gw;
 }
 
 void eth_net_cli_command(char* args, void* context)

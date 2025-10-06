@@ -18,6 +18,7 @@ typedef struct
 typedef union
 {
     EthNetApiEventDataInterface interface;
+    EthNetConfig                config;
 } EthNetApiEventData;
 
 typedef enum

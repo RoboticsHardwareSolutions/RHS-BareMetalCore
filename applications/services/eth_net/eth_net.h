@@ -38,4 +38,6 @@ void eth_net_start_http(EthNet* eth_net, const char* uri, mg_event_handler_t fn,
 
 void eth_net_start_listener(EthNet* eth_net, const char* uri, mg_event_handler_t fn, void* context);
 
-void eth_net_restart_manager(EthNet* eth_net);
+void eth_net_set_config(EthNet* eth_net, EthNetConfig* config);
+
+void eth_net_get_config(EthNet* eth_net, EthNetConfig* config);

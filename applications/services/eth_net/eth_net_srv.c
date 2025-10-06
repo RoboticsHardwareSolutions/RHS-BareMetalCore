@@ -121,32 +121,6 @@ static void eth_net_init_tcpip(EthNet* eth_net)
     MG_INFO(("Driver: stm32f, MAC: %M", mg_print_mac, ifp->mac));
 }
 
-static void eth_net_restart_mgr(EthNet* eth_net)
-{
-    eth_net->mgr->ifp->state = MG_TCPIP_STATE_DOWN;
-    mg_mgr_poll(eth_net->mgr, 0);
-    // Stop current TCP/IP interface
-    mg_mgr_free(eth_net->mgr);
-
-    // Deinitialize hardware Ethernet peripheral
-    // ethernet_deinit();
-
-    // Give hardware time to settle after deinit
-    // rhs_delay_ms(500);
-
-    // Reinitialize hardware and TCP/IP interface
-    // ethernet_init();
-
-    // Give PHY time to initialize and link to come up
-    // rhs_delay_ms(1000);
-
-    mg_mgr_init(eth_net->mgr);
-
-    eth_net_init_tcpip(eth_net);
-
-    MG_INFO(("Network manager restarted"));
-}
-
 static EthNet* eth_net_alloc(void)
 {
     EthNet* eth_net      = malloc(sizeof(EthNet));
@@ -168,7 +142,7 @@ static EthNet* eth_net_alloc(void)
     // Initialise Mongoose network stack
     ethernet_init();
 
-    mg_log_set(MG_LL_DEBUG);  // Set log level
+    mg_log_set(MG_LL_DEBUG);    // Set log level
     mg_mgr_init(eth_net->mgr);  // and attach it to the interface
 
     eth_net_init_tcpip(eth_net);
@@ -194,7 +168,7 @@ void eth_net_start_listener(EthNet* eth_net, const char* uri, mg_event_handler_t
     api_lock_wait_unlock_and_free(msg.lock);
 }
 
-void eth_net_restart_manager(EthNet* eth_net)
+void eth_net_set_config(EthNet* eth_net, EthNetConfig* config)
 {
     RHSThread* thread = rhs_thread_get_current();
     RHSApiLock lock   = NULL;
@@ -204,13 +178,22 @@ void eth_net_restart_manager(EthNet* eth_net)
         lock = api_lock_alloc_locked();
     }
 
-    EthNetApiEventMessage msg = {.lock = lock, .type = EthNetApiEventTypeRestart, .data = {0}};
+    EthNetApiEventMessage msg = {.lock = lock, .type = EthNetApiEventTypeRestart, .data = {.config = *config}};
     rhs_message_queue_put(eth_net->queue, &msg, RHSWaitForever);
 
     if (thread != eth_net->thread)
     {
         api_lock_wait_unlock_and_free(msg.lock);
     }
+}
+
+void eth_net_get_config(EthNet* eth_net, EthNetConfig* config)
+{
+    if (eth_net == NULL || config == NULL)
+        return;
+
+    // Copy current configuration to the provided config structure
+    *config = eth_net->config;
 }
 
 void eth_net_cli_command(char* args, void* context)
@@ -228,7 +211,7 @@ void eth_net_cli_command(char* args, void* context)
             if (strstr(args, "-restart") == args)
             {
                 // Restart network manager
-                eth_net_restart_manager(eth_net);
+                eth_net_set_config(eth_net, &eth_net->config);
                 return;
             }
             printf("Invalid argument\n");
@@ -251,7 +234,7 @@ void eth_net_cli_command(char* args, void* context)
                     printf("Restarting network manager...\n");
 
                     // Restart network manager to apply new IP
-                    eth_net_restart_manager(eth_net);
+                    eth_net_set_config(eth_net, &eth_net->config);
                     return;
                 }
             }
@@ -283,7 +266,11 @@ int32_t eth_net_service(void* context)
                 MG_INFO(("HTTP server started on %s", msg.data.interface.uri));
 
                 // Add listener to the buffer for later restoration
-                eth_net_listeners_add(&app->listeners, EthNetListenerTypeHttp, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
+                eth_net_listeners_add(&app->listeners,
+                                      EthNetListenerTypeHttp,
+                                      msg.data.interface.uri,
+                                      msg.data.interface.fn,
+                                      msg.data.interface.context);
             }
             else if (msg.type == EthNetApiEventTypeSetTcp)
             {
@@ -291,13 +278,18 @@ int32_t eth_net_service(void* context)
                 MG_INFO(("TCP server started on %s", msg.data.interface.uri));
 
                 // Add listener to the buffer for later restoration
-                eth_net_listeners_add(&app->listeners, EthNetListenerTypeTcp, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
+                eth_net_listeners_add(&app->listeners,
+                                      EthNetListenerTypeTcp,
+                                      msg.data.interface.uri,
+                                      msg.data.interface.fn,
+                                      msg.data.interface.context);
             }
             else if (msg.type == EthNetApiEventTypeRestart)
             {
-                // eth_net_restart_mgr(app);
                 struct mg_connection* c;
-                app->mgr->ifp->ip = app->config.ip;
+                app->mgr->ifp->ip   = msg.data.config.ip;
+                app->mgr->ifp->mask = msg.data.config.mask;
+                app->mgr->ifp->gw   = msg.data.config.gateway;
 
                 // Close all existing connections
                 for (c = app->mgr->conns; c != NULL; c = c->next)

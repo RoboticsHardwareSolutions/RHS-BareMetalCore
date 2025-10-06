@@ -41,3 +41,14 @@ void eth_net_start_listener(EthNet* eth_net, const char* uri, mg_event_handler_t
 void eth_net_set_config(EthNet* eth_net, EthNetConfig* config);
 
 void eth_net_get_config(EthNet* eth_net, EthNetConfig* config);
+
+/**
+ * @brief Parse IP address string into four octets
+ * @param ip_str Input string in format "192.168.1.100"
+ * @param a Pointer to first octet
+ * @param b Pointer to second octet
+ * @param c Pointer to third octet
+ * @param d Pointer to fourth octet
+ * @return 0 on success, -1 on error
+ */
+int parse_ip_address(const char* ip_str, unsigned int* a, unsigned int* b, unsigned int* c, unsigned int* d);

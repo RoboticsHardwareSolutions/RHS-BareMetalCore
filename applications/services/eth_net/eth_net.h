@@ -51,4 +51,5 @@ void eth_net_get_config(EthNet* eth_net, EthNetConfig* config);
  * @param d Pointer to fourth octet
  * @return 0 on success, -1 on error
  */
-int parse_ip_address(const char* ip_str, unsigned int* a, unsigned int* b, unsigned int* c, unsigned int* d);
+int string_to_ip(const char* ip_str, unsigned int* a, unsigned int* b, unsigned int* c, unsigned int* d);
+int ip_to_string(unsigned int a, unsigned int b, unsigned int c, unsigned int d, char* str_buf);

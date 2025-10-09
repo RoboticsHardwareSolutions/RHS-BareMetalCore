@@ -165,9 +165,26 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
         if (rhs_mutex_get_owner(flash_mutex) != NULL)
             return RHS_FLASH_EX_BUSY;
     }
-    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+    else
     {
-        return RHS_FLASH_EX_ERROR;
+        if (rhs_kernel_is_running())
+        {
+            if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+            {
+                return RHS_FLASH_EX_ERROR;
+            }
+        }
+        else
+        {
+            if (!rhs_mutex_get_owner(flash_mutex))
+            {
+                vTaskSuspendAll();
+            }
+            else
+            {
+                return RHS_FLASH_EX_ERROR;
+            }
+        }
     }
 
     /* Check Flash busy ? */
@@ -187,8 +204,16 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
     // Only release mutex if we successfully acquired it (not in IRQ mode)
     if (!RHS_IS_IRQ_MODE())
     {
-        rhs_mutex_release(flash_mutex);
+        if (rhs_kernel_is_running())
+        {
+            rhs_mutex_release(flash_mutex);
+        }
+        else
+        {
+            xTaskResumeAll();
+        }
     }
+
     return error;
 }
 
@@ -201,9 +226,26 @@ int rhs_hal_flash_ex_erase_chip(void)
         if (rhs_mutex_get_owner(flash_mutex) != NULL)
             return RHS_FLASH_EX_BUSY;
     }
-    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+    else
     {
-        return RHS_FLASH_EX_ERROR;
+        if (rhs_kernel_is_running())
+        {
+            if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+            {
+                return RHS_FLASH_EX_ERROR;
+            }
+        }
+        else
+        {
+            if (!rhs_mutex_get_owner(flash_mutex))
+            {
+                vTaskSuspendAll();
+            }
+            else
+            {
+                return RHS_FLASH_EX_ERROR;
+            }
+        }
     }
 
     /* Check Flash busy ? */
@@ -231,7 +273,14 @@ int rhs_hal_flash_ex_erase_chip(void)
 
     if (!RHS_IS_IRQ_MODE())
     {
-        rhs_mutex_release(flash_mutex);
+        if (rhs_kernel_is_running())
+        {
+            rhs_mutex_release(flash_mutex);
+        }
+        else
+        {
+            xTaskResumeAll();
+        }
     }
     /* Return BSP status */
     return error;
@@ -249,9 +298,26 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
         if (rhs_mutex_get_owner(flash_mutex) != NULL)
             return RHS_FLASH_EX_BUSY;
     }
-    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+    else
     {
-        return RHS_FLASH_EX_ERROR;
+        if (rhs_kernel_is_running())
+        {
+            if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+            {
+                return RHS_FLASH_EX_ERROR;
+            }
+        }
+        else
+        {
+            if (!rhs_mutex_get_owner(flash_mutex))
+            {
+                vTaskSuspendAll();
+            }
+            else
+            {
+                return RHS_FLASH_EX_ERROR;
+            }
+        }
     }
 
     /* Calculation of the size between the write address and the end of the page */
@@ -300,7 +366,14 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
 
     if (!RHS_IS_IRQ_MODE())
     {
-        rhs_mutex_release(flash_mutex);
+        if (rhs_kernel_is_running())
+        {
+            rhs_mutex_release(flash_mutex);
+        }
+        else
+        {
+            xTaskResumeAll();
+        }
     }
     return error;
 }
@@ -316,9 +389,26 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
         if (rhs_mutex_get_owner(flash_mutex) != NULL)
             return RHS_FLASH_EX_BUSY;
     }
-    else if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+    else
     {
-        return RHS_FLASH_EX_ERROR;
+        if (rhs_kernel_is_running())
+        {
+            if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
+            {
+                return RHS_FLASH_EX_ERROR;
+            }
+        }
+        else
+        {
+            if (!rhs_mutex_get_owner(flash_mutex))
+            {
+                vTaskSuspendAll();
+            }
+            else
+            {
+                return RHS_FLASH_EX_ERROR;
+            }
+        }
     }
 
     /* Check Flash busy ? */
@@ -355,7 +445,14 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
     }
     if (!RHS_IS_IRQ_MODE())
     {
-        rhs_mutex_release(flash_mutex);
+        if (rhs_kernel_is_running())
+        {
+            rhs_mutex_release(flash_mutex);
+        }
+        else
+        {
+            xTaskResumeAll();
+        }
     }
     /* Return BSP status */
     return error;

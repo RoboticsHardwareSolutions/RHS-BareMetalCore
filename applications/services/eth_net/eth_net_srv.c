@@ -332,9 +332,9 @@ int32_t eth_net_service(void* context)
                     for (c = app->mgr->conns; c != NULL; c = c->next)
                     {
                         // Check if this is a listening connection with matching address
-                        MG_INFO(("ip %s, port %d", c->loc.ip, c->loc.port));
-                        if (c->is_listening && c->loc.ip == target_addr.ip && c->loc.port == port)
+                        if (c->is_listening && c->loc.port == mg_htons(port))
                         {
+                            MG_INFO(("ip %s, port %d", c->loc.ip, mg_htons(c->loc.port)));
                             c->is_closing = 1;
                         }
                     }

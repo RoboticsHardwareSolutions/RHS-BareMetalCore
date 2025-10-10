@@ -28,21 +28,9 @@ typedef struct EthNetListener
 void eth_net_listeners_add(EthNetListener** listeners, EthNetListenerType type, const char* uri, mg_event_handler_t fn, void* context);
 
 /**
- * @brief Restore all listeners by calling their registration functions
- * @param listeners Head of the list
- * @param mgr Mongoose manager to register listeners with
- */
-void eth_net_listeners_restore(EthNetListener* listeners, struct mg_mgr* mgr);
-
-/**
- * @brief Free all listeners and their allocated memory
+ * @brief Remove a listener from the list by URI
  * @param listeners Pointer to the head of the list
+ * @param uri URI string to match
+ * @return true if listener was found and removed, false otherwise
  */
-void eth_net_listeners_free(EthNetListener** listeners);
-
-/**
- * @brief Get the count of listeners in the list
- * @param listeners Head of the list
- * @return Number of listeners
- */
-size_t eth_net_listeners_count(EthNetListener* listeners);
+bool eth_net_listeners_remove(EthNetListener** listeners, const char* uri);

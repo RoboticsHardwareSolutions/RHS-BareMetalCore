@@ -41,64 +41,47 @@ void eth_net_listeners_add(EthNetListener** listeners, EthNetListenerType type, 
     MG_INFO(("Listener added: type=%d, uri=%s", type, uri));
 }
 
-void eth_net_listeners_restore(EthNetListener* listeners, struct mg_mgr* mgr)
-{
-    rhs_assert(mgr);
-
-    if (listeners == NULL)
-    {
-        MG_INFO(("No listeners to restore"));
-        return;
-    }
-
-    MG_INFO(("Restoring listeners..."));
-
-    EthNetListener* listener = listeners;
-    while (listener != NULL)
-    {
-        if (listener->type == EthNetListenerTypeHttp)
-        {
-            mg_http_listen(mgr, listener->uri, listener->fn, listener->context);
-            MG_INFO(("Restored HTTP server on %s", listener->uri));
-        }
-        else if (listener->type == EthNetListenerTypeTcp)
-        {
-            mg_listen(mgr, listener->uri, listener->fn, listener->context);
-            MG_INFO(("Restored TCP server on %s", listener->uri));
-        }
-
-        listener = listener->next;
-    }
-}
-
-void eth_net_listeners_free(EthNetListener** listeners)
+bool eth_net_listeners_remove(EthNetListener** listeners, const char* uri)
 {
     rhs_assert(listeners);
+    rhs_assert(uri);
 
-    EthNetListener* listener = *listeners;
-
-    while (listener != NULL)
+    if (*listeners == NULL)
     {
-        EthNetListener* next = listener->next;
-        free(listener->uri);
-        free(listener);
-        listener = next;
+        return false;
     }
 
-    *listeners = NULL;
-    MG_INFO(("All listeners freed"));
-}
+    EthNetListener* current  = *listeners;
+    EthNetListener* previous = NULL;
 
-size_t eth_net_listeners_count(EthNetListener* listeners)
-{
-    size_t          count    = 0;
-    EthNetListener* listener = listeners;
-
-    while (listener != NULL)
+    while (current != NULL)
     {
-        count++;
-        listener = listener->next;
+        if (strcmp(current->uri, uri) == 0)
+        {
+            // Found the listener to remove
+            if (previous == NULL)
+            {
+                // Removing the first element
+                *listeners = current->next;
+            }
+            else
+            {
+                // Removing a middle or last element
+                previous->next = current->next;
+            }
+
+            MG_INFO(("Listener removed: type=%d, uri=%s", current->type, current->uri));
+            
+            // Free the memory
+            free(current->uri);
+            free(current);
+            
+            return true;
+        }
+
+        previous = current;
+        current  = current->next;
     }
 
-    return count;
+    return false;
 }

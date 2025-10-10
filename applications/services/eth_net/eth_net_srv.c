@@ -129,7 +129,7 @@ static EthNet* eth_net_alloc(void)
     eth_net->ifp         = malloc(sizeof(struct mg_tcpip_if));
     eth_net->driver_data = malloc(sizeof(struct mg_tcpip_driver_stm32f_data));
     eth_net->thread      = rhs_thread_get_current();
-    eth_net->queue       = rhs_message_queue_alloc(1, sizeof(EthNetApiEventMessage));
+    eth_net->queue       = rhs_message_queue_alloc(3, sizeof(EthNetApiEventMessage));
     eth_net->listeners   = NULL;  // Initialize listeners list
 
     // Initialize config with default values from compile-time macros
@@ -161,11 +161,46 @@ void eth_net_start_http(EthNet* eth_net, const char* uri, mg_event_handler_t fn,
 
 void eth_net_start_listener(EthNet* eth_net, const char* uri, mg_event_handler_t fn, void* context)
 {
-    EthNetApiEventMessage msg = {.lock = api_lock_alloc_locked(),
+    RHSThread* thread = rhs_thread_get_current();
+    RHSApiLock lock   = NULL;
+
+    if (thread != eth_net->thread)
+    {
+        lock = api_lock_alloc_locked();
+    }
+
+    EthNetApiEventMessage msg = {.lock = lock,
                                  .type = EthNetApiEventTypeSetTcp,
                                  .data = {.interface = {.uri = (char*) uri, .fn = fn, .context = context}}};
+
     rhs_message_queue_put(eth_net->queue, &msg, RHSWaitForever);
-    api_lock_wait_unlock_and_free(msg.lock);
+
+    if (thread != eth_net->thread)
+    {
+        api_lock_wait_unlock_and_free(msg.lock);
+    }
+}
+
+void eth_net_stop_listener(EthNet* eth_net, const char* uri)
+{
+    RHSThread* thread = rhs_thread_get_current();
+    RHSApiLock lock   = NULL;
+
+    if (thread != eth_net->thread)
+    {
+        lock = api_lock_alloc_locked();
+    }
+
+    EthNetApiEventMessage msg = {.lock = lock,
+                                 .type = EthNetApiEventTypeRstTcp,
+                                 .data = {.interface = {.uri = (char*) uri}}};
+
+    rhs_message_queue_put(eth_net->queue, &msg, RHSWaitForever);
+
+    if (thread != eth_net->thread)
+    {
+        api_lock_wait_unlock_and_free(msg.lock);
+    }
 }
 
 void eth_net_set_config(EthNet* eth_net, EthNetConfig* config)
@@ -283,6 +318,41 @@ int32_t eth_net_service(void* context)
                                       msg.data.interface.fn,
                                       msg.data.interface.context);
             }
+            else if (msg.type == EthNetApiEventTypeRstTcp)
+            {
+                struct mg_connection* c;
+                struct mg_addr        target_addr;
+
+                uint16_t port = mg_url_port(msg.data.interface.uri);
+
+                // Parse the target URL to get address
+                if (mg_aton(mg_url_host(msg.data.interface.uri), &target_addr))
+                {
+                    // Close all connections matching this listener address
+                    for (c = app->mgr->conns; c != NULL; c = c->next)
+                    {
+                        // Check if this is a listening connection with matching address
+                        MG_INFO(("ip %s, port %d", c->loc.ip, c->loc.port));
+                        if (c->is_listening && c->loc.ip == target_addr.ip && c->loc.port == port)
+                        {
+                            c->is_closing = 1;
+                        }
+                    }
+
+                    // Process the closing - this will actually close the sockets
+                    mg_mgr_poll(app->mgr, 0);
+
+                    // Remove listener from the stored list
+                    if (eth_net_listeners_remove(&app->listeners, msg.data.interface.uri) != true)
+                    {
+                        MG_ERROR(("Listener not found in stored list: %s", msg.data.interface.uri));
+                    }
+                }
+                else
+                {
+                    MG_ERROR(("invalid listening URL: %s", msg.data.interface.uri));
+                }
+            }
             else if (msg.type == EthNetApiEventTypeRestart)
             {
                 struct mg_connection* c;
@@ -296,7 +366,20 @@ int32_t eth_net_service(void* context)
                 mg_mgr_poll(app->mgr, 0);
 
                 // Restore all registered listeners
-                eth_net_listeners_restore(app->listeners, app->mgr);
+                MG_INFO(("Restoring listeners..."));
+                for (EthNetListener* listener = app->listeners; listener != NULL; listener = listener->next)
+                {
+                    if (listener->type == EthNetListenerTypeHttp)
+                    {
+                        mg_http_listen(app->mgr, listener->uri, listener->fn, listener->context);
+                        MG_INFO(("Restored HTTP server on %s", listener->uri));
+                    }
+                    else if (listener->type == EthNetListenerTypeTcp)
+                    {
+                        mg_listen(app->mgr, listener->uri, listener->fn, listener->context);
+                        MG_INFO(("Restored TCP server on %s", listener->uri));
+                    }
+                }
             }
 
             if (msg.lock)

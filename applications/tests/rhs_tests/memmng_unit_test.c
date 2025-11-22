@@ -13,7 +13,7 @@ void alloc_test(void)
     void* ptr;
 
     // allocate memory case
-    ptr = malloc(100);
+    ptr = calloc(100, 1);
     runit_assert(ptr != NULL);
     
     // test that memory is zero-initialized after allocation

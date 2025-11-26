@@ -37,3 +37,21 @@ __attribute__((weak)) void eth_net_set_config_on_startup(EthNetConfig* config);
 void eth_net_start_http(EthNet* eth_net, const char* uri, mg_event_handler_t fn, void* context);
 
 void eth_net_start_listener(EthNet* eth_net, const char* uri, mg_event_handler_t fn, void* context);
+
+void eth_net_stop_listener(EthNet* eth_net, const char* uri);
+
+void eth_net_set_config(EthNet* eth_net, EthNetConfig* config);
+
+void eth_net_get_config(EthNet* eth_net, EthNetConfig* config);
+
+/**
+ * @brief Parse IP address string into four octets
+ * @param ip_str Input string in format "192.168.1.100"
+ * @param a Pointer to first octet
+ * @param b Pointer to second octet
+ * @param c Pointer to third octet
+ * @param d Pointer to fourth octet
+ * @return 0 on success, -1 on error
+ */
+int string_to_ip(const char* ip_str, unsigned int* a, unsigned int* b, unsigned int* c, unsigned int* d);
+int ip_to_string(unsigned int a, unsigned int b, unsigned int c, unsigned int d, char* str_buf);

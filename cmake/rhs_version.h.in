@@ -1,0 +1,21 @@
+#pragma once
+
+// Main project version
+#define PROJECT_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define PROJECT_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define PROJECT_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define PROJECT_GIT_SHA1      "@PROJECT_GIT_SHA1@"
+
+// Submodule versions (auto-generated from .gitmodules)
+@SUBMODULE_VERSION_DEFINES@
+
+// Helper macro to print version info
+#define PRINT_VERSION(name, major, minor, patch, sha) \
+    printf("%-12s %d.%d.%d (%s)\r\n", name, major, minor, patch, sha)
+
+// Macro to print all versions
+#define PRINT_ALL_VERSIONS() \
+    do { \
+        printf("=== Version Information ===\r\n"); \
+        PRINT_VERSION("RHS Core", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH, PROJECT_GIT_SHA1); \
+@SUBMODULE_VERSION_CASES@    } while(0)

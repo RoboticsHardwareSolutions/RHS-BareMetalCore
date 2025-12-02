@@ -1,5 +1,6 @@
 # RHS Application Registration System
 # Optimized version for better performance and maintainability
+include(${CMAKE_CURRENT_LIST_DIR}/git_sha.cmake)
 
 set(RHS_OUTPUT_FILE "${CMAKE_BINARY_DIR}/applications.c")
 

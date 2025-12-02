@@ -4,6 +4,7 @@
 #include "rhs_hal.h"
 #include <stddef.h>
 #include "SEGGER_RTT.h"
+#include "rhs_version.h"
 
 #define TAG "cli"
 
@@ -145,7 +146,7 @@ void cli_process_input(Cli* app)
 void cli_command_uptime(char* args, void* context)
 {
     uint32_t uptime = rhs_get_tick() / rhs_kernel_get_tick_frequency();
-    SEGGER_RTT_printf(0, "Uptime: %luh%lum%lus\r\n", uptime / 60 / 60, uptime / 60 % 60, uptime % 60);
+    printf("Uptime: %luh%lum%lus\r\n", uptime / 60 / 60, uptime / 60 % 60, uptime % 60);
 }
 
 void cli_command_free(char* args, void* context)
@@ -269,6 +270,11 @@ void cli_command_crash(char* args, void* context)
     rhs_crash("Remote Crash");
 }
 
+void cli_info(char* args, void* context)
+{
+    PRINT_ALL_VERSIONS();
+}
+
 int32_t cli_service(void* context)
 {
     Cli* app = cli_alloc();
@@ -282,6 +288,7 @@ int32_t cli_service(void* context)
     cli_add_command(app, "uid", cli_command_uid, NULL);
     cli_add_command(app, "top", cli_command_top, NULL);
     cli_add_command(app, "crash", cli_command_crash, NULL);
+    cli_add_command(app, "info", cli_info, NULL);
 
     for (;;)
     {

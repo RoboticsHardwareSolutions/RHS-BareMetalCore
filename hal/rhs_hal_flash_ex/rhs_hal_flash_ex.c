@@ -11,8 +11,8 @@
 #include "mt25ql128aba.h"
 
 #if defined(BMPLC_XL) || defined(BMPLC_L)
-QSPI_HandleTypeDef hqspi;
-static RHSMutex*   flash_mutex = NULL;
+QSPI_HandleTypeDef        hqspi;
+static __RHSCriticalInfo* critical_flag = NULL;
 
 static void quadspi_init(void)
 {
@@ -144,12 +144,6 @@ void HAL_QSPI_MspDeInit(QSPI_HandleTypeDef* qspiHandle)
 
 int rhs_hal_flash_ex_init(void)
 {
-    flash_mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
-    if (flash_mutex == NULL)
-    {
-        return -1;
-    }
-
     quadspi_init();
     mt25ql128aba_init(&hqspi);
     return 0;
@@ -160,32 +154,12 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
     int error = RHS_FLASH_EX_OK;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    if (RHS_IS_IRQ_MODE())
+    if (critical_flag != NULL)
     {
-        if (rhs_mutex_get_owner(flash_mutex) != NULL)
-            return RHS_FLASH_EX_BUSY;
+        return RHS_FLASH_EX_ERROR;
     }
-    else
-    {
-        if (rhs_kernel_is_running())
-        {
-            if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
-            {
-                return RHS_FLASH_EX_ERROR;
-            }
-        }
-        else
-        {
-            if (!rhs_mutex_get_owner(flash_mutex))
-            {
-                vTaskSuspendAll();
-            }
-            else
-            {
-                return RHS_FLASH_EX_ERROR;
-            }
-        }
-    }
+    __RHSCriticalInfo __rhs_critical_info = __rhs_critical_enter();
+    critical_flag                         = &__rhs_critical_info;
 
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
@@ -201,18 +175,8 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
         error = RHS_FLASH_EX_ERROR;
     }
 
-    // Only release mutex if we successfully acquired it (not in IRQ mode)
-    if (!RHS_IS_IRQ_MODE())
-    {
-        if (rhs_kernel_is_running())
-        {
-            rhs_mutex_release(flash_mutex);
-        }
-        else
-        {
-            xTaskResumeAll();
-        }
-    }
+    __rhs_critical_exit(*critical_flag);
+    critical_flag = NULL;
 
     return error;
 }
@@ -221,32 +185,12 @@ int rhs_hal_flash_ex_erase_chip(void)
 {
     int error = RHS_FLASH_EX_OK;
 
-    if (RHS_IS_IRQ_MODE())
+    if (critical_flag != NULL)
     {
-        if (rhs_mutex_get_owner(flash_mutex) != NULL)
-            return RHS_FLASH_EX_BUSY;
+        return RHS_FLASH_EX_ERROR;
     }
-    else
-    {
-        if (rhs_kernel_is_running())
-        {
-            if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
-            {
-                return RHS_FLASH_EX_ERROR;
-            }
-        }
-        else
-        {
-            if (!rhs_mutex_get_owner(flash_mutex))
-            {
-                vTaskSuspendAll();
-            }
-            else
-            {
-                return RHS_FLASH_EX_ERROR;
-            }
-        }
-    }
+    __RHSCriticalInfo __rhs_critical_info = __rhs_critical_enter();
+    critical_flag                         = &__rhs_critical_info;
 
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
@@ -271,17 +215,8 @@ int rhs_hal_flash_ex_erase_chip(void)
         error = RHS_FLASH_EX_ERROR;
     }
 
-    if (!RHS_IS_IRQ_MODE())
-    {
-        if (rhs_kernel_is_running())
-        {
-            rhs_mutex_release(flash_mutex);
-        }
-        else
-        {
-            xTaskResumeAll();
-        }
-    }
+    __rhs_critical_exit(*critical_flag);
+    critical_flag = NULL;
     /* Return BSP status */
     return error;
 }
@@ -293,32 +228,12 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
     int      error = RHS_FLASH_EX_OK;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    if (RHS_IS_IRQ_MODE())
+    if (critical_flag != NULL)
     {
-        if (rhs_mutex_get_owner(flash_mutex) != NULL)
-            return RHS_FLASH_EX_BUSY;
+        return RHS_FLASH_EX_ERROR;
     }
-    else
-    {
-        if (rhs_kernel_is_running())
-        {
-            if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
-            {
-                return RHS_FLASH_EX_ERROR;
-            }
-        }
-        else
-        {
-            if (!rhs_mutex_get_owner(flash_mutex))
-            {
-                vTaskSuspendAll();
-            }
-            else
-            {
-                return RHS_FLASH_EX_ERROR;
-            }
-        }
-    }
+    __RHSCriticalInfo __rhs_critical_info = __rhs_critical_enter();
+    critical_flag                         = &__rhs_critical_info;
 
     /* Calculation of the size between the write address and the end of the page */
     current_size = MT25QL128ABA_PAGE_SIZE - (addr % MT25QL128ABA_PAGE_SIZE);
@@ -364,17 +279,8 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
             ((current_addr + MT25QL128ABA_PAGE_SIZE) > end_addr) ? (end_addr - current_addr) : MT25QL128ABA_PAGE_SIZE;
     } while ((current_addr < end_addr));
 
-    if (!RHS_IS_IRQ_MODE())
-    {
-        if (rhs_kernel_is_running())
-        {
-            rhs_mutex_release(flash_mutex);
-        }
-        else
-        {
-            xTaskResumeAll();
-        }
-    }
+    __rhs_critical_exit(*critical_flag);
+    critical_flag = NULL;
     return error;
 }
 
@@ -384,32 +290,12 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
     uint32_t current_size, current_addr;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    if (RHS_IS_IRQ_MODE())
+    if (critical_flag != NULL)
     {
-        if (rhs_mutex_get_owner(flash_mutex) != NULL)
-            return RHS_FLASH_EX_BUSY;
+        return RHS_FLASH_EX_ERROR;
     }
-    else
-    {
-        if (rhs_kernel_is_running())
-        {
-            if (rhs_mutex_acquire(flash_mutex, RHSWaitForever) != RHSStatusOk)
-            {
-                return RHS_FLASH_EX_ERROR;
-            }
-        }
-        else
-        {
-            if (!rhs_mutex_get_owner(flash_mutex))
-            {
-                vTaskSuspendAll();
-            }
-            else
-            {
-                return RHS_FLASH_EX_ERROR;
-            }
-        }
-    }
+    __RHSCriticalInfo __rhs_critical_info = __rhs_critical_enter();
+    critical_flag                         = &__rhs_critical_info;
 
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
@@ -443,17 +329,8 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
             current_size = (current_size > MT25QL128ABA_SUBSECTOR_4K) ? current_size - MT25QL128ABA_SUBSECTOR_4K : 0;
         } while (current_size);
     }
-    if (!RHS_IS_IRQ_MODE())
-    {
-        if (rhs_kernel_is_running())
-        {
-            rhs_mutex_release(flash_mutex);
-        }
-        else
-        {
-            xTaskResumeAll();
-        }
-    }
+    __rhs_critical_exit(*critical_flag);
+    critical_flag = NULL;
     /* Return BSP status */
     return error;
 }

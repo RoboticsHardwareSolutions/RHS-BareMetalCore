@@ -217,7 +217,7 @@ void cli_command_reset(char* args, void* context)
 void cli_command_uid(char* args, void* context)
 {
     const uint8_t* uid = rhs_hal_version_uid();
-    printf("UID %02X%02X-%02X%02X-%02X%02X%02X%02X-%02X%02X%02X%02X",
+    printf("UID %02X%02X-%02X%02X-%02X%02X%02X%02X-%02X%02X%02X%02X\n",
            uid[0],
            uid[1],  // 16 - bit
            uid[2],

@@ -80,4 +80,6 @@ target_link_libraries(
         rhs_hal
 )
 
+add_subdirectory(modbus_tcp)
+
 service(eth_net_service "eth_net" 16384)

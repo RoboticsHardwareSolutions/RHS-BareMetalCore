@@ -296,6 +296,14 @@ int32_t eth_net_service(void* context)
         {
             if (msg.type == EthNetApiEventTypeSetHttp)
             {
+                // Example of mDNS
+                // uint32_t response_ip = app->mgr->ifp->ip;
+                // struct mg_connection* c = mg_mdns_listen(app->mgr, "sr_yahoo");
+                // if (c != NULL)
+                // {
+                //     memcpy(c->data, &response_ip, sizeof(response_ip));
+                //     MG_INFO(("mDNS responder started"));
+                // }
                 mg_http_listen(app->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
                 MG_INFO(("HTTP server started on %s", msg.data.interface.uri));
 

@@ -42,7 +42,7 @@ struct CanOpenApp
 
     RHSMutex*     sdo_mutex;
     RHSEventFlag* sdo_event;
-    sdo_cb        sdo_callback;
+    SDOCallback   sdo_callback;
 };
 
 typedef struct FilterId

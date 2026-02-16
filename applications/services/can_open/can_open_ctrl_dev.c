@@ -4,9 +4,9 @@
 /********************** GET FIELD FROM OD **********************/
 
 /* Rx and Tx PDO */
-static ODFieldType sdo_set_pdo(PDOField pdo_field, NumPDOType num_pdo, bool is_tx)
+static ODFieldType sdo_set_pdo(PDOField pdo_field, NPDO npdo, bool is_tx)
 {
-    rhs_assert(num_pdo < NumPDOMax);
+    rhs_assert(npdo < NumPDOMax);
     ODFieldType        field;
     const ODFieldType* base_field;
 
@@ -16,23 +16,23 @@ static ODFieldType sdo_set_pdo(PDOField pdo_field, NumPDOType num_pdo, bool is_t
         rhs_crash("You cannot set group field in PDO");
     case PDOFieldId:
         base_field = is_tx ? &od_tx_pdo_id : &od_rx_pdo_id;
-        field      = (ODFieldType) {base_field->index + num_pdo, base_field->sub, base_field->size};
+        field      = (ODFieldType) {base_field->index + npdo, base_field->sub, base_field->size};
         break;
     case PDOFieldType:
         base_field = is_tx ? &od_tx_pdo_type : &od_rx_pdo_type;
-        field      = (ODFieldType) {base_field->index + num_pdo, base_field->sub, base_field->size};
+        field      = (ODFieldType) {base_field->index + npdo, base_field->sub, base_field->size};
         break;
     case PDOFieldInhibit:
         base_field = is_tx ? &od_tx_pdo_inhubit : &od_rx_pdo_inhubit;
-        field      = (ODFieldType) {base_field->index + num_pdo, base_field->sub, base_field->size};
+        field      = (ODFieldType) {base_field->index + npdo, base_field->sub, base_field->size};
         break;
     case PDOFieldRes:
         base_field = is_tx ? &od_tx_pdo_res : &od_rx_pdo_res;
-        field      = (ODFieldType) {base_field->index + num_pdo, base_field->sub, base_field->size};
+        field      = (ODFieldType) {base_field->index + npdo, base_field->sub, base_field->size};
         break;
     case PDOFieldEventTime:
         base_field = is_tx ? &od_tx_pdo_event_timer : &od_rx_pdo_event_timer;
-        field      = (ODFieldType) {base_field->index + num_pdo, base_field->sub, base_field->size};
+        field      = (ODFieldType) {base_field->index + npdo, base_field->sub, base_field->size};
         break;
     default:
         rhs_crash("You set an unknown field for PDO");
@@ -40,23 +40,23 @@ static ODFieldType sdo_set_pdo(PDOField pdo_field, NumPDOType num_pdo, bool is_t
     return field;
 }
 
-int sdo_set_rx_pdo(CanOpenApp* app, CO_Data* d, PDOField pdo_field, NumPDOType pdo, uint8_t node_id, void* data)
+int co_rpdo_config(CanOpenApp* app, CO_Data* d, uint8_t id, NPDO npdo, PDOField pdo_field, void* data)
 {
-    ODFieldType field = sdo_set_pdo(pdo_field, pdo, false);
-    return can_open_write_sdo(app, d, node_id, field.index, field.sub, field.size, data, NULL);
+    ODFieldType field = sdo_set_pdo(pdo_field, npdo, false);
+    return co_write_sdo(app, d, id, field.index, field.sub, field.size, data, NULL);
 }
 
-int sdo_set_tx_pdo(CanOpenApp* app, CO_Data* d, PDOField pdo_field, NumPDOType pdo, uint8_t node_id, void* data)
+int co_tpdo_config(CanOpenApp* app, CO_Data* d, uint8_t id, NPDO npdo, PDOField pdo_field, void* data)
 {
-    ODFieldType field = sdo_set_pdo(pdo_field, pdo, true);
-    return can_open_write_sdo(app, d, node_id, field.index, field.sub, field.size, data, NULL);
+    ODFieldType field = sdo_set_pdo(pdo_field, npdo, true);
+    return co_write_sdo(app, d, id, field.index, field.sub, field.size, data, NULL);
 }
 
 /********************** MAPPING **********************/
 
 #define PDO_TO_MAP(index, subindex, size) (((index) << 16) | ((subindex) << 8) | ((size) << 3));
 
-static ODFieldType sdo_set_pdo_map_generic(PDOMapType num_map, bool is_tx)
+static ODFieldType sdo_set_pdo_map_generic(PDOMap num_map, bool is_tx)
 {
     const ODFieldType* base_field = is_tx ? od_tx_pdo_map : od_rx_pdo_map;
     ODFieldType field = (ODFieldType) {base_field[num_map].index, base_field[num_map].sub, base_field[num_map].size};
@@ -64,59 +64,44 @@ static ODFieldType sdo_set_pdo_map_generic(PDOMapType num_map, bool is_tx)
     return field;
 }
 
-int sdo_set_rx_pdo_map(CanOpenApp* app,
-                       CO_Data*    d,
-                       uint8_t     node_id,
-                       NumPDOType  num_pdo,
-                       PDOMapType  num_map,
-                       uint16_t    index,
-                       uint8_t     subindex,
-                       uint8_t     size)
+int co_rpdo_map(CanOpenApp* app, CO_Data* d, uint8_t id, NPDO npdo, PDOMap nmap, uint16_t ind, uint8_t sub, uint8_t sz)
 {
-    rhs_assert(PDOMapNum < num_map && num_map < PDOMapMax);
-    uint32_t    map   = PDO_TO_MAP(index, subindex, size);
-    ODFieldType field = sdo_set_pdo_map_generic(num_map, false);
-    return can_open_write_sdo(app, d, node_id, field.index + num_pdo, field.sub, field.size, &map, NULL);
+    rhs_assert(PDOMapNum < nmap && nmap < PDOMapMax);
+    uint32_t    map   = PDO_TO_MAP(ind, sub, sz);
+    ODFieldType field = sdo_set_pdo_map_generic(nmap, false);
+    return co_write_sdo(app, d, id, field.index + npdo, field.sub, field.size, &map, NULL);
 }
 
-int sdo_set_tx_pdo_map(CanOpenApp* app,
-                       CO_Data*    d,
-                       uint8_t     node_id,
-                       NumPDOType  num_pdo,
-                       PDOMapType  num_map,
-                       uint16_t    index,
-                       uint8_t     subindex,
-                       uint8_t     size)
+int co_tpdo_map(CanOpenApp* app, CO_Data* d, uint8_t id, NPDO npdo, PDOMap nmap, uint16_t ind, uint8_t sub, uint8_t sz)
 {
-    rhs_assert(PDOMapNum < num_map && num_map < PDOMapMax);
-    uint32_t    map   = PDO_TO_MAP(index, subindex, size);
-    ODFieldType field = sdo_set_pdo_map_generic(num_map, true);
-    return can_open_write_sdo(app, d, node_id, field.index + num_pdo, field.sub, field.size, &map, NULL);
+    rhs_assert(PDOMapNum < nmap && nmap < PDOMapMax);
+    uint32_t    map   = PDO_TO_MAP(ind, sub, sz);
+    ODFieldType field = sdo_set_pdo_map_generic(nmap, true);
+    return co_write_sdo(app, d, id, field.index + npdo, field.sub, field.size, &map, NULL);
 }
 
-static ODFieldType sdo_set_pdo_map_group(NumPDOType num_pdo, bool is_tx)
+static ODFieldType sdo_set_pdo_map_group(NPDO npdo, bool is_tx)
 {
-    const ODFieldType* base_field = is_tx ? od_tx_pdo_map : od_rx_pdo_map;
-    ODFieldType        field =
-        (ODFieldType) {base_field[PDOMapNum].index + num_pdo, base_field[PDOMapNum].sub, base_field[PDOMapNum].size};
+    const ODFieldType* bfield = is_tx ? od_tx_pdo_map : od_rx_pdo_map;
+    ODFieldType field = (ODFieldType) {bfield[PDOMapNum].index + npdo, bfield[PDOMapNum].sub, bfield[PDOMapNum].size};
 
     return field;
 }
 
-int sdo_set_rx_pdo_map_group(CanOpenApp* app, CO_Data* d, uint8_t node_id, NumPDOType num_pdo, PDOMapType num_map)
+int co_rpdo_map_group(CanOpenApp* app, CO_Data* d, uint8_t node_id, NPDO npdo, PDOMap nmap)
 {
-    rhs_assert(num_pdo < NumPDOMax);
-    rhs_assert(num_map < PDOMapMax);
-    ODFieldType field = sdo_set_pdo_map_group(num_pdo, false);
-    return can_open_write_sdo(app, d, node_id, field.index, field.sub, field.size, &num_map, NULL);
+    rhs_assert(npdo < NumPDOMax);
+    rhs_assert(nmap < PDOMapMax);
+    ODFieldType field = sdo_set_pdo_map_group(npdo, false);
+    return co_write_sdo(app, d, node_id, field.index, field.sub, field.size, &nmap, NULL);
 }
 
-int sdo_set_tx_pdo_map_group(CanOpenApp* app, CO_Data* d, uint8_t node_id, NumPDOType num_pdo, PDOMapType num_map)
+int co_tpdo_map_group(CanOpenApp* app, CO_Data* d, uint8_t node_id, NPDO npdo, PDOMap nmap)
 {
-    rhs_assert(num_pdo < NumPDOMax);
-    rhs_assert(num_map < PDOMapMax);
-    ODFieldType field = sdo_set_pdo_map_group(num_pdo, true);
-    return can_open_write_sdo(app, d, node_id, field.index, field.sub, field.size, &num_map, NULL);
+    rhs_assert(npdo < NumPDOMax);
+    rhs_assert(nmap < PDOMapMax);
+    ODFieldType field = sdo_set_pdo_map_group(npdo, true);
+    return co_write_sdo(app, d, node_id, field.index, field.sub, field.size, &nmap, NULL);
 }
 
 /********************** GET FIELD FROM OD **********************/

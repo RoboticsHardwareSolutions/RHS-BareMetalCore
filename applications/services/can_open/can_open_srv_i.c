@@ -83,42 +83,38 @@ static void can_sce_irq_cb(RHSHalCANId can_id, RHSHalCANSCEEvent event, void* co
 
 UNS8 GetSDOClientFromNodeId(CO_Data* d, UNS8 nodeId);
 
-CanOpenApp *can_open_app = NULL; /* co_stack and rtimer use callbacks without context. It makes me use this trash */
+CanOpenApp* can_open_app = NULL; /* co_stack and rtimer use callbacks without context. It makes me use this trash */
 
 static void can_open_sdo_cb(CO_Data* d, UNS8 nodeId)
 {
     rhs_assert(can_open_app);
 
-    UNS8       CliNbr;
-    UNS8       line;
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    BaseType_t xResult;
+    UNS8        CliNbr;
+    UNS8        line;
+    BaseType_t  xHigherPriorityTaskWoken = pdFALSE;
+    BaseType_t  xResult;
     CanOpenApp* app = can_open_app;
 
     CliNbr = GetSDOClientFromNodeId(d, nodeId);
     getSDOlineToClose(d, CliNbr, SDO_CLIENT, &line);
+    s_transfer* transfer = &d->transfers[line];
 
-    if (d->transfers[line].state != SDO_ABORTED_INTERNAL && d->transfers[line].state != SDO_ABORTED_RCV)
+    if (transfer->state != SDO_ABORTED_INTERNAL && transfer->state != SDO_ABORTED_RCV)
     {
         if (app->sdo_callback)
 
-            app->sdo_callback(d,
-                              nodeId,
-                              d->transfers[line].index,
-                              d->transfers[line].subIndex,
-                              d->transfers[line].count,
-                              d->transfers[line].data);
+            app->sdo_callback(d, nodeId, transfer->index, transfer->subIndex, transfer->count, transfer->data);
     }
     else
     {
-        if (d->transfers[line].state == SDO_ABORTED_RCV)
+        if (transfer->state == SDO_ABORTED_RCV)
         {
             RHS_LOG_D(TAG,
                       "node 0x%02X index 0x%04X sub 0x%02X response 0x%08X",
                       nodeId,
-                      d->transfers[line].index,
-                      d->transfers[line].subIndex,
-                      d->transfers[line].abortCode);
+                      transfer->index,
+                      transfer->subIndex,
+                      transfer->abortCode);
         }
         closeSDOtransfer(d, nodeId, SDO_CLIENT);
     }
@@ -126,9 +122,9 @@ static void can_open_sdo_cb(CO_Data* d, UNS8 nodeId)
     rhs_event_flag_set(app->sdo_event, EVENT_FLAG_SDO);
 }
 
-uint8_t can_open_read_sdo(CanOpenApp* app, CO_Data* d, uint8_t node_id, uint16_t index, uint8_t subindex, sdo_cb cb)
+int co_read_sdo(CanOpenApp* app, CO_Data* d, uint8_t node_id, uint16_t index, uint8_t subindex, SDOCallback cb)
 {
-    uint8_t result;
+    int result;
     rhs_assert(rhs_mutex_acquire(app->sdo_mutex, RHSWaitForever) == RHSStatusOk);
 
     app->sdo_callback = cb;
@@ -148,16 +144,16 @@ uint8_t can_open_read_sdo(CanOpenApp* app, CO_Data* d, uint8_t node_id, uint16_t
     return result ? result : -1;
 }
 
-uint8_t can_open_write_sdo(CanOpenApp* app,
-                           CO_Data*    d,
-                           uint8_t     node_id,
-                           uint16_t    index,
-                           uint8_t     subindex,
-                           uint32_t    count,
-                           void*       data,
-                           sdo_cb      cb)
+int co_write_sdo(CanOpenApp* app,
+                 CO_Data*    d,
+                 uint8_t     node_id,
+                 uint16_t    index,
+                 uint8_t     subindex,
+                 uint32_t    count,
+                 void*       data,
+                 SDOCallback cb)
 {
-    uint8_t result;
+    int result;
     rhs_assert(rhs_mutex_acquire(app->sdo_mutex, RHSWaitForever) == RHSStatusOk);
 
     app->sdo_callback = cb;
@@ -177,12 +173,12 @@ uint8_t can_open_write_sdo(CanOpenApp* app,
     return result ? result : -1;
 }
 
-uint8_t can_open_set_field(CanOpenApp* app,
-                           CO_Data*    d,
-                           uint16_t    index,
-                           uint8_t     subIndex,
-                           const void* data,
-                           uint32_t    size_data)
+uint8_t co_set_field(CanOpenApp* app,
+                     CO_Data*    d,
+                     uint16_t    index,
+                     uint8_t     subIndex,
+                     const void* data,
+                     uint32_t    size_data)
 {
     rhs_assert(app);
     uint32_t error_code = setODentry(d, index, subIndex, (void*) data, &size_data, 1);
@@ -212,7 +208,7 @@ int canSend(CAN_PORT port, Message const* m)
     rhs_crash("CAN_PORT doesn't reg for OD");
 }
 
-void can_open_start_node(CanOpenApp* app, CO_Data* d, uint8_t node_id, RHSHalCANId id, uint32_t baud)
+void co_start_node(CanOpenApp* app, CO_Data* d, uint8_t node_id, RHSHalCANId id, uint32_t baud)
 {
     rhs_assert(app->counter_od < MAX_OD);
 

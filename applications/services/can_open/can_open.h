@@ -8,43 +8,21 @@
 
 typedef struct CanOpenApp CanOpenApp;
 
-void can_open_start_node(CanOpenApp* app, CO_Data* d, uint8_t node_id, RHSHalCANId id, uint32_t baud);
+void co_start_node(CanOpenApp* app, CO_Data* d, uint8_t id, RHSHalCANId can_id, uint32_t baud);
 
-typedef void (
-    *sdo_cb)(CO_Data* d, uint8_t node_id, uint16_t index, uint8_t subindex, uint32_t count, const uint8_t* data);
+typedef void (*SDOCallback)(CO_Data* d, uint8_t id, uint16_t ind, uint8_t sub, uint32_t sz, const uint8_t* data);
 
-uint8_t can_open_read_sdo(CanOpenApp* app, CO_Data* d, uint8_t node_id, uint16_t index, uint8_t subindex, sdo_cb cb);
+int co_read_sdo(CanOpenApp* app, CO_Data* d, uint8_t id, uint16_t ind, uint8_t sub, SDOCallback cb);
 
-uint8_t can_open_write_sdo(CanOpenApp* app,
-                           CO_Data*    d,
-                           uint8_t     node_id,
-                           uint16_t    index,
-                           uint8_t     subindex,
-                           uint32_t    count,
-                           void*       data,
-                           sdo_cb      cb);
+int co_write_sdo(CanOpenApp* app, CO_Data* d, uint8_t id, uint16_t ind, uint8_t sub, uint32_t sz, void* data, SDOCallback cb);
 
-int sdo_set_rx_pdo(CanOpenApp* app, CO_Data* d, PDOField pdo_field, NumPDOType pdo, uint8_t node_id, void* data);
-int sdo_set_tx_pdo(CanOpenApp* app, CO_Data* d, PDOField pdo_field, NumPDOType pdo, uint8_t node_id, void* data);
-int sdo_set_rx_pdo_map(CanOpenApp* app,
-                       CO_Data*    d,
-                       uint8_t     node_id,
-                       NumPDOType  num_pdo,
-                       PDOMapType  num_map,
-                       uint16_t    index,
-                       uint8_t     subindex,
-                       uint8_t     size);
+int co_rpdo_config(CanOpenApp* app, CO_Data* d, uint8_t id, NPDO npdo, PDOField pdo_field, void* data);
+int co_tpdo_config(CanOpenApp* app, CO_Data* d, uint8_t id, NPDO npdo, PDOField pdo_field, void* data);
+int co_rpdo_map   (CanOpenApp* app, CO_Data* d, uint8_t id, NPDO npdo, PDOMap nmap, uint16_t ind, uint8_t sub, uint8_t sz);
 
-int sdo_set_tx_pdo_map(CanOpenApp* app,
-                       CO_Data*    d,
-                       uint8_t     node_id,
-                       NumPDOType  num_pdo,
-                       PDOMapType  num_map,
-                       uint16_t    index,
-                       uint8_t     subindex,
-                       uint8_t     size);
-int sdo_set_rx_pdo_map_group(CanOpenApp* app, CO_Data* d, uint8_t node_id, NumPDOType num_pdo, PDOMapType num_map);
-int sdo_set_tx_pdo_map_group(CanOpenApp* app, CO_Data* d, uint8_t node_id, NumPDOType num_pdo, PDOMapType num_map);
+int co_tpdo_map      (CanOpenApp* app, CO_Data* d, uint8_t id, NPDO npdo, PDOMap nmap, uint16_t ind, uint8_t sub, uint8_t sz);
+int co_rpdo_map_group(CanOpenApp* app, CO_Data* d, uint8_t id, NPDO npdo, PDOMap nmap);
+int co_tpdo_map_group(CanOpenApp* app, CO_Data* d, uint8_t id, NPDO npdo, PDOMap nmap);
 
 #define OD_GET_FIELD_H(type, func_name) type func_name(CanOpenApp* app, CO_Data* d, uint16_t index, uint8_t subIndex)
 
@@ -56,4 +34,4 @@ OD_GET_FIELD_H(uint32_t, od_get_field_uns32);
 OD_GET_FIELD_H(int32_t, od_get_field_s32);
 OD_GET_FIELD_H(float, od_get_field_float);
 
-uint8_t can_open_set_field(CanOpenApp* app, CO_Data* d, uint16_t index, uint8_t subIndex, const void* data, uint32_t size_data);
+uint8_t co_set_field(CanOpenApp* app, CO_Data* d, uint16_t ind, uint8_t sub, const void* data, uint32_t sz);

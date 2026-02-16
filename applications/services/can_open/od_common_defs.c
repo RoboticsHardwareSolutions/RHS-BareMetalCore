@@ -13,7 +13,7 @@ const ODFieldType od_sdo_stx    = {.index = 0x1280, .sub = 0x01, .size = sizeof(
 const ODFieldType od_sdo_srx    = {.index = 0x1280, .sub = 0x02, .size = sizeof(uint32_t)};
 const ODFieldType od_sdo_srv_id = {.index = 0x1280, .sub = 0x03, .size = sizeof(uint32_t)};
 
-/* TxPDO fields. Add NumPDOType to index to get RxPDO(N) */
+/* TxPDO fields. Add NPDO to index to get RxPDO(N) */
 const ODFieldType od_rx_pdo_cfg         = {.index = 0x1400, .sub = 0x00, .size = sizeof(uint8_t)};
 const ODFieldType od_rx_pdo_id          = {.index = 0x1400, .sub = 0x01, .size = sizeof(uint32_t)};
 const ODFieldType od_rx_pdo_type        = {.index = 0x1400, .sub = 0x02, .size = sizeof(uint8_t)};
@@ -33,7 +33,7 @@ const ODFieldType od_rx_pdo_map[9] = {
     {.index = 0x1600, .sub = 0x08, .size = sizeof(uint32_t)},
 };
 
-/* TxPDO fields. Add NumPDOType to index to get TxPDO(N) */
+/* TxPDO fields. Add NPDO to index to get TxPDO(N) */
 const ODFieldType od_tx_pdo_cfg         = {.index = 0x1800, .sub = 0x00, .size = sizeof(uint8_t)};
 const ODFieldType od_tx_pdo_id          = {.index = 0x1800, .sub = 0x01, .size = sizeof(uint32_t)};
 const ODFieldType od_tx_pdo_type        = {.index = 0x1800, .sub = 0x02, .size = sizeof(uint8_t)};

@@ -122,13 +122,13 @@ static void can_open_sdo_cb(CO_Data* d, UNS8 nodeId)
     rhs_event_flag_set(app->sdo_event, EVENT_FLAG_SDO);
 }
 
-int co_read_sdo(CanOpenApp* app, CO_Data* d, uint8_t node_id, uint16_t index, uint8_t subindex, SDOCallback cb)
+int co_get_sdo(CanOpenApp* app, CO_Data* d, uint8_t id, uint16_t ind, uint8_t sub, SDOCallback cb)
 {
     int result;
     rhs_assert(rhs_mutex_acquire(app->sdo_mutex, RHSWaitForever) == RHSStatusOk);
 
     app->sdo_callback = cb;
-    result            = readNetworkDictCallback(d, node_id, index, subindex, 0, can_open_sdo_cb, 0);
+    result            = readNetworkDictCallback(d, id, ind, sub, 0, can_open_sdo_cb, 0);
     if (result == CANOPEN_SDO_STATE_OK)
     {
         if (rhs_event_flag_wait(app->sdo_event, EVENT_FLAG_SDO, RHSFlagWaitAny, SDO_TIMEOUT_MS) == EVENT_FLAG_SDO)
@@ -139,25 +139,19 @@ int co_read_sdo(CanOpenApp* app, CO_Data* d, uint8_t node_id, uint16_t index, ui
     }
     resetSDO(d);
     app->sdo_callback = NULL;
-    RHS_LOG_E(TAG, "SDO read error %d for 0x%02X, i=0x%04X s=0x%02X", result, node_id, index, subindex);
+    RHS_LOG_E(TAG, "SDO read error %d for 0x%02X, i=0x%04X s=0x%02X", result, id, ind, sub);
     rhs_mutex_release(app->sdo_mutex);
     return result ? result : -1;
 }
-
-int co_write_sdo(CanOpenApp* app,
-                 CO_Data*    d,
-                 uint8_t     node_id,
-                 uint16_t    index,
-                 uint8_t     subindex,
-                 uint32_t    count,
-                 void*       data,
-                 SDOCallback cb)
+// clang-format off
+int co_set_sdo(CanOpenApp* app, CO_Data* d, uint8_t id, uint16_t ind, uint8_t sub, uint32_t sz, void* data, SDOCallback cb)
+// clang-format on
 {
     int result;
     rhs_assert(rhs_mutex_acquire(app->sdo_mutex, RHSWaitForever) == RHSStatusOk);
 
     app->sdo_callback = cb;
-    result            = writeNetworkDictCallBack(d, node_id, index, subindex, count, 0, data, can_open_sdo_cb, 0);
+    result            = writeNetworkDictCallBack(d, id, ind, sub, sz, 0, data, can_open_sdo_cb, 0);
     if (result == CANOPEN_SDO_STATE_OK)
     {
         if (rhs_event_flag_wait(app->sdo_event, EVENT_FLAG_SDO, RHSFlagWaitAny, SDO_TIMEOUT_MS) == EVENT_FLAG_SDO)
@@ -168,20 +162,15 @@ int co_write_sdo(CanOpenApp* app,
     }
     resetSDO(d);
     app->sdo_callback = NULL;
-    RHS_LOG_E(TAG, "SDO write error %d for 0x%02X, i=0x%04X s=0x%02X", result, node_id, index, subindex);
+    RHS_LOG_E(TAG, "SDO write error %d for 0x%02X, i=0x%04X s=0x%02X", result, id, ind, sub);
     rhs_mutex_release(app->sdo_mutex);
     return result ? result : -1;
 }
 
-uint8_t co_set_field(CanOpenApp* app,
-                     CO_Data*    d,
-                     uint16_t    index,
-                     uint8_t     subIndex,
-                     const void* data,
-                     uint32_t    size_data)
+uint8_t co_set_field(CanOpenApp* app, CO_Data* d, uint16_t ind, uint8_t sub, const void* data, uint32_t sz)
 {
     rhs_assert(app);
-    uint32_t error_code = setODentry(d, index, subIndex, (void*) data, &size_data, 1);
+    uint32_t error_code = setODentry(d, ind, sub, (void*) data, &sz, 1);
     if (error_code == OD_SUCCESSFUL)
     {
         rhs_event_flag_set(app->srv_event, CanOpenAppEventTypePDO);

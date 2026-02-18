@@ -25,8 +25,10 @@ target_link_libraries(
         eth_net
 )
 
-service(new_app "new_app" 1024)
+service(new_app "new_app" 1024) # Registers the new application as a service with a stack size of 1024 bytes. You can adjust the stack size as needed. This means that rhs core will create a thread for this service and run the `new_app` function in that thread. You not need to call `new_app` function anywhere, it will be called automatically when the service starts.
 ``` 
+
+3. Create a new source file in the same folder with the same name as the project (e.g., `new_app.c`) and implement your application logic.
 
 ```c
 #include "rhs.h"
@@ -45,7 +47,7 @@ struct NewApp
 NewApp* app_alloc(void)
 {
     NewApp* app = malloc(sizeof(NewApp)); // Allocate memory for the application structure
-    app->net    = rhs_record_open(RECORD_ETH_NET); // Get a network manager instance
+    app->net    = rhs_record_open(RECORD_ETH_NET); // Get a network manager instance. Your application will be waiting while EthNet service is not ready, so you can be sure that this call will succeed.
     app->event  = rhs_event_alloc(); // Allocate an event for synchronization
     return app;
 }

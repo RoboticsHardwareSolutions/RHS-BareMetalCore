@@ -3,8 +3,8 @@ This example demonstrates how to create a new application that uses the `eth_net
 ### Creating a new application
 
 0. Set the `eth_net` service in your toolchain `set(RHS_SERVICE_ETH_NET ON)`
-1. Create a new folder in the project
-2. Create a new CMakeLists.txt file in the folder with the following content:
+1. Create a new folder in the project.
+2. Create a new CMakeLists.txt file (don't forget to add_subdirectory in the parent CMakeLists.txt) in the folder with the following content:
 ```cmake
 cmake_minimum_required(VERSION 3.24)
 project(new_app C)

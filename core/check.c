@@ -11,12 +11,14 @@
 #    include "rhs_hal_rtc.h"
 #endif
 
-#ifdef STM32F765xx
+#if defined(STM32F765xx)
 #    include "stm32f7xx.h"
-#elif STM32F407xx || defined(STM32F405xx)
+#elif defined(STM32F407xx) || defined(STM32F405xx)
 #    include "stm32f4xx.h"
-#elif STM32F103xE
+#elif defined(STM32F103xE)
 #    include "stm32f1xx.h"
+#elif defined(STM32G0B1xx)
+#    include "stm32g0xx.h"
 #endif
 
 typedef struct __attribute__((packed))
@@ -41,7 +43,7 @@ typedef struct __attribute__((packed))
 static void rhs_save_stack_info(void)
 {
     stack_ptr_t* stack_ptr;
-    STORE_STACK_PTR(stack_ptr);
+    // STORE_STACK_PTR(stack_ptr);
 
     if (rhs_log_save)
     {
@@ -72,7 +74,8 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
 
     // Check if debug enabled by DAP
     // https://developer.arm.com/documentation/ddi0403/d/Debug-Architecture/ARMv7-M-Debug/Debug-register-support-in-the-SCS/Debug-Halting-Control-and-Status-Register--DHCSR?lang=en
-    bool debug = CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk;
+    bool debug = 0;
+    // CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk;
 
     const char* last_separator = strrchr(context.file, '/');
     if (last_separator != NULL)

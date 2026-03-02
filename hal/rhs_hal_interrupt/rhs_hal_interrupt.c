@@ -1,22 +1,25 @@
 #include <rhs_hal_interrupt.h>
 
-#ifdef STM32F765xx
+#if defined(STM32F765xx)
 #    include "stm32f765xx.h"
 #    include "stm32f7xx_ll_rcc.h"
 #elif defined(STM32F407xx) || defined(STM32F405xx)
 #    include "stm32f4xx.h"
 #    include "stm32f4xx_ll_rcc.h"
-#elif STM32F103xE
+#elif defined(STM32F103xE)
 #    include "stm32f103xe.h"
 #    include "stm32f1xx_ll_rcc.h"
+#elif defined(STM32G0B1xx)
+#    include "stm32g0b1xx.h"
+#    include "stm32g0xx_ll_rcc.h"
 #endif
 #include "rhs.h"
 
 #define RHS_HAL_INTERRUPT_DEFAULT_PRIORITY (configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 5)
 
-#define RHS_HAL_INTERRUPT_ACCOUNT_START() const uint32_t _isr_start = DWT->CYCCNT;
-#define RHS_HAL_INTERRUPT_ACCOUNT_END()                     \
-    const uint32_t _time_in_isr = DWT->CYCCNT - _isr_start; \
+#define RHS_HAL_INTERRUPT_ACCOUNT_START() const uint32_t _isr_start = 0;
+#define RHS_HAL_INTERRUPT_ACCOUNT_END()           \
+    const uint32_t _time_in_isr = 0 - _isr_start; \
     rhs_hal_interrupt.counter_time_in_isr_total += _time_in_isr;
 
 typedef struct
@@ -392,36 +395,36 @@ const char* rhs_hal_interrupt_get_name(uint8_t exception_number)
 
     switch (id)
     {
-    case NonMaskableInt_IRQn:
-        return "NMI";
-    case MemoryManagement_IRQn:
-        return "MemMgmt";
-    case BusFault_IRQn:
-        return "BusFault";
-    case UsageFault_IRQn:
-        return "UsageFault";
-    case SVCall_IRQn:
-        return "SVC";
-    case DebugMonitor_IRQn:
-        return "DebugMon";
-    case PendSV_IRQn:
-        return "PendSV";
-    case SysTick_IRQn:
-        return "SysTick";
-    case WWDG_IRQn:
-        return "WWDG";
-    case PVD_IRQn:
-        return "PVD";
-#if !defined(STM32F103xE)
-    case TAMP_STAMP_IRQn:
-        return "TAMP_STAMP";
-    case RTC_WKUP_IRQn:
-        return "RTC_WKUP";
-#endif
-    case FLASH_IRQn:
-        return "FLASH";
-    case RCC_IRQn:
-        return "RCC";
+//     case NonMaskableInt_IRQn:
+//         return "NMI";
+//     case MemoryManagement_IRQn:
+//         return "MemMgmt";
+//     case BusFault_IRQn:
+//         return "BusFault";
+//     case UsageFault_IRQn:
+//         return "UsageFault";
+//     case SVCall_IRQn:
+//         return "SVC";
+//     case DebugMonitor_IRQn:
+//         return "DebugMon";
+//     case PendSV_IRQn:
+//         return "PendSV";
+//     case SysTick_IRQn:
+//         return "SysTick";
+//     case WWDG_IRQn:
+//         return "WWDG";
+//     case PVD_IRQn:
+//         return "PVD";
+// #if !defined(STM32F103xE)
+//     case TAMP_STAMP_IRQn:
+//         return "TAMP_STAMP";
+//     case RTC_WKUP_IRQn:
+//         return "RTC_WKUP";
+// #endif
+//     case FLASH_IRQn:
+//         return "FLASH";
+//     case RCC_IRQn:
+//         return "RCC";
     default:
         return NULL;
     }

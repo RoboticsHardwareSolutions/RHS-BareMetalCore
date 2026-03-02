@@ -6,6 +6,8 @@
 #    include <stm32f4xx_ll_i2c.h>
 #elif defined(STM32F765xx)
 #    include <stm32f7xx_ll_i2c.h>
+#elif defined(STM32G0B1xx)
+#    include <stm32g0xx_ll_i2c.h>
 #else
 #    error "Unsupported platform"
 #endif

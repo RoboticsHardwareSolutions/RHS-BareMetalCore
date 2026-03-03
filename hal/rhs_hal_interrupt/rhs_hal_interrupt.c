@@ -222,7 +222,7 @@ void CAN2_SCE_IRQHandler(void)
 
 void CAN2_TX_IRQHandler(void)
 {
-    rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
+    rhs_hal_interrupt_call(RHSHalInterruptIdCAN2Tx);
 }
 
 #    endif
@@ -290,7 +290,7 @@ void CAN2_SCE_IRQHandler(void)
 
 void CAN2_TX_IRQHandler(void)
 {
-    rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
+    rhs_hal_interrupt_call(RHSHalInterruptIdCAN2Tx);
 }
 
 #elif STM32F103xE
@@ -353,19 +353,61 @@ void UART5_IRQHandler(void)
 
 #endif
 
-void HardFault_Handler(void)
+/* ---------------------------------------------------------------------------
+ * Fault handlers — naked entry points capture the exception frame (r0-xPSR
+ * stacked by hardware) BEFORE any C prologue shifts SP, then hand off to a
+ * small C helper that stores the frame pointer and calls rhs_crash().
+ * -------------------------------------------------------------------------*/
+
+static void hardfault_handler_c(uint32_t* frame)
 {
+    rhs_set_fault_frame(frame);
     rhs_crash("HardFault");
 }
 
-void BusFault_Handler(void)
+__attribute__((naked)) void HardFault_Handler(void)
 {
+    __asm volatile(
+        "TST    LR, #4       \n"
+        "ITE    EQ           \n"
+        "MRSEQ  R0, MSP      \n"
+        "MRSNE  R0, PSP      \n"
+        "B      hardfault_handler_c \n"
+    );
+}
+
+static void busfault_handler_c(uint32_t* frame)
+{
+    rhs_set_fault_frame(frame);
     rhs_crash("BusFault");
 }
 
-void UsageFault_Handler(void)
+__attribute__((naked)) void BusFault_Handler(void)
 {
+    __asm volatile(
+        "TST    LR, #4        \n"
+        "ITE    EQ            \n"
+        "MRSEQ  R0, MSP       \n"
+        "MRSNE  R0, PSP       \n"
+        "B      busfault_handler_c \n"
+    );
+}
+
+static void usagefault_handler_c(uint32_t* frame)
+{
+    rhs_set_fault_frame(frame);
     rhs_crash("UsageFault");
+}
+
+__attribute__((naked)) void UsageFault_Handler(void)
+{
+    __asm volatile(
+        "TST    LR, #4           \n"
+        "ITE    EQ               \n"
+        "MRSEQ  R0, MSP          \n"
+        "MRSNE  R0, PSP          \n"
+        "B      usagefault_handler_c \n"
+    );
 }
 
 void DebugMon_Handler(void) {}
@@ -380,9 +422,21 @@ void NMI_Handler(void)
     }
 }
 
-void MemManage_Handler(void)
+static void memmanage_handler_c(uint32_t* frame)
 {
+    rhs_set_fault_frame(frame);
     rhs_crash("MemManage");
+}
+
+__attribute__((naked)) void MemManage_Handler(void)
+{
+    __asm volatile(
+        "TST    LR, #4           \n"
+        "ITE    EQ               \n"
+        "MRSEQ  R0, MSP          \n"
+        "MRSNE  R0, PSP          \n"
+        "B      memmanage_handler_c \n"
+    );
 }
 
 // Potential space-saver for updater build

@@ -270,6 +270,13 @@ void cli_command_crash(char* args, void* context)
     rhs_crash("Remote Crash");
 }
 
+void cli_command_hardfault(char* args, void* context)
+{
+    /* Call NULL function pointer: jumps to 0x00000000 (even address → T-bit = 0),
+     * triggers INVSTATE UsageFault which escalates to HardFault. */
+    ((void (*)(void))NULL)();
+}
+
 void cli_info(char* args, void* context)
 {
     PRINT_ALL_VERSIONS();
@@ -288,6 +295,7 @@ int32_t cli_service(void* context)
     cli_add_command(app, "uid", cli_command_uid, NULL);
     cli_add_command(app, "top", cli_command_top, NULL);
     cli_add_command(app, "crash", cli_command_crash, NULL);
+    cli_add_command(app, "hardfault", cli_command_hardfault, NULL);
     cli_add_command(app, "info", cli_info, NULL);
 
     for (;;)

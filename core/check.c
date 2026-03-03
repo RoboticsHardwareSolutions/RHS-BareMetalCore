@@ -31,29 +31,32 @@ typedef struct __attribute__((packed))
     uint32_t psr;
 } stack_ptr_t;
 
-#define STORE_STACK_PTR(_x)               \
-    __asm volatile("TST LR, #4 \n"        \
-                   "ITE EQ \n"            \
-                   "MRSEQ %[ptr], MSP \n" \
-                   "MRSNE %[ptr], PSP \n" \
-                   : [ptr] "=r"(_x))
+/* Exception frame pointer captured by a naked fault entry before any C stack
+ * activity.  NULL when the crash originates from a software assert. */
+static uint32_t* rhs_fault_frame = NULL;
+
+void rhs_set_fault_frame(uint32_t* frame)
+{
+    rhs_fault_frame = frame;
+}
 
 static void rhs_save_stack_info(void)
 {
-    stack_ptr_t* stack_ptr;
-    STORE_STACK_PTR(stack_ptr);
+    if (!rhs_log_save)
+        return;
 
-    if (rhs_log_save)
+    if (rhs_fault_frame != NULL)
     {
+        const stack_ptr_t* f = (const stack_ptr_t*) rhs_fault_frame;
         rhs_log_save("r0=%08lX r1=%08lX r2=%08lX r3=%08lX r12=%08lX lr=%08lX pc=%08lX psr=%08lX",
-                     (unsigned long) stack_ptr->r0,
-                     (unsigned long) stack_ptr->r1,
-                     (unsigned long) stack_ptr->r2,
-                     (unsigned long) stack_ptr->r3,
-                     (unsigned long) stack_ptr->r12,
-                     (unsigned long) stack_ptr->lr,
-                     (unsigned long) stack_ptr->pc,
-                     (unsigned long) stack_ptr->psr);
+                     (unsigned long) f->r0,
+                     (unsigned long) f->r1,
+                     (unsigned long) f->r2,
+                     (unsigned long) f->r3,
+                     (unsigned long) f->r12,
+                     (unsigned long) f->lr,
+                     (unsigned long) f->pc,
+                     (unsigned long) f->psr);
     }
 }
 

@@ -359,7 +359,7 @@ void UART5_IRQHandler(void)
  * small C helper that stores the frame pointer and calls rhs_crash().
  * -------------------------------------------------------------------------*/
 
-static void hardfault_handler_c(uint32_t* frame)
+__attribute__((used)) static void hardfault_handler_c(uint32_t* frame)
 {
     rhs_set_fault_frame(frame);
     rhs_crash("HardFault");
@@ -376,7 +376,7 @@ __attribute__((naked)) void HardFault_Handler(void)
     );
 }
 
-static void busfault_handler_c(uint32_t* frame)
+__attribute__((used)) static void busfault_handler_c(uint32_t* frame)
 {
     rhs_set_fault_frame(frame);
     rhs_crash("BusFault");
@@ -393,7 +393,7 @@ __attribute__((naked)) void BusFault_Handler(void)
     );
 }
 
-static void usagefault_handler_c(uint32_t* frame)
+__attribute__((used)) static void usagefault_handler_c(uint32_t* frame)
 {
     rhs_set_fault_frame(frame);
     rhs_crash("UsageFault");
@@ -422,7 +422,7 @@ void NMI_Handler(void)
     }
 }
 
-static void memmanage_handler_c(uint32_t* frame)
+__attribute__((used)) static void memmanage_handler_c(uint32_t* frame)
 {
     rhs_set_fault_frame(frame);
     rhs_crash("MemManage");

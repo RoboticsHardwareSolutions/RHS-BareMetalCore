@@ -1,5 +1,6 @@
 #pragma once
 #include "assert.h"
+#include "stdint.h"
 
 typedef struct
 {
@@ -29,6 +30,15 @@ typedef struct
 __attribute__((weak)) void rhs_log_save(char* str, ...);
 
 __attribute__((weak)) void rhs_crash_action(void);
+
+/**
+ * @brief Supply the hardware exception frame captured at fault entry.
+ *
+ * Call this from a naked fault handler (before any C stack is used) so that
+ * __rhs_crash_implementation can log the real stacked r0-xPSR values.
+ * When called from a software crash / assert this is not needed.
+ */
+void rhs_set_fault_frame(uint32_t* frame);
 
 _Noreturn void __rhs_crash_implementation(CallContext context, char* m);
 

@@ -370,6 +370,20 @@ __attribute__((used)) static void hardfault_handler_c(uint32_t* frame)
 
 __attribute__((naked)) void HardFault_Handler(void)
 {
+#if defined(STM32G0B1xx)
+    /* Cortex-M0+: ARMv6-M has no IT blocks and TST only accepts registers */
+    __asm volatile(
+        "MOVS  R0, #4                  \n"
+        "MOV   R1, LR                  \n"
+        "TST   R1, R0                  \n"
+        "BEQ   1f                      \n"
+        "MRS   R0, PSP                 \n"
+        "B     hardfault_handler_c     \n"
+        "1:                            \n"
+        "MRS   R0, MSP                 \n"
+        "B     hardfault_handler_c     \n"
+    );
+#else
     __asm volatile(
         "TST    LR, #4       \n"
         "ITE    EQ           \n"
@@ -377,8 +391,11 @@ __attribute__((naked)) void HardFault_Handler(void)
         "MRSNE  R0, PSP      \n"
         "B      hardfault_handler_c \n"
     );
+#endif
 }
 
+#if !defined(STM32G0B1xx)
+/* BusFault does not exist on Cortex-M0+; all faults escalate to HardFault */
 __attribute__((used)) static void busfault_handler_c(uint32_t* frame)
 {
     rhs_set_fault_frame(frame);
@@ -395,7 +412,10 @@ __attribute__((naked)) void BusFault_Handler(void)
         "B      busfault_handler_c \n"
     );
 }
+#endif /* !STM32G0B1xx */
 
+#if !defined(STM32G0B1xx)
+/* UsageFault does not exist on Cortex-M0+; all faults escalate to HardFault */
 __attribute__((used)) static void usagefault_handler_c(uint32_t* frame)
 {
     rhs_set_fault_frame(frame);
@@ -412,6 +432,7 @@ __attribute__((naked)) void UsageFault_Handler(void)
         "B      usagefault_handler_c \n"
     );
 }
+#endif /* !STM32G0B1xx */
 
 void DebugMon_Handler(void) {}
 
@@ -425,6 +446,8 @@ void NMI_Handler(void)
     }
 }
 
+#if !defined(STM32G0B1xx)
+/* MemManage (MPU fault) does not exist on Cortex-M0+; all faults escalate to HardFault */
 __attribute__((used)) static void memmanage_handler_c(uint32_t* frame)
 {
     rhs_set_fault_frame(frame);
@@ -441,6 +464,7 @@ __attribute__((naked)) void MemManage_Handler(void)
         "B      memmanage_handler_c \n"
     );
 }
+#endif /* !STM32G0B1xx */
 
 // Potential space-saver for updater build
 const char* rhs_hal_interrupt_get_name(uint8_t exception_number)

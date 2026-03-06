@@ -17,10 +17,17 @@
 
 #define RHS_HAL_INTERRUPT_DEFAULT_PRIORITY (configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 5)
 
+#if defined(STM32G0B1xx)
+#define RHS_HAL_INTERRUPT_ACCOUNT_START() const uint32_t _isr_start = TIM2->CNT;
+#define RHS_HAL_INTERRUPT_ACCOUNT_END()                     \
+    const uint32_t _time_in_isr = TIM2->CNT - _isr_start; \
+    rhs_hal_interrupt.counter_time_in_isr_total += _time_in_isr;
+#else
 #define RHS_HAL_INTERRUPT_ACCOUNT_START() const uint32_t _isr_start = DWT->CYCCNT;
 #define RHS_HAL_INTERRUPT_ACCOUNT_END()                     \
     const uint32_t _time_in_isr = DWT->CYCCNT - _isr_start; \
     rhs_hal_interrupt.counter_time_in_isr_total += _time_in_isr;
+#endif
 
 typedef struct
 {

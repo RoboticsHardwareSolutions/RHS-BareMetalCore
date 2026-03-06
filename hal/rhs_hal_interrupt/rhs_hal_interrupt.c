@@ -1,23 +1,33 @@
 #include <rhs_hal_interrupt.h>
 
-#ifdef STM32F765xx
+#if defined(STM32F765xx)
 #    include "stm32f765xx.h"
 #    include "stm32f7xx_ll_rcc.h"
 #elif defined(STM32F407xx) || defined(STM32F405xx)
 #    include "stm32f4xx.h"
 #    include "stm32f4xx_ll_rcc.h"
-#elif STM32F103xE
+#elif defined(STM32F103xE)
 #    include "stm32f103xe.h"
 #    include "stm32f1xx_ll_rcc.h"
+#elif defined(STM32G0B1xx)
+#    include "stm32g0b1xx.h"
+#    include "stm32g0xx_ll_rcc.h"
 #endif
 #include "rhs.h"
 
 #define RHS_HAL_INTERRUPT_DEFAULT_PRIORITY (configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 5)
 
+#if defined(STM32G0B1xx)
+#define RHS_HAL_INTERRUPT_ACCOUNT_START() const uint32_t _isr_start = TIM2->CNT;
+#define RHS_HAL_INTERRUPT_ACCOUNT_END()                     \
+    const uint32_t _time_in_isr = TIM2->CNT - _isr_start; \
+    rhs_hal_interrupt.counter_time_in_isr_total += _time_in_isr;
+#else
 #define RHS_HAL_INTERRUPT_ACCOUNT_START() const uint32_t _isr_start = DWT->CYCCNT;
 #define RHS_HAL_INTERRUPT_ACCOUNT_END()                     \
     const uint32_t _time_in_isr = DWT->CYCCNT - _isr_start; \
     rhs_hal_interrupt.counter_time_in_isr_total += _time_in_isr;
+#endif
 
 typedef struct
 {
@@ -367,15 +377,28 @@ __attribute__((used)) static void hardfault_handler_c(uint32_t* frame)
 
 __attribute__((naked)) void HardFault_Handler(void)
 {
-    __asm volatile(
-        "TST    LR, #4       \n"
-        "ITE    EQ           \n"
-        "MRSEQ  R0, MSP      \n"
-        "MRSNE  R0, PSP      \n"
-        "B      hardfault_handler_c \n"
-    );
+#if defined(STM32G0B1xx)
+    /* Cortex-M0+: ARMv6-M has no IT blocks and TST only accepts registers */
+    __asm volatile("MOVS  R0, #4                  \n"
+                   "MOV   R1, LR                  \n"
+                   "TST   R1, R0                  \n"
+                   "BEQ   1f                      \n"
+                   "MRS   R0, PSP                 \n"
+                   "B     hardfault_handler_c     \n"
+                   "1:                            \n"
+                   "MRS   R0, MSP                 \n"
+                   "B     hardfault_handler_c     \n");
+#else
+    __asm volatile("TST    LR, #4       \n"
+                   "ITE    EQ           \n"
+                   "MRSEQ  R0, MSP      \n"
+                   "MRSNE  R0, PSP      \n"
+                   "B      hardfault_handler_c \n");
+#endif
 }
 
+#if !defined(STM32G0B1xx)
+/* BusFault does not exist on Cortex-M0+; all faults escalate to HardFault */
 __attribute__((used)) static void busfault_handler_c(uint32_t* frame)
 {
     rhs_set_fault_frame(frame);
@@ -384,15 +407,16 @@ __attribute__((used)) static void busfault_handler_c(uint32_t* frame)
 
 __attribute__((naked)) void BusFault_Handler(void)
 {
-    __asm volatile(
-        "TST    LR, #4        \n"
-        "ITE    EQ            \n"
-        "MRSEQ  R0, MSP       \n"
-        "MRSNE  R0, PSP       \n"
-        "B      busfault_handler_c \n"
-    );
+    __asm volatile("TST    LR, #4        \n"
+                   "ITE    EQ            \n"
+                   "MRSEQ  R0, MSP       \n"
+                   "MRSNE  R0, PSP       \n"
+                   "B      busfault_handler_c \n");
 }
+#endif /* !STM32G0B1xx */
 
+#if !defined(STM32G0B1xx)
+/* UsageFault does not exist on Cortex-M0+; all faults escalate to HardFault */
 __attribute__((used)) static void usagefault_handler_c(uint32_t* frame)
 {
     rhs_set_fault_frame(frame);
@@ -401,14 +425,13 @@ __attribute__((used)) static void usagefault_handler_c(uint32_t* frame)
 
 __attribute__((naked)) void UsageFault_Handler(void)
 {
-    __asm volatile(
-        "TST    LR, #4           \n"
-        "ITE    EQ               \n"
-        "MRSEQ  R0, MSP          \n"
-        "MRSNE  R0, PSP          \n"
-        "B      usagefault_handler_c \n"
-    );
+    __asm volatile("TST    LR, #4           \n"
+                   "ITE    EQ               \n"
+                   "MRSEQ  R0, MSP          \n"
+                   "MRSNE  R0, PSP          \n"
+                   "B      usagefault_handler_c \n");
 }
+#endif /* !STM32G0B1xx */
 
 void DebugMon_Handler(void) {}
 
@@ -422,6 +445,8 @@ void NMI_Handler(void)
     }
 }
 
+#if !defined(STM32G0B1xx)
+/* MemManage (MPU fault) does not exist on Cortex-M0+; all faults escalate to HardFault */
 __attribute__((used)) static void memmanage_handler_c(uint32_t* frame)
 {
     rhs_set_fault_frame(frame);
@@ -430,14 +455,13 @@ __attribute__((used)) static void memmanage_handler_c(uint32_t* frame)
 
 __attribute__((naked)) void MemManage_Handler(void)
 {
-    __asm volatile(
-        "TST    LR, #4           \n"
-        "ITE    EQ               \n"
-        "MRSEQ  R0, MSP          \n"
-        "MRSNE  R0, PSP          \n"
-        "B      memmanage_handler_c \n"
-    );
+    __asm volatile("TST    LR, #4           \n"
+                   "ITE    EQ               \n"
+                   "MRSEQ  R0, MSP          \n"
+                   "MRSNE  R0, PSP          \n"
+                   "B      memmanage_handler_c \n");
 }
+#endif /* !STM32G0B1xx */
 
 // Potential space-saver for updater build
 const char* rhs_hal_interrupt_get_name(uint8_t exception_number)
@@ -446,36 +470,36 @@ const char* rhs_hal_interrupt_get_name(uint8_t exception_number)
 
     switch (id)
     {
-    case NonMaskableInt_IRQn:
-        return "NMI";
-    case MemoryManagement_IRQn:
-        return "MemMgmt";
-    case BusFault_IRQn:
-        return "BusFault";
-    case UsageFault_IRQn:
-        return "UsageFault";
-    case SVCall_IRQn:
-        return "SVC";
-    case DebugMonitor_IRQn:
-        return "DebugMon";
-    case PendSV_IRQn:
-        return "PendSV";
-    case SysTick_IRQn:
-        return "SysTick";
-    case WWDG_IRQn:
-        return "WWDG";
-    case PVD_IRQn:
-        return "PVD";
-#if !defined(STM32F103xE)
-    case TAMP_STAMP_IRQn:
-        return "TAMP_STAMP";
-    case RTC_WKUP_IRQn:
-        return "RTC_WKUP";
-#endif
-    case FLASH_IRQn:
-        return "FLASH";
-    case RCC_IRQn:
-        return "RCC";
+        //     case NonMaskableInt_IRQn:
+        //         return "NMI";
+        //     case MemoryManagement_IRQn:
+        //         return "MemMgmt";
+        //     case BusFault_IRQn:
+        //         return "BusFault";
+        //     case UsageFault_IRQn:
+        //         return "UsageFault";
+        //     case SVCall_IRQn:
+        //         return "SVC";
+        //     case DebugMonitor_IRQn:
+        //         return "DebugMon";
+        //     case PendSV_IRQn:
+        //         return "PendSV";
+        //     case SysTick_IRQn:
+        //         return "SysTick";
+        //     case WWDG_IRQn:
+        //         return "WWDG";
+        //     case PVD_IRQn:
+        //         return "PVD";
+        // #if !defined(STM32F103xE)
+        //     case TAMP_STAMP_IRQn:
+        //         return "TAMP_STAMP";
+        //     case RTC_WKUP_IRQn:
+        //         return "RTC_WKUP";
+        // #endif
+        //     case FLASH_IRQn:
+        //         return "FLASH";
+        //     case RCC_IRQn:
+        //         return "RCC";
     default:
         return NULL;
     }

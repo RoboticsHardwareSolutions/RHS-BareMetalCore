@@ -6,7 +6,7 @@
 
 static RHSMutex* rhs_hal_speaker_mutex = NULL;
 
-#if defined(BMPLC_XL) || defined(BMPLC_L)
+#if defined(STM32F765xx)
 #    include "stm32f7xx_hal.h"
 TIM_HandleTypeDef htim;
 
@@ -75,7 +75,7 @@ static void tim_init(void)
     }
     HAL_TIM_MspPostInit(&htim);
 }
-#else
+#elif defined(STM32F103xB) || defined(STM32F103xE)
 #    include "stm32f1xx_hal.h"
 TIM_HandleTypeDef htim;
 
@@ -149,6 +149,74 @@ static void tim_init(void)
     }
     HAL_TIM_MspPostInit(&htim);
 }
+#elif defined(STM32G0B1xx)
+#    include "stm32g0xx_hal.h"
+TIM_HandleTypeDef htim;
+
+void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* tim_baseHandle)
+{
+    if (tim_baseHandle->Instance == TIM15)
+    {
+        __HAL_RCC_TIM15_CLK_ENABLE();
+    }
+}
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim_handle)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    if (htim_handle->Instance == TIM15)
+    {
+        __HAL_RCC_GPIOA_CLK_ENABLE();
+        GPIO_InitStruct.Pin       = GPIO_PIN_3;
+        GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
+        GPIO_InitStruct.Pull      = GPIO_NOPULL;
+        GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Alternate = GPIO_AF5_TIM15;
+        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    }
+}
+
+void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
+{
+    if (tim_baseHandle->Instance == TIM15)
+    {
+        __HAL_RCC_TIM15_CLK_DISABLE();
+    }
+}
+
+static void tim_init(void)
+{
+    TIM_ClockConfigTypeDef  sClockSourceConfig = {0};
+    TIM_MasterConfigTypeDef sMasterConfig      = {0};
+    TIM_OC_InitTypeDef      sConfigOC          = {0};
+
+    htim.Instance               = TIM15;
+    htim.Init.Prescaler         = 63; /* 64 MHz / 64 = 1 MHz timer clock */
+    htim.Init.CounterMode       = TIM_COUNTERMODE_UP;
+    htim.Init.Period            = 376;
+    htim.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
+    htim.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    rhs_assert(HAL_TIM_Base_Init(&htim) == HAL_OK);
+
+    sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+    rhs_assert(HAL_TIM_ConfigClockSource(&htim, &sClockSourceConfig) == HAL_OK);
+    rhs_assert(HAL_TIM_PWM_Init(&htim) == HAL_OK);
+
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+    sMasterConfig.MasterSlaveMode     = TIM_MASTERSLAVEMODE_DISABLE;
+    rhs_assert(HAL_TIMEx_MasterConfigSynchronization(&htim, &sMasterConfig) == HAL_OK);
+
+    sConfigOC.OCMode     = TIM_OCMODE_PWM1;
+    sConfigOC.Pulse      = 0;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+    rhs_assert(HAL_TIM_PWM_ConfigChannel(&htim, &sConfigOC, TIM_CHANNEL_2) == HAL_OK);
+
+    HAL_TIM_MspPostInit(&htim);
+}
+
+#else
+#    error "Unknown platform"
 #endif
 
 void rhs_hal_speaker_init(void)
@@ -243,6 +311,12 @@ void rhs_hal_speaker_start(float frequency, float volume)
     htim.Instance->CCR2 = rhs_hal_speaker_calculate_compare(volume);
 
     HAL_TIM_PWM_Start(&htim, TIM_CHANNEL_2);
+#elif defined(STM32G0B1xx)
+    htim.Init.Period    = rhs_hal_speaker_calculate_autoreload(frequency);
+    htim.Instance->ARR  = htim.Init.Period;
+    htim.Instance->CCR2 = rhs_hal_speaker_calculate_compare(volume);
+
+    HAL_TIM_PWM_Start(&htim, TIM_CHANNEL_2);
 #else
 #    error "Unknown platform"
 #endif
@@ -253,6 +327,8 @@ void rhs_hal_speaker_stop(void)
 #if defined(BMPLC_XL) || defined(BMPLC_L)
     HAL_TIM_PWM_Stop(&htim, TIM_CHANNEL_1);
 #elif defined(BMPLC_M)
+    HAL_TIM_PWM_Stop(&htim, TIM_CHANNEL_2);
+#elif defined(STM32G0B1xx)
     HAL_TIM_PWM_Stop(&htim, TIM_CHANNEL_2);
 #else
 #    error "Unknown platform"

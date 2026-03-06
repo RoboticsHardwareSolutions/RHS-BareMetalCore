@@ -5,8 +5,10 @@
 #elif defined(BMPLC_M)
 #    include "stm32f103xe.h"
 #else
-#    if defined(STM32F407xx)  || defined(STM32F405xx)
+#    if defined(STM32F407xx) || defined(STM32F405xx)
 #        include "stm32f4xx.h"
+#    elif defined(STM32G0B1xx)
+#        include "stm32g0b1xx.h"
 #    endif
 #endif
 

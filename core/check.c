@@ -85,8 +85,9 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
 
     // Check if debug enabled by DAP
     // https://developer.arm.com/documentation/ddi0403/d/Debug-Architecture/ARMv7-M-Debug/Debug-register-support-in-the-SCS/Debug-Halting-Control-and-Status-Register--DHCSR?lang=en
-    bool debug = 0;
-    // CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk;
+#if defined(CoreDebug) && defined(CoreDebug_DHCSR_C_DEBUGEN_Msk)
+    bool debug = (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U;
+#endif
 
     const char* last_separator = strrchr(context.file, '/');
     if (last_separator != NULL)
@@ -119,6 +120,8 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
 #endif
     rhs_save_stack_info();
     RHS_LOG_D("Assert", "Message: %s. Called from file: %s, line: %d\n", m, context.file, context.line);
+
+    #if defined(CoreDebug) && defined(CoreDebug_DHCSR_C_DEBUGEN_Msk)
     if (debug)
     {
         for (;;)
@@ -129,5 +132,9 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
     {
         rhs_hal_power_reset();
     }
+#else
+    // __BKPT(0U);
+    rhs_hal_power_reset();
+#endif
     __builtin_unreachable();
 }

@@ -44,28 +44,36 @@ void rhs_set_fault_frame(uint32_t* frame)
 
 static void rhs_save_stack_info(void)
 {
-    if (!rhs_log_save)
-        return;
-
     if (rhs_fault_frame != NULL)
     {
         const stack_ptr_t* f = (const stack_ptr_t*) rhs_fault_frame;
-        rhs_log_save("r0=%08lX r1=%08lX r2=%08lX r3=%08lX r12=%08lX lr=%08lX pc=%08lX psr=%08lX",
-                     (unsigned long) f->r0,
-                     (unsigned long) f->r1,
-                     (unsigned long) f->r2,
-                     (unsigned long) f->r3,
-                     (unsigned long) f->r12,
-                     (unsigned long) f->lr,
-                     (unsigned long) f->pc,
-                     (unsigned long) f->psr);
+        printf("r0=%08lX r1=%08lX r2=%08lX r3=%08lX r12=%08lX lr=%08lX pc=%08lX psr=%08lX\n",
+               (unsigned long) f->r0,
+               (unsigned long) f->r1,
+               (unsigned long) f->r2,
+               (unsigned long) f->r3,
+               (unsigned long) f->r12,
+               (unsigned long) f->lr,
+               (unsigned long) f->pc,
+               (unsigned long) f->psr);
+
+        if (rhs_log_save)
+            rhs_log_save("r0=%08lX r1=%08lX r2=%08lX r3=%08lX r12=%08lX lr=%08lX pc=%08lX psr=%08lX",
+                         (unsigned long) f->r0,
+                         (unsigned long) f->r1,
+                         (unsigned long) f->r2,
+                         (unsigned long) f->r3,
+                         (unsigned long) f->r12,
+                         (unsigned long) f->lr,
+                         (unsigned long) f->pc,
+                         (unsigned long) f->psr);
     }
 }
 
 _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
 {
     __disable_irq();
-    
+
     if (rhs_crash_action)
         rhs_crash_action();
 

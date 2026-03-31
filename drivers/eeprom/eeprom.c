@@ -45,17 +45,17 @@ EepromStatus eeprom_read(const EepromType* eeprom, uint16_t address, uint8_t* da
 
     // Prepare address buffer according to address size
     uint8_t addr_buf[2];
-    size_t addr_buf_size;
-    
+    size_t  addr_buf_size;
+
     if (eeprom->address_size == 1)
     {
-        addr_buf[0] = (uint8_t)(address & 0xFF);
+        addr_buf[0]   = (uint8_t) (address & 0xFF);
         addr_buf_size = 1;
     }
-    else // address_size == 2
+    else  // address_size == 2
     {
-        addr_buf[0] = (uint8_t)((address >> 8) & 0xFF);  // MSB first
-        addr_buf[1] = (uint8_t)(address & 0xFF);
+        addr_buf[0]   = (uint8_t) ((address >> 8) & 0xFF);  // MSB first
+        addr_buf[1]   = (uint8_t) (address & 0xFF);
         addr_buf_size = 2;
     }
 
@@ -83,33 +83,33 @@ EepromStatus eeprom_write(const EepromType* eeprom, uint16_t address, const uint
         return EepromStatusInvalidParam;
     }
 
-    size_t remaining = size;
-    uint16_t current_address = address;
-    const uint8_t* current_data = data;
+    size_t         remaining       = size;
+    uint16_t       current_address = address;
+    const uint8_t* current_data    = data;
 
     while (remaining > 0)
     {
         // Calculate how much we can write in current page
-        uint16_t page_start = (current_address / eeprom->page_size) * eeprom->page_size;
-        uint16_t page_end = page_start + eeprom->page_size;
+        uint16_t page_start        = (current_address / eeprom->page_size) * eeprom->page_size;
+        uint16_t page_end          = page_start + eeprom->page_size;
         uint16_t bytes_to_page_end = page_end - current_address;
-        
+
         // Write only what fits in current page
         size_t bytes_to_write = (remaining < bytes_to_page_end) ? remaining : bytes_to_page_end;
 
         // Prepare address buffer according to address size
         uint8_t addr_buf[2];
-        size_t addr_buf_size;
-        
+        size_t  addr_buf_size;
+
         if (eeprom->address_size == 1)
         {
-            addr_buf[0] = (uint8_t)(current_address & 0xFF);
+            addr_buf[0]   = (uint8_t) (current_address & 0xFF);
             addr_buf_size = 1;
         }
-        else // address_size == 2
+        else  // address_size == 2
         {
-            addr_buf[0] = (uint8_t)((current_address >> 8) & 0xFF);  // MSB first
-            addr_buf[1] = (uint8_t)(current_address & 0xFF);
+            addr_buf[0]   = (uint8_t) ((current_address >> 8) & 0xFF);  // MSB first
+            addr_buf[1]   = (uint8_t) (current_address & 0xFF);
             addr_buf_size = 2;
         }
 

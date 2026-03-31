@@ -63,15 +63,15 @@ extern const ODFieldType od_sdo_stx;
 extern const ODFieldType od_sdo_srx;
 extern const ODFieldType od_sdo_srv_id;
 
-#define SET_SDO_COMMUNICATION(co, OD, id)                                                                            \
-    co_set_field((co), (OD), od_sdo_stx.index, od_sdo_stx.sub, (uint32_t[]) {0x600 + (id)}, sizeof(uint32_t)); \
-    co_set_field((co), (OD), od_sdo_srx.index, od_sdo_srx.sub, (uint32_t[]) {0x580 + (id)}, sizeof(uint32_t)); \
-    co_set_field((co), (OD), od_sdo_srv_id.index, od_sdo_srv_id.sub, (uint8_t[]) {(id)}, sizeof(uint8_t));
+#define SET_SDO_COMMUNICATION(co, OD, id)                                                                     \
+    co_set_field((co), (OD), od_sdo_stx.index, od_sdo_stx.sub, (uint32_t[]){0x600 + (id)}, sizeof(uint32_t)); \
+    co_set_field((co), (OD), od_sdo_srx.index, od_sdo_srx.sub, (uint32_t[]){0x580 + (id)}, sizeof(uint32_t)); \
+    co_set_field((co), (OD), od_sdo_srv_id.index, od_sdo_srv_id.sub, (uint8_t[]){(id)}, sizeof(uint8_t));
 
-#define RESET_SDO_COMMUNICATION(co, OD)                                                                   \
-    co_set_field((co), (OD), od_sdo_stx.index, od_sdo_stx.sub, (uint32_t[]) {0}, sizeof(uint32_t)); \
-    co_set_field((co), (OD), od_sdo_srx.index, od_sdo_srx.sub, (uint32_t[]) {0}, sizeof(uint32_t)); \
-    co_set_field((co), (OD), od_sdo_srv_id.index, od_sdo_srv_id.sub, (uint8_t[]) {0}, sizeof(uint8_t));
+#define RESET_SDO_COMMUNICATION(co, OD)                                                            \
+    co_set_field((co), (OD), od_sdo_stx.index, od_sdo_stx.sub, (uint32_t[]){0}, sizeof(uint32_t)); \
+    co_set_field((co), (OD), od_sdo_srx.index, od_sdo_srx.sub, (uint32_t[]){0}, sizeof(uint32_t)); \
+    co_set_field((co), (OD), od_sdo_srv_id.index, od_sdo_srv_id.sub, (uint8_t[]){0}, sizeof(uint8_t));
 
 /* TxPDO fields. Add NPDO to index to get RxPDO(N) */
 extern const ODFieldType od_rx_pdo_cfg;

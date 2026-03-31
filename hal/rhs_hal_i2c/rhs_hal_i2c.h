@@ -10,6 +10,8 @@ extern "C" {
 #endif
 
 extern const RHSHalI2cBusHandle rhs_hal_i2c1_handle;
+extern const RHSHalI2cBusHandle rhs_hal_i2c2_handle;
+extern const RHSHalI2cBusHandle rhs_hal_i2c3_handle;
 
 /** Transaction beginning signal */
 typedef enum

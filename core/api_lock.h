@@ -7,8 +7,7 @@ typedef RHSEventFlag* RHSApiLock;
 
 #define api_lock_alloc_locked() rhs_event_flag_alloc()
 
-#define api_lock_wait_unlock(_lock) \
-    rhs_event_flag_wait(_lock, API_LOCK_EVENT, RHSFlagWaitAny, RHSWaitForever)
+#define api_lock_wait_unlock(_lock) rhs_event_flag_wait(_lock, API_LOCK_EVENT, RHSFlagWaitAny, RHSWaitForever)
 
 #define api_lock_free(_lock) rhs_event_flag_free(_lock)
 

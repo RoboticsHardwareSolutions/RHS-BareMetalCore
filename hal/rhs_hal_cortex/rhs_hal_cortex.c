@@ -28,10 +28,10 @@ void rhs_hal_cortex_init_early(void)
 #else
     /* Cortex-M0+ has no DWT CYCCNT; use TIM2 as a free-running 1 MHz counter */
     RCC->APBENR1 |= RCC_APBENR1_TIM2EN;
-    TIM2->PSC     = (SystemCoreClock / 1000000U) - 1U;
-    TIM2->ARR     = 0xFFFFFFFFU;
-    TIM2->EGR     = TIM_EGR_UG; /* force prescaler reload */
-    TIM2->CR1     = TIM_CR1_CEN;
+    TIM2->PSC = (SystemCoreClock / 1000000U) - 1U;
+    TIM2->ARR = 0xFFFFFFFFU;
+    TIM2->EGR = TIM_EGR_UG; /* force prescaler reload */
+    TIM2->CR1 = TIM_CR1_CEN;
 #endif
 }
 
@@ -73,7 +73,7 @@ bool rhs_hal_cortex_timer_is_expired(RHSHalCortexTimer cortex_timer)
 #if !defined(STM32G0B1xx)
     return !((DWT->CYCCNT - cortex_timer.start) < cortex_timer.value);
 #else
-    return !((TIM2->CNT - cortex_timer.start) < cortex_timer.value);
+    return (TIM2->CNT - cortex_timer.start) >= cortex_timer.value;
 #endif
 }
 

@@ -251,14 +251,12 @@ void cli_command_top(char* args, void* context)
                item->name,
                item->state,
                item->priority,
-               item->cpu < 1 ? "<1%"
-                             : (
-                                   {
-                                       char buffer[12];
-                                       itoa(item->cpu, buffer, 10);
-                                       strcat(buffer, "%");
-                                       buffer;
-                                   }),
+               item->cpu < 1 ? "<1%" : ({
+                   char buffer[12];
+                   itoa(item->cpu, buffer, 10);
+                   strcat(buffer, "%");
+                   buffer;
+               }),
                item->stack_min_free);
     }
 
@@ -274,7 +272,7 @@ void cli_command_hardfault(char* args, void* context)
 {
     /* Call NULL function pointer: jumps to 0x00000000 (even address → T-bit = 0),
      * triggers INVSTATE UsageFault which escalates to HardFault. */
-    ((void (*)(void))NULL)();
+    ((void (*)(void)) NULL)();
 }
 
 void cli_info(char* args, void* context)

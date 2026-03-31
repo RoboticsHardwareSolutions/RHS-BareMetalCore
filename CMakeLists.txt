@@ -102,3 +102,26 @@ if(TARGET rhs_hal_rtc)
         target_link_libraries(${PROJECT_NAME} PRIVATE rhs_hal_rtc)
         target_compile_definitions(${PROJECT_NAME} PUBLIC -DTIMESTAMPER_RTC)
 endif()
+
+#################### FORMAT SECTION #######################
+include(FetchContent)
+FetchContent_Declare(
+        rlibhelper
+        GIT_REPOSITORY https://github.com/RoboticsHardwareSolutions/rlibhelper.git
+        GIT_TAG main
+)
+FetchContent_MakeAvailable(rlibhelper)
+
+file(GLOB_RECURSE FILES
+"${CMAKE_CURRENT_SOURCE_DIR}/*.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/*.h"
+)
+
+set(FILES_FOR_FORMATTING ${FILES})
+
+if (EXISTS "${rlibhelper_SOURCE_DIR}/format.cmake")
+        include(${rlibhelper_SOURCE_DIR}/format.cmake)
+else ()
+        message(WARNING "format.cmake file not found")
+endif ()
+format_files(${PROJECT_NAME} SOURCES ${FILES_FOR_FORMATTING})

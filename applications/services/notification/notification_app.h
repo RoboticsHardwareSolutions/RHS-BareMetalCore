@@ -1,15 +1,18 @@
 #include "stdint.h"
 #include "rhs.h"
 
-typedef enum {
+typedef enum
+{
     NotificationLayerMessage,
 } NotificationAppMessageType;
 
-typedef struct {
+typedef struct
+{
     const NotificationSequence* sequence;
-    NotificationAppMessageType type;
+    NotificationAppMessageType  type;
 } NotificationAppMessage;
 
-struct NotificationApp {
+struct NotificationApp
+{
     RHSMessageQueue* queue;
 };

@@ -92,10 +92,10 @@ static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len,
             uint8_t bytes_count = (uint8_t) ((num + 7) / 8);  // Calculate number of bytes needed
             if ((size_t) (bytes_count + 9) < sizeof(response))
             {
-                uint8_t* coils    = (uint8_t*) api->coils_data;
+                uint8_t* coils         = (uint8_t*) api->coils_data;
                 uint8_t* response_data = &response[9];
 
-                if(api->coils_read_cb)
+                if (api->coils_read_cb)
                 {
                     api->coils_read_cb(start, &coils[start], num, api->coils_context);
                 }
@@ -112,7 +112,7 @@ static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len,
 
                     response_data[byte_index] |= (bit << bit_index);
                 }
-                
+
                 response[8]  = bytes_count;
                 response_len = 9 + bytes_count;
                 success      = true;

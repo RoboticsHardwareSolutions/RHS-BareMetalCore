@@ -15,7 +15,7 @@ void alloc_test(void)
     // allocate memory case
     ptr = calloc(100, 1);
     runit_assert(ptr != NULL);
-    
+
     // test that memory is zero-initialized after allocation
     for (int i = 0; i < 100; i++)
     {
@@ -49,9 +49,9 @@ void alloc_test(void)
 
 void memmgr_test(char* args, void* context)
 {
-    runit_counter_assert_passes = 0;
+    runit_counter_assert_passes   = 0;
     runit_counter_assert_failures = 0;
-    
+
     alloc_test();
 
     runit_report();
@@ -59,7 +59,7 @@ void memmgr_test(char* args, void* context)
 
 void rhs_memmgr_test(void)
 {
-    Cli *cli = rhs_record_open(RECORD_CLI);
+    Cli* cli = rhs_record_open(RECORD_CLI);
     cli_add_command(cli, "mem_test", memmgr_test, NULL);
     rhs_record_close(RECORD_CLI);
 }

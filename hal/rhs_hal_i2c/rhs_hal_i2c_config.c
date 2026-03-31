@@ -10,6 +10,12 @@
 #elif defined(STM32F765xx)
 #    include <stm32f7xx_ll_bus.h>
 #    include <stm32f7xx_ll_gpio.h>
+#elif defined(STM32G0B1xx)
+
+#    include <stm32g0xx_ll_bus.h>
+#    include <stm32g0xx_ll_gpio.h>
+#    include <stm32g0b1xx.h>
+
 #else
 #    error "Unsupported platform"
 #endif
@@ -43,6 +49,23 @@ static void rhs_hal_i2c_bus_external_event(RHSHalI2cBus* bus, RHSHalI2cBusEvent 
 #elif defined(STM32F765xx)
         LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C1);
         LL_RCC_SetI2CClockSource(LL_RCC_I2C1_CLKSOURCE_PCLK1);
+#elif defined(STM32G0B1xx)
+
+        LL_RCC_SetI2CClockSource(LL_RCC_I2C1_CLKSOURCE_PCLK1);
+        LL_RCC_SetI2CClockSource(LL_RCC_I2C2_CLKSOURCE_PCLK1);
+
+        if (bus->i2c == I2C1)
+        {
+            LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C1);
+        }
+        else if (bus->i2c == I2C2)
+        {
+            LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C2);
+        }
+        else if (bus->i2c == I2C3)
+        {
+            LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C3);
+        }
 #endif
         RHS_CRITICAL_EXIT();
     }
@@ -52,6 +75,19 @@ static void rhs_hal_i2c_bus_external_event(RHSHalI2cBus* bus, RHSHalI2cBusEvent 
         LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C1);
 #elif defined(STM32F765xx)
         LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C1);
+#elif defined(STM32G0B1xx)
+        if (bus->i2c == I2C1)
+        {
+            LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C1);
+        }
+        else if (bus->i2c == I2C2)
+        {
+            LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C2);
+        }
+        else if (bus->i2c == I2C3)
+        {
+            LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C3);
+        }
 #endif
     }
 }
@@ -61,10 +97,23 @@ static RHSHalI2cBus rhs_hal_i2c1_bus = {
     .callback = rhs_hal_i2c_bus_external_event,
 };
 
+#if defined(STM32G0B1xx)
+static RHSHalI2cBus rhs_hal_i2c2_bus = {
+    .i2c      = I2C2,
+    .callback = rhs_hal_i2c_bus_external_event,
+};
+
+static RHSHalI2cBus rhs_hal_i2c3_bus = {
+    .i2c      = I2C3,
+    .callback = rhs_hal_i2c_bus_external_event,
+};
+#endif
+
 void rhs_hal_i2c_bus_handle_event(const RHSHalI2cBusHandle* handle, RHSHalI2cBusHandleEvent event)
 {
     if (event == RHSHalI2cBusHandleEventActivate)
     {
+/** GPIO setup section start **/
 #if defined(STM32F103xE)
         // Enable GPIOB clock
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
@@ -107,8 +156,81 @@ void rhs_hal_i2c_bus_handle_event(const RHSHalI2cBusHandle* handle, RHSHalI2cBus
         LL_GPIO_SetPinOutputType(GPIOB, LL_GPIO_PIN_9, LL_GPIO_OUTPUT_OPENDRAIN);
         LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_9, LL_GPIO_PULL_NO);
         LL_GPIO_SetPinSpeed(GPIOB, LL_GPIO_PIN_9, LL_GPIO_SPEED_FREQ_LOW);
-#endif
+#elif defined(STM32G0B1xx)
+        LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+        if (handle->bus == &rhs_hal_i2c1_bus)
+        {
+            LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA);
+            /**I2C1 GPIO Configuration
+            PA9   ------> I2C1_SCL
+            PA10   ------> I2C1_SDA
+            */
+            GPIO_InitStruct.Pin        = LL_GPIO_PIN_9;
+            GPIO_InitStruct.Mode       = LL_GPIO_MODE_ALTERNATE;
+            GPIO_InitStruct.Speed      = LL_GPIO_SPEED_FREQ_LOW;
+            GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
+            GPIO_InitStruct.Pull       = LL_GPIO_PULL_NO;
+            GPIO_InitStruct.Alternate  = LL_GPIO_AF_6;
+            LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+            GPIO_InitStruct.Pin        = LL_GPIO_PIN_10;
+            GPIO_InitStruct.Mode       = LL_GPIO_MODE_ALTERNATE;
+            GPIO_InitStruct.Speed      = LL_GPIO_SPEED_FREQ_LOW;
+            GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
+            GPIO_InitStruct.Pull       = LL_GPIO_PULL_NO;
+            GPIO_InitStruct.Alternate  = LL_GPIO_AF_6;
+            LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+        }
+        else if (handle->bus == &rhs_hal_i2c2_bus)
+        {
+            LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA);
+            /**I2C2 GPIO Configuration
+            PA6   ------> I2C2_SDA
+            PA7   ------> I2C2_SCL
+            */
+            GPIO_InitStruct.Pin        = LL_GPIO_PIN_6;
+            GPIO_InitStruct.Mode       = LL_GPIO_MODE_ALTERNATE;
+            GPIO_InitStruct.Speed      = LL_GPIO_SPEED_FREQ_LOW;
+            GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
+            GPIO_InitStruct.Pull       = LL_GPIO_PULL_NO;
+            GPIO_InitStruct.Alternate  = LL_GPIO_AF_8;
+            LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+            GPIO_InitStruct.Pin        = LL_GPIO_PIN_7;
+            GPIO_InitStruct.Mode       = LL_GPIO_MODE_ALTERNATE;
+            GPIO_InitStruct.Speed      = LL_GPIO_SPEED_FREQ_LOW;
+            GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
+            GPIO_InitStruct.Pull       = LL_GPIO_PULL_NO;
+            GPIO_InitStruct.Alternate  = LL_GPIO_AF_8;
+            LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+        }
+        else if (handle->bus == &rhs_hal_i2c3_bus)
+        {
+            LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOB);
+            /**I2C3 GPIO Configuration
+           PB3   ------> I2C3_SCL
+           PB4   ------> I2C3_SDA
+         */
+            GPIO_InitStruct.Pin        = LL_GPIO_PIN_3;
+            GPIO_InitStruct.Mode       = LL_GPIO_MODE_ALTERNATE;
+            GPIO_InitStruct.Speed      = LL_GPIO_SPEED_FREQ_LOW;
+            GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
+            GPIO_InitStruct.Pull       = LL_GPIO_PULL_NO;
+            GPIO_InitStruct.Alternate  = LL_GPIO_AF_6;
+            LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+            GPIO_InitStruct.Pin        = LL_GPIO_PIN_4;
+            GPIO_InitStruct.Mode       = LL_GPIO_MODE_ALTERNATE;
+            GPIO_InitStruct.Speed      = LL_GPIO_SPEED_FREQ_LOW;
+            GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
+            GPIO_InitStruct.Pull       = LL_GPIO_PULL_NO;
+            GPIO_InitStruct.Alternate  = LL_GPIO_AF_6;
+            LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+        }
+#endif
+/** GPIO setup section end  **/
+
+/** I2C setup section start **/
 #if defined(STM32F103xE) || defined(STM32F407xx)
         LL_I2C_InitTypeDef I2C_InitStruct;
         I2C_InitStruct.PeripheralMode  = LL_I2C_MODE_I2C;
@@ -135,7 +257,26 @@ void rhs_hal_i2c_bus_handle_event(const RHSHalI2cBusHandle* handle, RHSHalI2cBus
         LL_I2C_DisableOwnAddress2(handle->bus->i2c);
         LL_I2C_DisableGeneralCall(handle->bus->i2c);
         LL_I2C_EnableClockStretching(handle->bus->i2c);
+#elif defined(STM32G0B1xx)
+
+        /** I2C Initialization */
+        LL_I2C_InitTypeDef I2C_InitStruct;
+        I2C_InitStruct.PeripheralMode  = LL_I2C_MODE_I2C;
+        I2C_InitStruct.Timing          = 0x10B17DB5;
+        I2C_InitStruct.AnalogFilter    = LL_I2C_ANALOGFILTER_ENABLE;
+        I2C_InitStruct.DigitalFilter   = 0;
+        I2C_InitStruct.OwnAddress1     = 0;
+        I2C_InitStruct.TypeAcknowledge = LL_I2C_ACK;
+        I2C_InitStruct.OwnAddrSize     = LL_I2C_OWNADDRESS1_7BIT;
+        LL_I2C_Init(handle->bus->i2c, &I2C_InitStruct);
+        LL_I2C_EnableAutoEndMode(handle->bus->i2c);
+        LL_I2C_SetOwnAddress2(handle->bus->i2c, 0, LL_I2C_OWNADDRESS2_NOMASK);
+        LL_I2C_DisableOwnAddress2(handle->bus->i2c);
+        LL_I2C_DisableGeneralCall(handle->bus->i2c);
+        LL_I2C_EnableClockStretching(handle->bus->i2c);
+
 #endif
+        /** I2C setup section end **/
     }
     else if (event == RHSHalI2cBusHandleEventDeactivate)
     {
@@ -152,6 +293,22 @@ void rhs_hal_i2c_bus_handle_event(const RHSHalI2cBusHandle* handle, RHSHalI2cBus
 #elif defined(STM32F765xx)
         LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_8, LL_GPIO_MODE_ANALOG);
         LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_9, LL_GPIO_MODE_ANALOG);
+#elif defined(STM32G0B1xx)
+        if (handle->bus == &rhs_hal_i2c1_bus)
+        {
+            LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_9, LL_GPIO_MODE_ANALOG);
+            LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_10, LL_GPIO_MODE_ANALOG);
+        }
+        else if (handle->bus == &rhs_hal_i2c2_bus)
+        {
+            LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_6, LL_GPIO_MODE_ANALOG);
+            LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_7, LL_GPIO_MODE_ANALOG);
+        }
+        else if (handle->bus == &rhs_hal_i2c3_bus)
+        {
+            LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_3, LL_GPIO_MODE_ANALOG);
+            LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_4, LL_GPIO_MODE_ANALOG);
+        }
 #endif
     }
 }
@@ -160,3 +317,17 @@ const RHSHalI2cBusHandle rhs_hal_i2c1_handle = {
     .bus      = &rhs_hal_i2c1_bus,
     .callback = rhs_hal_i2c_bus_handle_event,
 };
+
+#if defined(STM32G0B1xx)
+
+const RHSHalI2cBusHandle rhs_hal_i2c2_handle = {
+    .bus      = &rhs_hal_i2c2_bus,
+    .callback = rhs_hal_i2c_bus_handle_event,
+};
+
+const RHSHalI2cBusHandle rhs_hal_i2c3_handle = {
+    .bus      = &rhs_hal_i2c3_bus,
+    .callback = rhs_hal_i2c_bus_handle_event,
+};
+
+#endif

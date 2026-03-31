@@ -158,11 +158,11 @@ static uint8_t const* const configuration_arr[2] = {
 
 // array of pointer to string descriptors
 static char const* string_desc_cdc_net_arr[] = {
-    [STRID_LANGID]       = (const char[]) {0x09, 0x04},  // supported language is English (0x0409)
-    [STRID_MANUFACTURER] = "TinyUSB",                    // Manufacturer
-    [STRID_PRODUCT]      = "TinyUSB Device",             // Product
-    [STRID_SERIAL]       = "123456",                     // Serial
-    [STRID_INTERFACE]    = "TinyUSB Network Interface"   // Interface Description
+    [STRID_LANGID]       = (const char[]){0x09, 0x04},  // supported language is English (0x0409)
+    [STRID_MANUFACTURER] = "TinyUSB",                   // Manufacturer
+    [STRID_PRODUCT]      = "TinyUSB Device",            // Product
+    [STRID_SERIAL]       = "123456",                    // Serial
+    [STRID_INTERFACE]    = "TinyUSB Network Interface"  // Interface Description
 
     // STRID_MAC index is handled separately
 };

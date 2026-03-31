@@ -371,7 +371,7 @@ UsbSerialBridge* usb_serial_enable(UsbSerialConfig* cfg)
 {
     UsbSerialBridge* usb_serial = malloc(sizeof(UsbSerialBridge));
     memcpy(&(usb_serial->cfg_new), cfg, sizeof(UsbSerialConfig));
-    
+
     usb_serial->thread = rhs_thread_alloc("UsbSerialWorker", 1024, usb_serial_worker, usb_serial);
 
     rhs_thread_start(usb_serial->thread);
@@ -390,7 +390,7 @@ void usb_serial_disable(UsbSerialBridge* usb_serial)
 
 void cli_vcp_start_up(void)
 {
-    Cli *cli = rhs_record_open(RECORD_CLI);
+    Cli* cli = rhs_record_open(RECORD_CLI);
     cli_add_command(cli, "usb_bridge", usb_bridge_cb, NULL);
     rhs_record_close(RECORD_CLI);
 

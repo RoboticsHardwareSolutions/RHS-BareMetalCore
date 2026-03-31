@@ -11,7 +11,7 @@
 #include "mt25ql128aba.h"
 
 #if defined(BMPLC_XL) || defined(BMPLC_L)
-QSPI_HandleTypeDef        hqspi;
+QSPI_HandleTypeDef hqspi;
 
 static void quadspi_init(void)
 {

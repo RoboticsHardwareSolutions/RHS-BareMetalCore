@@ -5,16 +5,18 @@
 
 typedef struct UsbSerialBridge UsbSerialBridge;
 
-typedef struct {
-    uint8_t vcp_ch;
-    uint8_t serial_ch;
-    uint8_t flow_pins;
-    uint8_t baudrate_mode;
+typedef struct
+{
+    uint8_t  vcp_ch;
+    uint8_t  serial_ch;
+    uint8_t  flow_pins;
+    uint8_t  baudrate_mode;
     uint32_t baudrate;
-    uint8_t software_de_re;
+    uint8_t  software_de_re;
 } UsbSerialConfig;
 
-typedef struct {
+typedef struct
+{
     uint32_t rx_cnt;
     uint32_t tx_cnt;
     uint32_t baudrate_cur;

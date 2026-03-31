@@ -140,7 +140,7 @@ void rhs_thread_list_process(RHSThreadList* instance, uint32_t runtime, uint32_t
     {
         RHSThreadListItem* item         = rhs_thread_list_at(instance, i);
         uint32_t           item_counter = item->counter_current - item->counter_previous;
-        float cpu;
+        float              cpu;
         if (item_counter && item->counter_previous && item->counter_current)
         {
             cpu = (float) item_counter / (float) runtime_counter * 100.0f;

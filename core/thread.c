@@ -130,15 +130,15 @@ RHSThread* rhs_thread_alloc_ex(const char*       name,
                                RHSThreadCallback callback,
                                void*             context)
 {
-    RHSThread* thread    = rhs_thread_alloc(name, stack_size, callback, context);
-    thread->priority     = priotity;
+    RHSThread* thread = rhs_thread_alloc(name, stack_size, callback, context);
+    thread->priority  = priotity;
     return thread;
 }
 
 RHSThread* rhs_thread_alloc_service(const char* name, uint32_t stack_size, RHSThreadCallback callback, void* context)
 {
-    RHSThread* thread    = rhs_thread_alloc(name, stack_size, callback, context);
-    thread->is_service   = true;
+    RHSThread* thread  = rhs_thread_alloc(name, stack_size, callback, context);
+    thread->is_service = true;
     return thread;
 }
 

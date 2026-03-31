@@ -72,11 +72,11 @@ static uint8_t const dual_cdc_configuration[] = {
 
 // array of pointer to string descriptors
 static char const* string_desc_dual_cdc_arr[] = {
-    [STRID_LANGID]       = (const char[]) {0x09, 0x04},  // supported language is English (0x0409)
-    [STRID_MANUFACTURER] = "TinyUSB",                    // Manufacturer
-    [STRID_PRODUCT]      = "TinyUSB Device",             // Product
-    [STRID_SERIAL]       = "123456",                     // Serial
-    [STRID_INTERFACE]    = "TinyUSB CDC Interface"       // Interface Description
+    [STRID_LANGID]       = (const char[]){0x09, 0x04},  // supported language is English (0x0409)
+    [STRID_MANUFACTURER] = "TinyUSB",                   // Manufacturer
+    [STRID_PRODUCT]      = "TinyUSB Device",            // Product
+    [STRID_SERIAL]       = "123456",                    // Serial
+    [STRID_INTERFACE]    = "TinyUSB CDC Interface"      // Interface Description
 
     // STRID_MAC index is handled separately
 };
@@ -161,7 +161,7 @@ RHSHalUsbInterface usb_cdc_desc = {
     .init              = cdc_init,
     .deinit            = cdc_deinit,
     .device_desc       = &desc_device_cdc,
-    .configuration_arr = (uint8_t const* const[]) {dual_cdc_configuration},
+    .configuration_arr = (uint8_t const* const[]){dual_cdc_configuration},
     .string_desc_arr   = (char const* const*) string_desc_dual_cdc_arr,
 };
 
@@ -170,7 +170,7 @@ static int32_t usb_dual_cdc(void* context)
     /* Reinit hardware USB (PINs and RESET USB) */
     rhs_hal_usb_reinit();
     /* Init TinyUSB */
-    tusb_init(); // TODO check is not initialized
+    tusb_init();  // TODO check is not initialized
 
     while (!finish)
     {

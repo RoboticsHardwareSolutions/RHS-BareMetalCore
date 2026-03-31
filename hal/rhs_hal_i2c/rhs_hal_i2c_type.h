@@ -12,7 +12,6 @@
 #    error "Unsupported platform"
 #endif
 
-
 typedef struct RHSHalI2cBus       RHSHalI2cBus;
 typedef struct RHSHalI2cBusHandle RHSHalI2cBusHandle;
 

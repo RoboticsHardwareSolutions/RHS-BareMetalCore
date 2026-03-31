@@ -32,4 +32,3 @@ void rhs_log_unexclude_tag(char* tag);
 #define RHS_LOG_I(tag, format, ...) rhs_log_print_format(RHSLogLevelInfo, tag, format, ##__VA_ARGS__)
 #define RHS_LOG_D(tag, format, ...) rhs_log_print_format(RHSLogLevelDebug, tag, format, ##__VA_ARGS__)
 #define RHS_LOG_T(tag, format, ...) rhs_log_print_format(RHSLogLevelTrace, tag, format, ##__VA_ARGS__)
-

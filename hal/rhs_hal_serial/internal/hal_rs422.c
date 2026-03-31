@@ -24,7 +24,7 @@ void rhs_hal_rs422_init(void)
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_UART5;
     PeriphClkInitStruct.Uart5ClockSelection  = RCC_UART5CLKSOURCE_PCLK1;
 
-    rhs_assert (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK);
+    rhs_assert(HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK);
 
     __HAL_RCC_UART5_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();

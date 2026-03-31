@@ -11,11 +11,8 @@
 #    include <stm32f7xx_ll_bus.h>
 #    include <stm32f7xx_ll_gpio.h>
 #elif defined(STM32G0B1xx)
-
 #    include <stm32g0xx_ll_bus.h>
 #    include <stm32g0xx_ll_gpio.h>
-#    include <stm32g0b1xx.h>
-
 #else
 #    error "Unsupported platform"
 #endif

@@ -103,7 +103,6 @@ void cli_process_input(Cli* app)
 {
     char in_chr = cli_getc();
 
-    size_t rx_len;
 
     if (in_chr == CliSymbolAsciiTab)
     {
@@ -154,7 +153,7 @@ void cli_command_free(char* args, void* context)
     printf("total_heap: %d\r\n", memmgr_get_total_heap());
     printf("minimum_free_heap: %d\r\n", memmgr_get_minimum_free_heap());
     printf("free_heap: %d\r\n", memmgr_get_free_heap());
-    printf("isr_ticks: %d\r\n", rhs_hal_interrupt_get_time_in_isr_total());
+    printf("isr_ticks: %ld\r\n", rhs_hal_interrupt_get_time_in_isr_total());
 }
 
 void cli_commands(char* args, void* context)
@@ -247,7 +246,7 @@ void cli_command_top(char* args, void* context)
     for (size_t i = 0; i < count; i++)
     {
         RHSThreadListItem* item = rhs_thread_list_at(thread_list, i);
-        printf("%-32s %-10s %-3d %-4s %-5d\r\n",
+        printf("%-32s %-10s %-3d %-4s %-5ld\r\n",
                item->name,
                item->state,
                item->priority,

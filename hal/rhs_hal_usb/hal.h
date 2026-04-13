@@ -1,13 +1,13 @@
 #pragma once
 
 #if defined(STM32F103xE)
-#include <stm32f103xe.h>
-#include "stm32f1xx.h"
-#include <stm32f1xx_ll_pwr.h>
-#include <stm32f1xx_ll_rcc.h>
-#include <stm32f1xx_hal_gpio.h>
+#    include <stm32f103xe.h>
+#    include "stm32f1xx.h"
+#    include <stm32f1xx_ll_pwr.h>
+#    include <stm32f1xx_ll_rcc.h>
+#    include <stm32f1xx_hal_gpio.h>
 #else
-#error "Device not specified"
+#    error "Device not specified"
 #endif
 
 #include <stdbool.h>

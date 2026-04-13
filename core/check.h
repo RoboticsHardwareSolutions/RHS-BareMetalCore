@@ -10,21 +10,21 @@ typedef struct
 
 /**
  * @brief Custom logging function for critical errors and assertions
- * 
+ *
  * This function is marked as weak, allowing users to provide their own implementation.
  * If you want to define custom logging behavior for critical errors and assertions,
  * implement this function in your code:
- * 
+ *
  * @code
  * void rhs_log_save(char* str, ...) {
  *     // Your custom logging implementation here
  *     // For example: save to flash, send via UART, etc.
  * }
  * @endcode
- * 
+ *
  * @param str Format string (printf-style)
  * @param ... Variable arguments for format string
- * 
+ *
  * @note If not implemented by user, this function will have no effect
  */
 __attribute__((weak)) void rhs_log_save(char* str, ...);

@@ -441,7 +441,7 @@ void rhs_hal_can_async_sce(RHSHalCANId id, RHSHalCANAsyncSCECallback callback, v
 #if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
     case RHSHalCANId2:
         rhs_hal_interrupt_set_isr_ex(RHSHalInterruptIdCAN2SCE,
-                                    RHSHalInterruptPriorityLow,
+                                     RHSHalInterruptPriorityLow,
                                      can_sce_callback,
                                      &rhs_hal_can[id]);
         break;

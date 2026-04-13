@@ -167,7 +167,7 @@ RHSStatus rhs_delay_until_tick(uint32_t tick)
     configASSERT(!rhs_kernel_is_irq_or_masked());
 
     TickType_t tcnt, delay;
-    RHSStatus stat;
+    RHSStatus  stat;
 
     stat = RHSStatusOk;
     tcnt = xTaskGetTickCount();

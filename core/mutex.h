@@ -8,8 +8,8 @@ extern "C" {
 #include <semphr.h>
 #include "base.h"
 
-
-typedef enum {
+typedef enum
+{
     RHSMutexTypeNormal,
     RHSMutexTypeRecursive,
 } RHSMutexType;

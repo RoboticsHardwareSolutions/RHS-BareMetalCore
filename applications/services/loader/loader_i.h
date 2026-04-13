@@ -1,10 +1,12 @@
 #include "loader.h"
 #include "rhs.h"
 
-typedef struct {
+typedef struct
+{
     uint8_t type;
 } LoaderMessage;
 
-struct Loader {
+struct Loader
+{
     RHSMessageQueue* queue;
 };

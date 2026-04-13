@@ -3,17 +3,20 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef enum {
+typedef enum
+{
     CdcStateDisconnected,
     CdcStateConnected,
 } CdcState;
 
-typedef enum {
+typedef enum
+{
     CdcCtrlLineDTR = (1 << 0),
     CdcCtrlLineRTS = (1 << 1),
 } CdcCtrlLine;
 
-typedef struct {
+typedef struct
+{
     void (*tx_callback)(void* context);
     void (*rx_callback)(void* context);
     void (*state_callback)(void* context, CdcState state);

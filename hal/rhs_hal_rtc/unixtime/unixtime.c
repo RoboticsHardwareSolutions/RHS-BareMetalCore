@@ -26,8 +26,8 @@ datetime_t convert_unix_time_2_date(uint64_t seconds)
     date_time.hours = epoch % 24;
     epoch /= 24;
 
-    days_since_epoch = epoch;                           /* number of days since epoch */
-    date_time.weekday     = week_days[days_since_epoch % 7]; /* Calculating WeekDay */
+    days_since_epoch  = epoch;                           /* number of days since epoch */
+    date_time.weekday = week_days[days_since_epoch % 7]; /* Calculating WeekDay */
 
     date_time.year = 1970 + (days_since_epoch / 365); /* ball parking year, may not be accurate! */
 
@@ -40,8 +40,8 @@ datetime_t convert_unix_time_2_date(uint64_t seconds)
     }
 
     /* Calculating accurate current year by (days_since_epoch - extra leap days) */
-    date_time.year    = 1970 + ((days_since_epoch - leap_days) / 365);
-    day_of_year = ((days_since_epoch - leap_days) % 365) + 1;
+    date_time.year = 1970 + ((days_since_epoch - leap_days) / 365);
+    day_of_year    = ((days_since_epoch - leap_days) % 365) + 1;
 
     if (((date_time.year % 4 == 0) && (date_time.year % 100 != 0)) || (date_time.year % 400 == 0))
     {
@@ -62,25 +62,24 @@ datetime_t convert_unix_time_2_date(uint64_t seconds)
         temp_days = temp_days + month_days[date_time.month];
     }
 
-    temp_days = temp_days - month_days[date_time.month - 1]; /* calculating current Date */
-    date_time.day  = day_of_year - temp_days;
+    temp_days     = temp_days - month_days[date_time.month - 1]; /* calculating current Date */
+    date_time.day = day_of_year - temp_days;
     return date_time;
 }
 
-
-uint32_t convert_date_2_unix_time(const datetime_t*date)
+uint32_t convert_date_2_unix_time(const datetime_t* date)
 {
     uint32_t y;
     uint32_t m;
     uint32_t d;
     uint32_t t;
 
-    y = date->year; /* Year */
+    y = date->year;  /* Year */
     m = date->month; /* Month of year */
-    d = date->day; /* Day of month */
+    d = date->day;   /* Day of month */
 
-    //January and February are counted as months 13 and 14 of the previous year */
-    if(m <= 2)
+    // January and February are counted as months 13 and 14 of the previous year */
+    if (m <= 2)
     {
         m += 12;
         y -= 1;

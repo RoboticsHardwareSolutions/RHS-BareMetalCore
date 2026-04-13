@@ -18,8 +18,8 @@ static CanOpenApp* can_open_app_alloc(void)
     Cli* cli = rhs_record_open(RECORD_CLI);
     cli_add_command(cli, "can_open", can_open_cli, app);
     rhs_record_close(RECORD_CLI);
-    
-    extern CanOpenApp *can_open_app; /* co_stack and rtimer use callbacks without context. It makes me use this trash */
+
+    extern CanOpenApp* can_open_app; /* co_stack and rtimer use callbacks without context. It makes me use this trash */
     can_open_app = app;
 
     return app;

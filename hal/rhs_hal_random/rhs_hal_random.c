@@ -14,6 +14,9 @@
 #    include "stm32f1xx.h"
 #    include "stm32f1xx_ll_bus.h"
 #    include "stm32f1xx_ll_rcc.h"
+#elif defined(STM32G0B1xx)
+#    include "stm32g0xx_ll_bus.h"
+#    include "stm32g0xx_ll_rcc.h"
 #else
 #    error "No processor defined or not implemented"
 #endif
@@ -21,6 +24,7 @@
 #define TAG "RHSHalRandom"
 
 #if defined(STM32F765xx) || defined(STM32F407xx)
+
 static uint32_t rhs_hal_random_read_rng(void)
 {
     while (LL_RNG_IsActiveFlag_CECS(RNG) || LL_RNG_IsActiveFlag_SECS(RNG) || !LL_RNG_IsActiveFlag_DRDY(RNG))
@@ -96,7 +100,7 @@ int __wrap_rand(void)
     return rhs_hal_random_get() & RAND_MAX;
 }
 
-#elif defined(STM32F103xE)
+#elif defined(STM32F103xE) || defined(STM32G0B1xx)
 
 static uint32_t rng_state = 1;
 

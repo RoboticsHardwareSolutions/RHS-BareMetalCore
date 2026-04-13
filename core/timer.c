@@ -10,9 +10,9 @@
 
 struct RHSTimer
 {
-    StaticTimer_t     container;
+    StaticTimer_t    container;
     RHSTimerCallback cb_func;
-    void*             cb_context;
+    void*            cb_context;
 };
 
 // IMPORTANT: container MUST be the FIRST struct member
@@ -68,8 +68,7 @@ void rhs_timer_free(RHSTimer* instance)
     EventGroupHandle_t hEvent          = xEventGroupCreateStatic(&event_container);
     rhs_assert(xTimerPendFunctionCall(rhs_timer_epilogue, hEvent, 0, portMAX_DELAY) == pdPASS);
 
-    rhs_assert(xEventGroupWaitBits(hEvent, TIMER_DELETED_EVENT, pdFALSE, pdTRUE, portMAX_DELAY) ==
-                 TIMER_DELETED_EVENT);
+    rhs_assert(xEventGroupWaitBits(hEvent, TIMER_DELETED_EVENT, pdFALSE, pdTRUE, portMAX_DELAY) == TIMER_DELETED_EVENT);
     vEventGroupDelete(hEvent);
 
     free(instance);
@@ -82,7 +81,7 @@ RHSStatus rhs_timer_start(RHSTimer* instance, uint32_t ticks)
     rhs_assert(ticks < portMAX_DELAY);
 
     TimerHandle_t hTimer = (TimerHandle_t) instance;
-    RHSStatus    stat;
+    RHSStatus     stat;
 
     if (xTimerChangePeriod(hTimer, ticks, portMAX_DELAY) == pdPASS)
     {
@@ -103,7 +102,7 @@ RHSStatus rhs_timer_restart(RHSTimer* instance, uint32_t ticks)
     rhs_assert(ticks < portMAX_DELAY);
 
     TimerHandle_t hTimer = (TimerHandle_t) instance;
-    RHSStatus    stat;
+    RHSStatus     stat;
 
     if (xTimerChangePeriod(hTimer, ticks, portMAX_DELAY) == pdPASS && xTimerReset(hTimer, portMAX_DELAY) == pdPASS)
     {

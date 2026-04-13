@@ -3,7 +3,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-void eth_net_listeners_add(EthNetListener** listeners, EthNetListenerType type, const char* uri, mg_event_handler_t fn, void* context)
+void eth_net_listeners_add(EthNetListener**   listeners,
+                           EthNetListenerType type,
+                           const char*        uri,
+                           mg_event_handler_t fn,
+                           void*              context)
 {
     rhs_assert(listeners);
     rhs_assert(uri);
@@ -71,11 +75,11 @@ bool eth_net_listeners_remove(EthNetListener** listeners, const char* uri)
             }
 
             MG_INFO(("Listener removed: type=%d, uri=%s", current->type, current->uri));
-            
+
             // Free the memory
             free(current->uri);
             free(current);
-            
+
             return true;
         }
 

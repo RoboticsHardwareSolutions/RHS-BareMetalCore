@@ -45,5 +45,5 @@ struct EthNet
     Cli*                cli;
     RHSThread*          thread;
     RHSMessageQueue*    queue;
-    EthNetListener*     listeners;    // Linked list of registered listeners
+    EthNetListener*     listeners;  // Linked list of registered listeners
 };

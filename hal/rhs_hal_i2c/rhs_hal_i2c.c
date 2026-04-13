@@ -58,8 +58,8 @@ static bool rhs_hal_i2c_wait_for_idle(I2C_TypeDef* i2c, RHSHalI2cBegin begin, RH
 
 static bool rhs_hal_i2c_wait_for_end(I2C_TypeDef* i2c, RHSHalI2cEnd end, RHSHalCortexTimer timer)
 {
-#if defined(STM32F765xx)
-    // STM32F7 has newer I2C architecture with ISR register
+#if defined(STM32F765xx) || defined(STM32G0B1xx)
+
     bool     wait_for_stop = end == RHSHalI2cEndStop;
     uint32_t end_mask      = (wait_for_stop) ? I2C_ISR_STOPF : (I2C_ISR_TC | I2C_ISR_TCR);
 
@@ -95,8 +95,8 @@ static bool rhs_hal_i2c_wait_for_end(I2C_TypeDef* i2c, RHSHalI2cEnd end, RHSHalC
 
 static uint32_t rhs_hal_i2c_get_start_signal(RHSHalI2cBegin begin, bool ten_bit_address, bool read)
 {
-#if defined(STM32F765xx)
-    // STM32F7 original implementation
+#if defined(STM32F765xx) || defined(STM32G0B1xx)
+
     switch (begin)
     {
     case RHSHalI2cBeginRestart:
@@ -132,8 +132,8 @@ static uint32_t rhs_hal_i2c_get_start_signal(RHSHalI2cBegin begin, bool ten_bit_
 
 static uint32_t rhs_hal_i2c_get_end_signal(RHSHalI2cEnd end)
 {
-#if defined(STM32F765xx)
-    // STM32F7 original implementation
+#if defined(STM32F765xx) || defined(STM32G0B1xx)
+
     switch (end)
     {
     case RHSHalI2cEndAwaitRestart:
@@ -161,9 +161,8 @@ static uint32_t rhs_hal_i2c_get_end_signal(RHSHalI2cEnd end)
 
 static bool rhs_hal_i2c_transfer_is_aborted(I2C_TypeDef* i2c)
 {
-#if defined(STM32F765xx)
-    // STM32F7 original implementation
-    return LL_I2C_IsActiveFlag_STOP(i2c) && !(LL_I2C_IsActiveFlag_TC(i2c) || LL_I2C_IsActiveFlag_TCR(i2c));
+#if defined(STM32F765xx) || defined(STM32G0B1xx)
+    return LL_I2C_IsActiveFlag_STOP(i2c);
 #else
     // STM32F1/F4: Check for STOP and ensure no successful completion flags
     return LL_I2C_IsActiveFlag_STOP(i2c) && !LL_I2C_IsActiveFlag_BTF(i2c);
@@ -179,24 +178,46 @@ static bool rhs_hal_i2c_transfer(I2C_TypeDef*      i2c,
 {
     bool ret = true;
 
-#if defined(STM32F765xx)
-    // STM32F7 original implementation
+#if defined(STM32F765xx) || defined(STM32G0B1xx)
+
     while (size > 0)
     {
         bool should_stop = rhs_hal_cortex_timer_is_expired(timer) || rhs_hal_i2c_transfer_is_aborted(i2c);
 
-        // Modifying the data pointer's data is UB if read is true
-        if (read && LL_I2C_IsActiveFlag_RXNE(i2c))
+        if (read)
         {
-            *data = LL_I2C_ReceiveData8(i2c);
-            data++;
-            size--;
+            if (size == 1 && end == RHSHalI2cEndStop)
+            {
+                // Disable ACK for the last byte
+                LL_I2C_AcknowledgeNextData(i2c, LL_I2C_NACK);
+            }
+
+            if (LL_I2C_IsActiveFlag_RXNE(i2c))
+            {
+                *data = LL_I2C_ReceiveData8(i2c);
+                data++;
+                size--;
+            }
         }
-        else if (!read && LL_I2C_IsActiveFlag_TXIS(i2c))
+        else
         {
-            LL_I2C_TransmitData8(i2c, *data);
-            data++;
-            size--;
+            if (LL_I2C_IsActiveFlag_TXE(i2c))
+            {
+                LL_I2C_TransmitData8(i2c, *data);
+                data++;
+                size--;
+            }
+            if (size == 0)
+            {
+                // All data sent, ensure BTF is set before ending
+                while (!LL_I2C_IsActiveFlag_TC(i2c))
+                {
+                    if (rhs_hal_cortex_timer_is_expired(timer) || rhs_hal_i2c_transfer_is_aborted(i2c))
+                    {
+                        break;
+                    }
+                }
+            }
         }
 
         // Exit on timeout or premature stop, probably caused by a nacked address or byte
@@ -207,12 +228,20 @@ static bool rhs_hal_i2c_transfer(I2C_TypeDef*      i2c,
         }
     }
 
+    // Generate STOP condition if needed
+    if (end == RHSHalI2cEndStop)
+    {
+        LL_I2C_GenerateStopCondition(i2c);
+    }
+
     if (ret)
     {
         ret = rhs_hal_i2c_wait_for_end(i2c, end, timer);
     }
 
     LL_I2C_ClearFlag_STOP(i2c);
+    return ret;
+
 #else
     // STM32F1/F4 implementation
     while (size > 0)
@@ -275,9 +304,8 @@ static bool rhs_hal_i2c_transfer(I2C_TypeDef*      i2c,
     }
 
     LL_I2C_ClearFlag_STOP(i2c);
-#endif
-
     return ret;
+#endif
 }
 
 static bool rhs_hal_i2c_transaction(I2C_TypeDef*      i2c,
@@ -290,42 +318,19 @@ static bool rhs_hal_i2c_transaction(I2C_TypeDef*      i2c,
                                     bool              read,
                                     RHSHalCortexTimer timer)
 {
-#if defined(STM32F765xx)
-    // STM32F7 original implementation
-    uint32_t addr_size    = ten_bit ? LL_I2C_ADDRSLAVE_10BIT : LL_I2C_ADDRSLAVE_7BIT;
-    uint32_t start_signal = rhs_hal_i2c_get_start_signal(begin, ten_bit, read);
+#if defined(STM32F765xx) || defined(STM32G0B1xx)
+
+    //    uint32_t start_signal = rhs_hal_i2c_get_start_signal(begin, ten_bit, read);
 
     if (!rhs_hal_i2c_wait_for_idle(i2c, begin, timer))
     {
         return false;
     }
 
-    do
-    {
-        uint8_t      transfer_size = size;
-        RHSHalI2cEnd transfer_end  = end;
+    uint32_t request = read ? I2C_GENERATE_START_READ : I2C_GENERATE_START_WRITE;
+    LL_I2C_HandleTransfer(i2c, address << 1, LL_I2C_ADDRSLAVE_7BIT, size, I2C_AUTOEND_MODE, request);
 
-        if (size > 255)
-        {
-            transfer_size = 255;
-            transfer_end  = RHSHalI2cEndPause;
-        }
-
-        uint32_t end_signal = rhs_hal_i2c_get_end_signal(transfer_end);
-
-        LL_I2C_HandleTransfer(i2c, address, addr_size, transfer_size, end_signal, start_signal);
-
-        if (!rhs_hal_i2c_transfer(i2c, data, transfer_size, transfer_end, read, timer))
-        {
-            return false;
-        }
-
-        size -= transfer_size;
-        data += transfer_size;
-        start_signal = LL_I2C_GENERATE_NOSTARTSTOP;
-    } while (size > 0);
-
-    return true;
+    return rhs_hal_i2c_transfer(i2c, data, size, end, read, timer);
 
 #else
     // STM32F1/F4 implementation - manual I2C handling
@@ -447,15 +452,12 @@ bool rhs_hal_i2c_trx(const RHSHalI2cBusHandle* handle,
                      size_t                    rx_size,
                      uint32_t                  timeout)
 {
-    return rhs_hal_i2c_tx_ext(handle,
-                              address,
-                              false,
-                              tx_data,
-                              tx_size,
-                              RHSHalI2cBeginStart,
-                              RHSHalI2cEndStop,
-                              timeout) &&
-           rhs_hal_i2c_rx_ext(handle, address, false, rx_data, rx_size, RHSHalI2cBeginStart, RHSHalI2cEndStop, timeout);
+    bool tx =
+        rhs_hal_i2c_tx_ext(handle, address, false, tx_data, tx_size, RHSHalI2cBeginStart, RHSHalI2cEndStop, timeout);
+
+    bool rx =
+        rhs_hal_i2c_rx_ext(handle, address, false, rx_data, rx_size, RHSHalI2cBeginStart, RHSHalI2cEndStop, timeout);
+    return tx && rx;
 }
 
 bool rhs_hal_i2c_is_device_ready(const RHSHalI2cBusHandle* handle, uint8_t i2c_addr, uint32_t timeout)
@@ -463,6 +465,9 @@ bool rhs_hal_i2c_is_device_ready(const RHSHalI2cBusHandle* handle, uint8_t i2c_a
     rhs_assert(handle);
     rhs_assert(handle->bus->current_handle == handle);
     rhs_assert(timeout > 0);
+
+    FlagStatus tmp1;
+    FlagStatus tmp2;
 
     bool              ret   = true;
     RHSHalCortexTimer timer = rhs_hal_cortex_timer_get(timeout * 1000);
@@ -472,25 +477,56 @@ bool rhs_hal_i2c_is_device_ready(const RHSHalI2cBusHandle* handle, uint8_t i2c_a
         return false;
     }
 
-#if defined(STM32F765xx)
-    // STM32F7 original implementation
+#if defined(STM32F765xx) || defined(STM32G0B1xx)
+
     LL_I2C_HandleTransfer(handle->bus->i2c,
-                          i2c_addr,
+                          i2c_addr << 1,
                           LL_I2C_ADDRSLAVE_7BIT,
                           0,
                           LL_I2C_MODE_AUTOEND,
-                          LL_I2C_GENERATE_START_WRITE);
+                          LL_I2C_GENERATE_START_READ);
 
-    if (!rhs_hal_i2c_wait_for_end(handle->bus->i2c, RHSHalI2cEndStop, timer))
+    tmp1 = LL_I2C_IsActiveFlag_STOP(handle->bus->i2c);
+    tmp2 = LL_I2C_IsActiveFlag_NACK(handle->bus->i2c);
+    while ((tmp1 == RESET) && (tmp2 == RESET))
     {
-        return false;
+        if (rhs_hal_cortex_timer_is_expired(timer))
+        {
+            return false;
+        }
+        tmp1 = LL_I2C_IsActiveFlag_STOP(handle->bus->i2c);
+        tmp2 = LL_I2C_IsActiveFlag_NACK(handle->bus->i2c);
     }
+    if (!LL_I2C_IsActiveFlag_NACK(handle->bus->i2c))
+    {
+        //-- wait STOPF
+        tmp1 = LL_I2C_IsActiveFlag_STOP(handle->bus->i2c);
+        while (tmp1 == RESET)
+        {
+            if (rhs_hal_cortex_timer_is_expired(timer))
+            {
+                return false;
+            }
+            tmp1 = LL_I2C_IsActiveFlag_STOP(handle->bus->i2c);
+        }
+        LL_I2C_ClearFlag_STOP(handle->bus->i2c);
+    }
+    else
+    {
+        tmp1 = LL_I2C_IsActiveFlag_STOP(handle->bus->i2c);
+        while (tmp1 == RESET)
+        {
+            if (rhs_hal_cortex_timer_is_expired(timer))
+            {
+                return false;
+            }
+            tmp1 = LL_I2C_IsActiveFlag_STOP(handle->bus->i2c);
+        }
 
-    ret = !LL_I2C_IsActiveFlag_NACK(handle->bus->i2c);
-
-    LL_I2C_ClearFlag_NACK(handle->bus->i2c);
-    LL_I2C_ClearFlag_STOP(handle->bus->i2c);
-
+        LL_I2C_ClearFlag_STOP(handle->bus->i2c);
+        LL_I2C_IsActiveFlag_NACK(handle->bus->i2c);
+    }
+    return ret;
 #else
     // STM32F1/F4 implementation
     // Generate START condition
@@ -534,9 +570,8 @@ bool rhs_hal_i2c_is_device_ready(const RHSHalI2cBusHandle* handle, uint8_t i2c_a
 
     LL_I2C_GenerateStopCondition(handle->bus->i2c);
     LL_I2C_ClearFlag_STOP(handle->bus->i2c);
-#endif
-
     return ret;
+#endif
 }
 
 bool rhs_hal_i2c_read_reg_8(const RHSHalI2cBusHandle* handle,
@@ -621,6 +656,8 @@ bool rhs_hal_i2c_write_mem(const RHSHalI2cBusHandle* handle,
     rhs_assert(handle->bus->current_handle == handle);
     rhs_assert(timeout > 0);
 
-    return rhs_hal_i2c_tx_ext(handle, i2c_addr, false, &mem_addr, 1, RHSHalI2cBeginStart, RHSHalI2cEndPause, timeout) &&
-           rhs_hal_i2c_tx_ext(handle, i2c_addr, false, data, len, RHSHalI2cBeginResume, RHSHalI2cEndStop, timeout);
+    bool tx1 =
+        rhs_hal_i2c_tx_ext(handle, i2c_addr, false, &mem_addr, 1, RHSHalI2cBeginStart, RHSHalI2cEndPause, timeout);
+    bool tx2 = rhs_hal_i2c_tx_ext(handle, i2c_addr, false, data, len, RHSHalI2cBeginResume, RHSHalI2cEndStop, timeout);
+    return tx1 && tx2;
 }

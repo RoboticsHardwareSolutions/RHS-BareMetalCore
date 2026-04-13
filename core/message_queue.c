@@ -54,7 +54,7 @@ RHSStatus rhs_message_queue_put(RHSMessageQueue* instance, const void* msg_ptr, 
     rhs_assert(instance);
 
     QueueHandle_t hQueue = (QueueHandle_t) instance;
-    RHSStatus    stat;
+    RHSStatus     stat;
     BaseType_t    yield;
 
     stat = RHSStatusOk;
@@ -110,7 +110,7 @@ RHSStatus rhs_message_queue_get(RHSMessageQueue* instance, void* msg_ptr, uint32
     rhs_assert(instance);
 
     QueueHandle_t hQueue = (QueueHandle_t) instance;
-    RHSStatus    stat;
+    RHSStatus     stat;
     BaseType_t    yield;
 
     stat = RHSStatusOk;
@@ -221,7 +221,7 @@ RHSStatus rhs_message_queue_reset(RHSMessageQueue* instance)
     rhs_assert(instance);
 
     QueueHandle_t hQueue = (QueueHandle_t) instance;
-    RHSStatus    stat;
+    RHSStatus     stat;
 
     if (rhs_kernel_is_irq_or_masked() != 0U)
     {

@@ -37,7 +37,6 @@ static RHSLogLevel log_level = RHS_LOG_LEVEL_DEFAULT;
 static char*       exclude_tag[MAX_TAG_COUNT];
 static RHSMutex*   mutex = NULL;
 
-
 int _write(int file, char* ptr, int len)
 {
     for (int i = 0; i < len; i++)

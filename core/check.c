@@ -121,7 +121,7 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
     rhs_save_stack_info();
     RHS_LOG_D("Assert", "Message: %s. Called from file: %s, line: %d\n", m, context.file, context.line);
 
-    #if defined(CoreDebug) && defined(CoreDebug_DHCSR_C_DEBUGEN_Msk)
+#if defined(CoreDebug) && defined(CoreDebug_DHCSR_C_DEBUGEN_Msk)
     if (debug)
     {
         for (;;)

@@ -25,7 +25,11 @@ typedef struct EthNetListener
  * @param fn Event handler function
  * @param context User context pointer
  */
-void eth_net_listeners_add(EthNetListener** listeners, EthNetListenerType type, const char* uri, mg_event_handler_t fn, void* context);
+void eth_net_listeners_add(EthNetListener**   listeners,
+                           EthNetListenerType type,
+                           const char*        uri,
+                           mg_event_handler_t fn,
+                           void*              context);
 
 /**
  * @brief Remove a listener from the list by URI

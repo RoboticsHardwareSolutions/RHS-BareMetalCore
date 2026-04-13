@@ -1,6 +1,49 @@
 #include "mt25ql128aba.h"
 #include "stm32f7xx_hal.h"
 
+static HAL_StatusTypeDef mt25ql128aba_qspi_command(QSPI_HandleTypeDef* Ctx, QSPI_CommandTypeDef* Cmd, uint32_t Timeout)
+{
+    if (__get_IPSR() != 0U || __get_PRIMASK() != 0U)
+    {
+        return HAL_QSPI_Command_IT(Ctx, Cmd);
+    }
+
+    return HAL_QSPI_Command(Ctx, Cmd, Timeout);
+}
+
+static HAL_StatusTypeDef mt25ql128aba_qspi_transmit(QSPI_HandleTypeDef* Ctx, uint8_t* pData, uint32_t Timeout)
+{
+    if (__get_IPSR() != 0U || __get_PRIMASK() != 0U)
+    {
+        return HAL_QSPI_Transmit_IT(Ctx, pData);
+    }
+
+    return HAL_QSPI_Transmit(Ctx, pData, Timeout);
+}
+
+static HAL_StatusTypeDef mt25ql128aba_qspi_receive(QSPI_HandleTypeDef* Ctx, uint8_t* pData, uint32_t Timeout)
+{
+    if (__get_IPSR() != 0U || __get_PRIMASK() != 0U)
+    {
+        return HAL_QSPI_Receive_IT(Ctx, pData);
+    }
+
+    return HAL_QSPI_Receive(Ctx, pData, Timeout);
+}
+
+static HAL_StatusTypeDef mt25ql128aba_qspi_auto_polling(QSPI_HandleTypeDef*            Ctx,
+                                                         QSPI_CommandTypeDef*           Cmd,
+                                                         QSPI_AutoPollingTypeDef*       Cfg,
+                                                         uint32_t                        Timeout)
+{
+    if (__get_IPSR() != 0U || __get_PRIMASK() != 0U)
+    {
+        return HAL_QSPI_AutoPolling_IT(Ctx, Cmd, Cfg);
+    }
+
+    return HAL_QSPI_AutoPolling(Ctx, Cmd, Cfg, Timeout);
+}
+
 /**
  * @brief  Flash reset enable command
  *         SPI/QPI; 1-0-0, 4-0-0
@@ -24,7 +67,7 @@ int mt25ql128aba_ResetEnable(QSPI_HandleTypeDef* Ctx, mt25ql128aba_interface_t M
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
 
     /* Send the command */
-    if (HAL_QSPI_Command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
@@ -55,7 +98,7 @@ int mt25ql128aba_ResetMemory(QSPI_HandleTypeDef* Ctx, mt25ql128aba_interface_t M
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
 
     /* Send the command */
-    if (HAL_QSPI_Command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
@@ -91,7 +134,7 @@ int mt25ql128aba_Enter4BytesAddressMode(QSPI_HandleTypeDef* Ctx, mt25ql128aba_in
         return -1;
     }
     /* Send the command */
-    if (HAL_QSPI_Command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
@@ -130,13 +173,13 @@ static int QSPI_DummyCyclesCfg(mt25ql128aba_interface_t Mode)
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
 
     /* Configure the command */
-    if (HAL_QSPI_Command(&hqspi, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(&hqspi, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return HAL_ERROR;
     }
 
     /* Reception of the data */
-    if (HAL_QSPI_Receive(&hqspi, (uint8_t*) (&reg), HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_receive(&hqspi, (uint8_t*) (&reg), HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return HAL_ERROR;
     }
@@ -152,13 +195,13 @@ static int QSPI_DummyCyclesCfg(mt25ql128aba_interface_t Mode)
     MODIFY_REG(reg, 0xF0F0, ((MT25QL128ABA_DUMMY_CYCLES_READ_QUAD << 4) | (MT25QL128ABA_DUMMY_CYCLES_READ_QUAD << 12)));
 
     /* Configure the write volatile configuration register command */
-    if (HAL_QSPI_Command(&hqspi, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(&hqspi, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return HAL_ERROR;
     }
 
     /* Transmission of the data */
-    if (HAL_QSPI_Transmit(&hqspi, (uint8_t*) (&reg), HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_transmit(&hqspi, (uint8_t*) (&reg), HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return HAL_ERROR;
     }
@@ -189,7 +232,7 @@ int MT25QL128ABA_EnterQPIMode(QSPI_HandleTypeDef* Ctx)
     s_command.DdrHoldHalfCycle  = QSPI_DDR_HHC_ANALOG_DELAY;
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
 
-    if (HAL_QSPI_Command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
@@ -229,7 +272,7 @@ int MT25QL128ABA_ExitQPIMode(QSPI_HandleTypeDef* Ctx)
     s_command.DdrHoldHalfCycle  = QSPI_DDR_HHC_ANALOG_DELAY;
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
 
-    if (HAL_QSPI_Command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
@@ -351,13 +394,13 @@ int mt25ql128aba_read(QSPI_HandleTypeDef*      Ctx,
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
 
     /* Configure the command */
-    if (HAL_QSPI_Command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
 
     /* Reception of the data */
-    if (HAL_QSPI_Receive(Ctx, pData, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_receive(Ctx, pData, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
@@ -388,7 +431,7 @@ int mt25ql128aba_write_enable(QSPI_HandleTypeDef* Ctx, mt25ql128aba_interface_t 
     s_command.DdrHoldHalfCycle  = QSPI_DDR_HHC_ANALOG_DELAY;
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
 
-    if (HAL_QSPI_Command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
@@ -404,7 +447,7 @@ int mt25ql128aba_write_enable(QSPI_HandleTypeDef* Ctx, mt25ql128aba_interface_t 
     s_command.Instruction = MT25QL128ABA_READ_STATUS_REGISTER;
     s_command.DataMode    = QSPI_DATA_1_LINE;
 
-    if (HAL_QSPI_AutoPolling(Ctx, &s_command, &s_config, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_auto_polling(Ctx, &s_command, &s_config, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
@@ -433,7 +476,7 @@ int mt25ql128aba_write_disable(QSPI_HandleTypeDef* Ctx, mt25ql128aba_interface_t
     s_command.DdrHoldHalfCycle  = QSPI_DDR_HHC_ANALOG_DELAY;
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
 
-    if (HAL_QSPI_Command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
@@ -497,11 +540,11 @@ int mt25ql128aba_page_program(QSPI_HandleTypeDef*      Ctx,
     s_command.DdrMode           = QSPI_DDR_MODE_DISABLE;
     s_command.DdrHoldHalfCycle  = QSPI_DDR_HHC_ANALOG_DELAY;
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
-    if (HAL_QSPI_Command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
-    if (HAL_QSPI_Transmit(Ctx, pData, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_transmit(Ctx, pData, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
@@ -538,7 +581,7 @@ int mt25ql128aba_auto_polling_mem_ready(QSPI_HandleTypeDef* Ctx, mt25ql128aba_in
     s_config.Mask            = MT25QL128ABA_SR_WIP | (MT25QL128ABA_SR_WIP << 8);
     s_config.StatusBytesSize = 2;
 
-    if (HAL_QSPI_AutoPolling(Ctx, &s_command, &s_config, Timeout) != HAL_OK)
+    if (mt25ql128aba_qspi_auto_polling(Ctx, &s_command, &s_config, Timeout) != HAL_OK)
     {
         return -1;
     }
@@ -569,7 +612,7 @@ int mt25ql128aba_chip_erase(QSPI_HandleTypeDef* Ctx, mt25ql128aba_interface_t Mo
     s_command.DdrHoldHalfCycle  = QSPI_DDR_HHC_ANALOG_DELAY;
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
 
-    if (HAL_QSPI_Command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }
@@ -624,7 +667,7 @@ int mt25ql128aba_block_erase(QSPI_HandleTypeDef*      Ctx,
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
 
     /* Send the command */
-    if (HAL_QSPI_Command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+    if (mt25ql128aba_qspi_command(Ctx, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
     {
         return -1;
     }

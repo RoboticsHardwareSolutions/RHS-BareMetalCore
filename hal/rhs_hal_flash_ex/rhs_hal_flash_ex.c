@@ -164,10 +164,6 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
     {
         error = RHS_FLASH_EX_ERROR;
     }
-    if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
-    {
-        error = RHS_FLASH_EX_ERROR;
-    }
 
     __rhs_critical_exit(__rhs_critical_info);
 

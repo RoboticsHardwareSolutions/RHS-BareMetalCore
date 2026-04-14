@@ -15,30 +15,164 @@ typedef enum
 
 typedef enum
 {
-    RHSFlagWaitAny = 0x00000000U,  ///< Wait for any flag (default).
-    RHSFlagWaitAll = 0x00000001U,  ///< Wait for all flags.
-    RHSFlagNoClear = 0x00000002U,  ///< Do not clear flags which have been specified to wait for.
+    /**
+     * @brief Wait for any flag condition (default behavior)
+     *
+     * When this flag is set, the wait operation will return as soon as
+     * any of the specified flags becomes available. This is the default
+     * waiting mode when no specific wait type is specified.
+     */
+    RHSFlagWaitAny = 0x00000000U,
 
-    RHSFlagError          = 0x80000000U,  ///< Error indicator.
-    RHSFlagErrorUnknown   = 0xFFFFFFFFU,  ///< RHSStatusError (-1).
-    RHSFlagErrorTimeout   = 0xFFFFFFFEU,  ///< RHSStatusErrorTimeout (-2).
-    RHSFlagErrorResource  = 0xFFFFFFFDU,  ///< RHSStatusErrorResource (-3).
-    RHSFlagErrorParameter = 0xFFFFFFFCU,  ///< RHSStatusErrorParameter (-4).
-    RHSFlagErrorISR       = 0xFFFFFFFAU,  ///< RHSStatusErrorISR (-6).
+    /**
+     * @brief Wait for all flags condition
+     *
+     * When this flag is set, the wait operation will only return when
+     * ALL of the specified flags become available simultaneously.
+     * This ensures that all required conditions are met before proceeding.
+     */
+    RHSFlagWaitAll = 0x00000001U,
+
+    /**
+     * @brief Do not clear flags after wait operation
+     *
+     * By default, flags are automatically cleared after a successful wait.
+     * Setting this flag prevents the automatic clearing, allowing the flags
+     * to remain set for subsequent operations or other waiting tasks.
+     */
+    RHSFlagNoClear = 0x00000002U,
+
+    /**
+     * @brief General error indicator flag
+     *
+     * This flag indicates that an error condition has occurred during
+     * the flag operation. The specific error type can be determined
+     * by checking additional error flags or status codes.
+     */
+    RHSFlagError = 0x80000000U,
+
+    /**
+     * @brief Unknown or unspecified error occurred
+     *
+     * Represents a general error condition where the specific cause
+     * cannot be determined or doesn't fit into other error categories.
+     * Corresponds to RHSStatusError (-1).
+     */
+    RHSFlagErrorUnknown = 0xFFFFFFFFU,
+
+    /**
+     * @brief Operation timed out
+     *
+     * The flag wait operation exceeded the specified timeout period
+     * without the required flags becoming available. This prevents
+     * indefinite blocking when flags are not set within expected time.
+     * Corresponds to RHSStatusErrorTimeout (-2).
+     */
+    RHSFlagErrorTimeout = 0xFFFFFFFEU,
+
+    /**
+     * @brief Required resource is not available
+     *
+     * The operation failed because a necessary system resource
+     * (memory, handles, etc.) is not available or has been exhausted.
+     * Corresponds to RHSStatusErrorResource (-3).
+     */
+    RHSFlagErrorResource = 0xFFFFFFFDU,
+
+    /**
+     * @brief Invalid parameter provided
+     *
+     * One or more parameters passed to the flag operation are invalid,
+     * out of range, or incompatible with the current system state.
+     * Corresponds to RHSStatusErrorParameter (-4).
+     */
+    RHSFlagErrorParameter = 0xFFFFFFFCU,
+
+    /**
+     * @brief Operation not allowed in ISR context
+     *
+     * The flag operation was attempted from within an Interrupt Service
+     * Routine (ISR) context where such operations are not permitted.
+     * Use ISR-safe alternatives when calling from interrupt handlers.
+     * Corresponds to RHSStatusErrorISR (-6).
+     */
+    RHSFlagErrorISR = 0xFFFFFFFAU,
 } RHSFlag;
 
 typedef enum
 {
-    RHSStatusOk             = 0,   ///< Operation completed successfully.
-    RHSStatusError          = -1,  ///< Unspecified RTOS error: run-time error but no other error message fits.
-    RHSStatusErrorTimeout   = -2,  ///< Operation not completed within the timeout period.
-    RHSStatusErrorResource  = -3,  ///< Resource not available.
-    RHSStatusErrorParameter = -4,  ///< Parameter error.
-    RHSStatusErrorNoMemory =
-        -5,  ///< System is out of memory: it was impossible to allocate or reserve memory for the operation.
-    RHSStatusErrorISR =
-        -6,  ///< Not allowed in ISR context: the function cannot be called from interrupt service routines.
-    RHSStatusReserved = 0x7FFFFFFF  ///< Prevents enum down-size compiler optimization.
+    /**
+     * @brief Operation completed successfully
+     *
+     * The requested operation was executed without any errors
+     * and completed as expected. All outputs are valid and
+     * the system state has been updated accordingly.
+     */
+    RHSStatusOk = 0x00000000U,
+
+    /**
+     * @brief Unspecified RTOS error occurred
+     *
+     * A run-time error occurred during the operation, but the specific
+     * error type doesn't match any of the other defined error categories.
+     * This represents a general failure condition that requires investigation.
+     */
+    RHSStatusError = 0xFFFFFFFFU,
+
+    /**
+     * @brief Operation timed out
+     *
+     * The requested operation could not be completed within the
+     * specified timeout period. This prevents indefinite blocking
+     * and allows the application to handle delayed operations gracefully.
+     */
+    RHSStatusErrorTimeout = 0xFFFFFFFEU,
+
+    /**
+     * @brief Required resource is unavailable
+     *
+     * The operation failed because a necessary system resource
+     * (such as memory, semaphores, or hardware peripherals) is
+     * currently unavailable or has been exhausted.
+     */
+    RHSStatusErrorResource = 0xFFFFFFFDU,
+
+    /**
+     * @brief Invalid parameter error
+     *
+     * One or more parameters passed to the function are invalid,
+     * out of range, NULL when a valid pointer is required, or
+     * incompatible with the current system configuration.
+     */
+    RHSStatusErrorParameter = 0xFFFFFFFCU,
+
+    /**
+     * @brief System out of memory
+     *
+     * The system has insufficient memory available to complete
+     * the requested operation. This could be due to memory
+     * fragmentation or actual memory exhaustion. Memory allocation
+     * or reservation for the operation was impossible.
+     */
+    RHSStatusErrorNoMemory = 0xFFFFFFFBU,
+
+    /**
+     * @brief Operation not allowed in ISR context
+     *
+     * The function was called from within an Interrupt Service Routine
+     * (ISR) context where such operations are prohibited. Use ISR-safe
+     * function variants or defer the operation to a task context.
+     */
+    RHSStatusErrorISR = 0xFFFFFFFAU,
+
+    /**
+     * @brief Reserved value to prevent enum optimization
+     *
+     * This value ensures that the compiler treats this enum as
+     * a 32-bit type and prevents potential size optimization that
+     * could cause compatibility issues with the RTOS interface.
+     */
+    RHSStatusReserved = 0x7FFFFFFF
 } RHSStatus;
 
 typedef enum

@@ -1,7 +1,7 @@
 /**
-* @file event_flag.h
-* RHS Event Flag
-*/
+ * @file event_flag.h
+ * RHS Event Flag
+ */
 #pragma once
 
 #include "base.h"
@@ -13,46 +13,46 @@ extern "C" {
 typedef struct RHSEventFlag RHSEventFlag;
 
 /** Allocate RHSEventFlag
-*
-* @return     pointer to RHSEventFlag
-*/
+ *
+ * @return     pointer to RHSEventFlag
+ */
 RHSEventFlag* rhs_event_flag_alloc(void);
 
 /** Deallocate RHSEventFlag
-*
-* @param      instance  pointer to RHSEventFlag
-*/
+ *
+ * @param      instance  pointer to RHSEventFlag
+ */
 void rhs_event_flag_free(RHSEventFlag* instance);
 
 /** Set flags
-*
-* @warning    result of this function can be flags that you've just asked to
-*             set or not if someone was waiting for them and asked to clear it.
-*             It is highly recommended to read this function and
-*             xEventGroupSetBits source code.
-*
-* @param      instance  pointer to RHSEventFlag
-* @param[in]  flags     The flags to set
-*
-* @return     Resulting flags(see warning) or error (RHSStatus)
-*/
+ *
+ * @warning    result of this function can be flags that you've just asked to
+ *             set or not if someone was waiting for them and asked to clear it.
+ *             It is highly recommended to read this function and
+ *             xEventGroupSetBits source code.
+ *
+ * @param      instance  pointer to RHSEventFlag
+ * @param[in]  flags     The flags to set
+ *
+ * @return     Resulting flags(see warning) or error (RHSStatus)
+ */
 uint32_t rhs_event_flag_set(RHSEventFlag* instance, uint32_t flags);
 
 /** Clear flags
-*
-* @param      instance  pointer to RHSEventFlag
-* @param[in]  flags     The flags
-*
-* @return     Resulting flags or error (RHSStatus)
-*/
+ *
+ * @param      instance  pointer to RHSEventFlag
+ * @param[in]  flags     The flags
+ *
+ * @return     Resulting flags or error (RHSStatus)
+ */
 uint32_t rhs_event_flag_clear(RHSEventFlag* instance, uint32_t flags);
 
 /** Get flags
-*
-* @param      instance  pointer to RHSEventFlag
-*
-* @return     Resulting flags
-*/
+ *
+ * @param      instance  pointer to RHSEventFlag
+ *
+ * @return     Resulting flags
+ */
 uint32_t rhs_event_flag_get(RHSEventFlag* instance);
 
 /**
@@ -220,6 +220,9 @@ uint32_t rhs_event_flag_get(RHSEventFlag* instance);
 *
 *            Example:
 *            uint32_t result = rhs_event_flag_wait(flag, 0x07, RHSFlagWaitAny, 1000);
+ *           if (result == RHSStatusErrorTimeout){
+ *              return ;
+ *           }
 *            if (result & 0x01) { handle_event_1(); }
 *            if (result & 0x02) { handle_event_2(); }
 *            if (result & 0x04) { handle_event_3(); }
@@ -299,7 +302,11 @@ uint32_t rhs_event_flag_get(RHSEventFlag* instance);
 *                                                SERVICE_READY_FLAG,
 *                                                RHSFlagWaitAny | RHSFlagNoClear,
 *                                                RHSWaitForever);
-*           if (result == SERVICE_READY_FLAG) {
+*          if (events == RHSStatusErrorTimeout) {
+*               // Timeout occurred, implement fallback behavior
+*               use_cached_sensor_data();
+*           }
+*           else if (result == SERVICE_READY_FLAG) {
 *               // Service is ready, proceed with initialization
 *           }
 *
@@ -312,10 +319,7 @@ uint32_t rhs_event_flag_get(RHSEventFlag* instance);
 *               process_sensor_data();
 *           } else if (events & SENSOR_ERROR) {
 *               handle_sensor_error();
-*           } else if (events == RHSStatusErrorTimeout) {
-*               // Timeout occurred, implement fallback behavior
-*               use_cached_sensor_data();
-*           }
+*           } else
 *
 *           // 3. Non-blocking status check
 *           uint32_t status = rhs_event_flag_wait(status_flags,

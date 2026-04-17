@@ -3,44 +3,24 @@
 
 static HAL_StatusTypeDef mt25ql128aba_qspi_command(QSPI_HandleTypeDef* Ctx, QSPI_CommandTypeDef* Cmd, uint32_t Timeout)
 {
-    if (__get_IPSR() != 0U || __get_PRIMASK() != 0U)
-    {
-        return HAL_QSPI_Command_IT(Ctx, Cmd);
-    }
-
     return HAL_QSPI_Command(Ctx, Cmd, Timeout);
 }
 
 static HAL_StatusTypeDef mt25ql128aba_qspi_transmit(QSPI_HandleTypeDef* Ctx, uint8_t* pData, uint32_t Timeout)
 {
-    if (__get_IPSR() != 0U || __get_PRIMASK() != 0U)
-    {
-        return HAL_QSPI_Transmit_IT(Ctx, pData);
-    }
-
     return HAL_QSPI_Transmit(Ctx, pData, Timeout);
 }
 
 static HAL_StatusTypeDef mt25ql128aba_qspi_receive(QSPI_HandleTypeDef* Ctx, uint8_t* pData, uint32_t Timeout)
 {
-    if (__get_IPSR() != 0U || __get_PRIMASK() != 0U)
-    {
-        return HAL_QSPI_Receive_IT(Ctx, pData);
-    }
-
     return HAL_QSPI_Receive(Ctx, pData, Timeout);
 }
 
-static HAL_StatusTypeDef mt25ql128aba_qspi_auto_polling(QSPI_HandleTypeDef*            Ctx,
-                                                         QSPI_CommandTypeDef*           Cmd,
-                                                         QSPI_AutoPollingTypeDef*       Cfg,
-                                                         uint32_t                        Timeout)
+static HAL_StatusTypeDef mt25ql128aba_qspi_auto_polling(QSPI_HandleTypeDef*      Ctx,
+                                                        QSPI_CommandTypeDef*     Cmd,
+                                                        QSPI_AutoPollingTypeDef* Cfg,
+                                                        uint32_t                 Timeout)
 {
-    if (__get_IPSR() != 0U || __get_PRIMASK() != 0U)
-    {
-        return HAL_QSPI_AutoPolling_IT(Ctx, Cmd, Cfg);
-    }
-
     return HAL_QSPI_AutoPolling(Ctx, Cmd, Cfg, Timeout);
 }
 

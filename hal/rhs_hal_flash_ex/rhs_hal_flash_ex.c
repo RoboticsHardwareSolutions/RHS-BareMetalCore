@@ -1,9 +1,7 @@
 /*
  * External Flash HAL Implementation
  *
- * This file implements flash operations that are safe to call from both
- * task context and interrupt context. When called from ISR context,
- * non-blocking mutex operations are used to avoid deadlocks.
+ * This file implements serialized flash operations in task context.
  */
 
 #include "rhs_hal_flash_ex.h"
@@ -12,6 +10,25 @@
 
 #if defined(BMPLC_XL) || defined(BMPLC_L)
 QSPI_HandleTypeDef        hqspi;
+static RHSMutex*          flash_mutex = NULL;
+
+static int rhs_hal_flash_ex_lock(void)
+{
+    if (flash_mutex == NULL)
+    {
+        return RHS_FLASH_EX_ERROR;
+    }
+
+    return (rhs_mutex_acquire(flash_mutex, RHSWaitForever) == RHSStatusOk) ? RHS_FLASH_EX_OK : RHS_FLASH_EX_ERROR;
+}
+
+static void rhs_hal_flash_ex_unlock(void)
+{
+    if (flash_mutex != NULL)
+    {
+        (void) rhs_mutex_release(flash_mutex);
+    }
+}
 
 static void quadspi_init(void)
 {
@@ -143,9 +160,22 @@ void HAL_QSPI_MspDeInit(QSPI_HandleTypeDef* qspiHandle)
 
 int rhs_hal_flash_ex_init(void)
 {
+    if (flash_mutex == NULL)
+    {
+        flash_mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
+        if (flash_mutex == NULL)
+        {
+            return RHS_FLASH_EX_ERROR;
+        }
+    }
+
     quadspi_init();
-    mt25ql128aba_init(&hqspi);
-    return 0;
+    if (mt25ql128aba_init(&hqspi) != 0)
+    {
+        return RHS_FLASH_EX_ERROR;
+    }
+
+    return RHS_FLASH_EX_OK;
 }
 
 int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
@@ -153,7 +183,11 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
     int error = RHS_FLASH_EX_OK;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    __RHSCriticalInfo __rhs_critical_info = __rhs_critical_enter();
+    error = rhs_hal_flash_ex_lock();
+    if (error != RHS_FLASH_EX_OK)
+    {
+        return error;
+    }
 
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
@@ -165,7 +199,7 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
         error = RHS_FLASH_EX_ERROR;
     }
 
-    __rhs_critical_exit(__rhs_critical_info);
+    rhs_hal_flash_ex_unlock();
 
     return error;
 }
@@ -174,7 +208,11 @@ int rhs_hal_flash_ex_erase_chip(void)
 {
     int error = RHS_FLASH_EX_OK;
 
-    __RHSCriticalInfo __rhs_critical_info = __rhs_critical_enter();
+    error = rhs_hal_flash_ex_lock();
+    if (error != RHS_FLASH_EX_OK)
+    {
+        return error;
+    }
 
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
@@ -199,7 +237,8 @@ int rhs_hal_flash_ex_erase_chip(void)
         error = RHS_FLASH_EX_ERROR;
     }
 
-    __rhs_critical_exit(__rhs_critical_info);
+    rhs_hal_flash_ex_unlock();
+
     /* Return BSP status */
     return error;
 }
@@ -211,7 +250,11 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
     int      error = RHS_FLASH_EX_OK;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    __RHSCriticalInfo __rhs_critical_info = __rhs_critical_enter();
+    error = rhs_hal_flash_ex_lock();
+    if (error != RHS_FLASH_EX_OK)
+    {
+        return error;
+    }
 
     /* Calculation of the size between the write address and the end of the page */
     current_size = MT25QL128ABA_PAGE_SIZE - (addr % MT25QL128ABA_PAGE_SIZE);
@@ -257,7 +300,8 @@ int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
             ((current_addr + MT25QL128ABA_PAGE_SIZE) > end_addr) ? (end_addr - current_addr) : MT25QL128ABA_PAGE_SIZE;
     } while ((current_addr < end_addr));
 
-    __rhs_critical_exit(__rhs_critical_info);
+    rhs_hal_flash_ex_unlock();
+
     return error;
 }
 
@@ -267,7 +311,11 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
     uint32_t current_size, current_addr;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
-    __RHSCriticalInfo __rhs_critical_info = __rhs_critical_enter();
+    error = rhs_hal_flash_ex_lock();
+    if (error != RHS_FLASH_EX_OK)
+    {
+        return error;
+    }
 
     /* Check Flash busy ? */
     if (mt25ql128aba_auto_polling_mem_ready(&hqspi, MT25QL128ABA_QPI_MODE, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != 0)
@@ -301,7 +349,9 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
             current_size = (current_size > MT25QL128ABA_SUBSECTOR_4K) ? current_size - MT25QL128ABA_SUBSECTOR_4K : 0;
         } while (current_size);
     }
-    __rhs_critical_exit(__rhs_critical_info);
+
+    rhs_hal_flash_ex_unlock();
+
     /* Return BSP status */
     return error;
 }

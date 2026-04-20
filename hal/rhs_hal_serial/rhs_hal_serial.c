@@ -118,10 +118,9 @@ void rhs_hal_serial_tx(RHSHalSerialId id, const uint8_t* buffer, uint16_t buffer
 #endif
     while (buffer_size > 0)
     {
-        LL_USART_TransmitData8(rhs_hal_serial[id].rserial.uart.Instance, *buffer);
-
-        while (!LL_USART_IsActiveFlag_TC(rhs_hal_serial[id].rserial.uart.Instance))
+        while (!LL_USART_IsActiveFlag_TXE(rhs_hal_serial[id].rserial.uart.Instance))
             ;
+        LL_USART_TransmitData8(rhs_hal_serial[id].rserial.uart.Instance, *buffer);
 
         buffer++;
         buffer_size--;

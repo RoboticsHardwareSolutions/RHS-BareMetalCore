@@ -1,7 +1,7 @@
 #pragma once
 #include "rserial.h"
 
-typedef struct
+struct RHSHalSerial
 {
     uint8_t*                    buffer_rx_ptr;
     size_t                      buffer_rx_index_write;
@@ -14,4 +14,4 @@ typedef struct
     RHSHalSerialDMATxCallback   tx_dma_callback;
 
     void* context;
-} RHSHalSerial;
+};

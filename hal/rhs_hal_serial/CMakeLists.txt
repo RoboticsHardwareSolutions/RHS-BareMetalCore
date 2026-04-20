@@ -12,4 +12,4 @@ target_include_directories(
 )
 
 target_link_libraries(
-        ${PROJECT_NAME} PRIVATE rhs rhs_hal rserial)
+        ${PROJECT_NAME} PUBLIC rserial PRIVATE rhs rhs_hal)

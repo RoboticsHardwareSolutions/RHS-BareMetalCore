@@ -41,13 +41,24 @@
 #    error "Not implemented Serial for this platform"
 #endif
 
-#include "rhs_hal_serial_types.h"
+#include "rhs_hal_serial_types_i.h"
 
 static RHSHalSerial rhs_hal_serial[RHSHalSerialIdMax] = {0};
 
+static RHSHalSerialId rhs_hal_serial_get_id(RHSHalSerial* serial)
+{
+    rhs_assert(serial != NULL);
+    for (uint32_t i = 0; i < RHSHalSerialIdMax; i++)
+    {
+        if (serial == &rhs_hal_serial[i])
+            return (RHSHalSerialId) i;
+    }
+    rhs_crash("No serial handle");
+}
+
 /*********************************** SERIAL INIT ************************************/
 
-void rhs_hal_serial_init(RHSHalSerialId id, uint32_t baud)
+RHSHalSerial* rhs_hal_serial_init(RHSHalSerialId id, uint32_t baud)
 {
     rhs_assert(rhs_hal_serial[id].enabled == false);
 
@@ -76,11 +87,14 @@ void rhs_hal_serial_init(RHSHalSerialId id, uint32_t baud)
     default:
         rhs_crash("No serial id");
     }
+
+    return &rhs_hal_serial[id];
 }
 
-void rhs_hal_serial_deinit(RHSHalSerialId id)
+void rhs_hal_serial_deinit(RHSHalSerial* serial)
 {
-    rhs_assert(rhs_hal_serial[id].enabled == true);
+    RHSHalSerialId id = rhs_hal_serial_get_id(serial);
+    rhs_assert(serial->enabled == true);
     switch (id)
     {
     case RHSHalSerialIdRS232:
@@ -103,24 +117,24 @@ void rhs_hal_serial_deinit(RHSHalSerialId id)
     default:
         rhs_crash("No serial id");
     }
-    rserial_close(&rhs_hal_serial[id].rserial);
-    rhs_hal_serial[id].enabled = false;
+    rserial_close(&serial->rserial);
+    serial->enabled = false;
 }
 
 /*********************************** SERIAL TX ************************************/
-void rhs_hal_serial_tx(RHSHalSerialId id, const uint8_t* buffer, uint16_t buffer_size)
+void rhs_hal_serial_tx(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buffer_size)
 {
-    rhs_assert(rhs_hal_serial[id].enabled == true);
-    if (LL_USART_IsEnabled(rhs_hal_serial[id].rserial.uart.Instance) == 0)
+    rhs_assert(serial->enabled == true);
+    if (LL_USART_IsEnabled(serial->rserial.uart.Instance) == 0)
         return;
 #if defined(BMPLC_M)
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
 #endif
     while (buffer_size > 0)
     {
-        while (!LL_USART_IsActiveFlag_TXE(rhs_hal_serial[id].rserial.uart.Instance))
+        while (!LL_USART_IsActiveFlag_TXE(serial->rserial.uart.Instance))
             ;
-        LL_USART_TransmitData8(rhs_hal_serial[id].rserial.uart.Instance, *buffer);
+        LL_USART_TransmitData8(serial->rserial.uart.Instance, *buffer);
 
         buffer++;
         buffer_size--;
@@ -130,20 +144,17 @@ void rhs_hal_serial_tx(RHSHalSerialId id, const uint8_t* buffer, uint16_t buffer
 #endif
 }
 
-void rhs_hal_serial_async_tx_dma_configure(RHSHalSerialId id)
+void rhs_hal_serial_async_tx_dma_configure(RHSHalSerial* serial)
 {
+    RHSHalSerialId id = rhs_hal_serial_get_id(serial);
     switch (id)
     {
     case RHSHalSerialIdRS232:
-        rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS232,
-                                  rhs_hal_rs232_tx_irq_callback,
-                                  &rhs_hal_serial[RHSHalSerialIdRS232]);
+        rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS232, rhs_hal_rs232_tx_irq_callback, serial);
         rhs_hal_rs232_async_tx_dma_configure();
         break;
     case RHSHalSerialIdRS485:
-        rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS485,
-                                  rhs_hal_rs485_tx_irq_callback,
-                                  &rhs_hal_serial[RHSHalSerialIdRS485]);
+        rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS485, rhs_hal_rs485_tx_irq_callback, serial);
         rhs_hal_rs485_async_tx_dma_configure();
         break;
 #if !defined(BMPLC_XL)
@@ -157,14 +168,16 @@ void rhs_hal_serial_async_tx_dma_configure(RHSHalSerialId id)
     }
 }
 
-void rhs_hal_serial_async_tx_dma_start(RHSHalSerialId            id,
+void rhs_hal_serial_async_tx_dma_start(RHSHalSerial*             serial,
                                        RHSHalSerialDMATxCallback callback,
                                        void*                     context,
                                        const uint8_t*            buffer,
                                        uint16_t                  buffer_size)
 {
-    rhs_hal_serial[id].tx_dma_callback  = callback;
-    rhs_hal_serial[id].tx_byte_callback = NULL;
+    RHSHalSerialId id = rhs_hal_serial_get_id(serial);
+    serial->tx_dma_callback  = callback;
+    serial->tx_byte_callback = NULL;
+    serial->context          = context;
     switch (id)
     {
     case RHSHalSerialIdRS232:
@@ -186,24 +199,25 @@ void rhs_hal_serial_async_tx_dma_start(RHSHalSerialId            id,
 
 /*********************************** SERIAL RX ************************************/
 
-void rhs_hal_serial_async_rx_start(RHSHalSerialId id, RHSHalSerialAsyncRxCallback callback, void* context)
+void rhs_hal_serial_async_rx_start(RHSHalSerial* serial, RHSHalSerialAsyncRxCallback callback, void* context)
 {
-    rhs_assert(rhs_hal_serial[id].enabled == true);
+    RHSHalSerialId id = rhs_hal_serial_get_id(serial);
+    rhs_assert(serial->enabled == true);
     rhs_assert(callback);
 
-    rhs_hal_serial[id].rx_byte_callback = callback;
-    rhs_hal_serial[id].rx_dma_callback  = NULL;
-    rhs_hal_serial[id].context          = context;
+    serial->rx_byte_callback = callback;
+    serial->rx_dma_callback  = NULL;
+    serial->context          = context;
 
     switch (id)
     {
     case RHSHalSerialIdRS232:
         LL_USART_EnableIT_RXNE(RHS_INTERFACE_RS232);
-        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS232, rhs_hal_rs232_irq_callback, &rhs_hal_serial[id]);
+        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS232, rhs_hal_rs232_irq_callback, serial);
         break;
     case RHSHalSerialIdRS485:
         LL_USART_EnableIT_RXNE(RHS_INTERFACE_RS485);
-        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS485, rhs_hal_rs485_rx_irq_callback, &rhs_hal_serial[id]);
+        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS485, rhs_hal_rs485_rx_irq_callback, serial);
         break;
 #if !defined(BMPLC_XL)
     case RHSHalSerialIdRS422:
@@ -216,18 +230,18 @@ void rhs_hal_serial_async_rx_start(RHSHalSerialId id, RHSHalSerialAsyncRxCallbac
     }
 }
 
-uint8_t rhs_hal_serial_async_rx(RHSHalSerialId id)
+uint8_t rhs_hal_serial_async_rx(RHSHalSerial* serial)
 {
-    rhs_assert(id < RHSHalSerialIdMax);
-    rhs_assert(rhs_hal_serial[id].enabled == true);
+    RHSHalSerialId id = rhs_hal_serial_get_id(serial);
+    rhs_assert(serial->enabled == true);
     rhs_assert(RHS_IS_IRQ_MODE());
 
     switch (id)
     {
     case RHSHalSerialIdRS232:
-        return LL_USART_ReceiveData8(rhs_hal_serial[id].rserial.uart.Instance);
+        return LL_USART_ReceiveData8(serial->rserial.uart.Instance);
     case RHSHalSerialIdRS485:
-        return LL_USART_ReceiveData8(rhs_hal_serial[id].rserial.uart.Instance);
+        return LL_USART_ReceiveData8(serial->rserial.uart.Instance);
 #if !defined(BMPLC_XL)
     case RHSHalSerialIdRS422:
         rhs_crash("Not implemented RHSHalSerialIdRS422");
@@ -238,18 +252,18 @@ uint8_t rhs_hal_serial_async_rx(RHSHalSerialId id)
     }
 }
 
-void rhs_hal_serial_async_rx_dma_configure(RHSHalSerialId id, RHSHalSerialDmaRxCallback callback, void* context)
+void rhs_hal_serial_async_rx_dma_configure(RHSHalSerial* serial, RHSHalSerialDmaRxCallback callback, void* context)
 {
-    rhs_assert(id < RHSHalSerialIdMax);
-    rhs_assert(rhs_hal_serial[id].enabled == true);
+    RHSHalSerialId id = rhs_hal_serial_get_id(serial);
+    rhs_assert(serial->enabled == true);
     rhs_assert(callback);
-    rhs_hal_serial[id].buffer_rx_ptr         = NULL;
-    rhs_hal_serial[id].buffer_rx_index_write = 0;
-    rhs_hal_serial[id].buffer_rx_index_read  = 0;
+    serial->buffer_rx_ptr         = NULL;
+    serial->buffer_rx_index_write = 0;
+    serial->buffer_rx_index_read  = 0;
 
-    rhs_hal_serial[id].rx_byte_callback = NULL;
-    rhs_hal_serial[id].rx_dma_callback  = callback;
-    rhs_hal_serial[id].context          = context;
+    serial->rx_byte_callback = NULL;
+    serial->rx_dma_callback  = callback;
+    serial->context          = context;
 
     switch (id)
     {
@@ -258,7 +272,7 @@ void rhs_hal_serial_async_rx_dma_configure(RHSHalSerialId id, RHSHalSerialDmaRxC
         break;
     case RHSHalSerialIdRS485:
         rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS485, NULL, NULL);
-        rhs_hal_interrupt_set_isr(RHS_DMA_RX_RS485, rhs_hal_rs485_rx_irq_callback, &rhs_hal_serial[id]);
+        rhs_hal_interrupt_set_isr(RHS_DMA_RX_RS485, rhs_hal_rs485_rx_irq_callback, serial);
         rhs_hal_rs485_async_rx_dma_configure();
         break;
 #if !defined(BMPLC_XL)
@@ -272,16 +286,16 @@ void rhs_hal_serial_async_rx_dma_configure(RHSHalSerialId id, RHSHalSerialDmaRxC
     }
 }
 
-void rhs_hal_serial_async_rx_dma_start(RHSHalSerialId id, uint8_t* buffer, uint16_t buffer_size)
+void rhs_hal_serial_async_rx_dma_start(RHSHalSerial* serial, uint8_t* buffer, uint16_t buffer_size)
 {
-    rhs_assert(id < RHSHalSerialIdMax);
+    RHSHalSerialId id = rhs_hal_serial_get_id(serial);
     switch (id)
     {
     case RHSHalSerialIdRS232:
         rhs_crash("Not implemented RHSHalSerialIdRS232");
         break;
     case RHSHalSerialIdRS485:
-        rhs_hal_serial[id].buffer_rx_ptr = buffer;
+        serial->buffer_rx_ptr = buffer;
         rhs_hal_rs485_async_rx_dma_start(buffer, buffer_size);
         break;
 #if !defined(BMPLC_XL)

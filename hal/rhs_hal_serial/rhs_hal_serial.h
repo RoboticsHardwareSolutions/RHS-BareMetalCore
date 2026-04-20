@@ -1,6 +1,7 @@
 #pragma once
 #include "stdint.h"
 #include "stdbool.h"
+#include "rhs_hal_serial_types.h"
 
 #define RHS_HAL_SERIAL_DMA_BUFFER_SIZE (1024u)
 
@@ -17,22 +18,22 @@ typedef enum
     RHSHalSerialIdMax,
 } RHSHalSerialId;
 
-void rhs_hal_serial_init(RHSHalSerialId id, uint32_t baud);
+RHSHalSerial* rhs_hal_serial_init(RHSHalSerialId id, uint32_t baud);
 
-void rhs_hal_serial_deinit(RHSHalSerialId id);
+void rhs_hal_serial_deinit(RHSHalSerial* serial);
 
-void rhs_hal_serial_tx(RHSHalSerialId id, const uint8_t* buffer, uint16_t buffer_size);
+void rhs_hal_serial_tx(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buffer_size);
 /** Receive callback
  *
  * @warning    Callback will be called in interrupt context, ensure thread
  *             safety on your side.
- * @param      handle   Serial handle
+ * @param      serial   Serial handle
  * @param      event    RHSHalSerialRxEvent
  * @param      context  Callback context provided earlier
  */
-typedef void (*RHSHalSerialAsyncTxCallback)(void* context);
+typedef void (*RHSHalSerialAsyncTxCallback)(RHSHalSerial* serial, void* context);
 
-void rhs_hal_serial_async_tx_dma_configure(RHSHalSerialId id);
+void rhs_hal_serial_async_tx_dma_configure(RHSHalSerial* serial);
 
 /** Transmits data in semi-blocking mode
  *
@@ -42,13 +43,13 @@ void rhs_hal_serial_async_tx_dma_configure(RHSHalSerialId id);
  * Real transmission will be completed later. Use
  * `rhs_hal_serial_async_tx_wait_complete` to wait for completion if you need it.
  *
- * @param      handle       Serial handle
+ * @param      serial       Serial handle
  * @param      buffer       data
  * @param      buffer_size  data size (in bytes)
  */
-typedef void (*RHSHalSerialDMATxCallback)(void* context);
+typedef void (*RHSHalSerialDMATxCallback)(RHSHalSerial* serial, void* context);
 
-void rhs_hal_serial_async_tx_dma_start(RHSHalSerialId            id,
+void rhs_hal_serial_async_tx_dma_start(RHSHalSerial*             serial,
                                        RHSHalSerialDMATxCallback callback,
                                        void*                     context,
                                        const uint8_t*            buffer,
@@ -68,27 +69,27 @@ typedef enum
  *
  * @warning    Callback will be called in interrupt context, ensure thread
  *             safety on your side.
- * @param      handle   Serial handle
+ * @param      serial   Serial handle
  * @param      event    RHSHalSerialRxEvent
  * @param      context  Callback context provided earlier
  */
-typedef void (*RHSHalSerialAsyncRxCallback)(RHSHalSerialRxEvent event, void* context);
+typedef void (*RHSHalSerialAsyncRxCallback)(RHSHalSerial* serial, RHSHalSerialRxEvent event, void* context);
 
 /** Receive DMA callback
  *
  * @warning    DMA Callback will be called in interrupt context, ensure thread
  *             safety on your side.
  *
- * @param      handle    Serial handle
+ * @param      serial    Serial handle
  * @param      event     RHSHalSerialDmaRxEvent
  * @param      data_len  Received data
  * @param      context   Callback context provided earlier
  */
-typedef void (*RHSHalSerialDmaRxCallback)(RHSHalSerialRxEvent event, uint16_t data_len, void* context);
+typedef void (*RHSHalSerialDmaRxCallback)(RHSHalSerial* serial, RHSHalSerialRxEvent event, uint16_t data_len, void* context);
 
-void rhs_hal_serial_async_rx_start(RHSHalSerialId id, RHSHalSerialAsyncRxCallback callback, void* context);
+void rhs_hal_serial_async_rx_start(RHSHalSerial* serial, RHSHalSerialAsyncRxCallback callback, void* context);
 
-uint8_t rhs_hal_serial_async_rx(RHSHalSerialId id);
+uint8_t rhs_hal_serial_async_rx(RHSHalSerial* serial);
 
-void rhs_hal_serial_async_rx_dma_configure(RHSHalSerialId id, RHSHalSerialDmaRxCallback callback, void* context);
-void rhs_hal_serial_async_rx_dma_start(RHSHalSerialId id, uint8_t* buffer, uint16_t buffer_size);
+void rhs_hal_serial_async_rx_dma_configure(RHSHalSerial* serial, RHSHalSerialDmaRxCallback callback, void* context);
+void rhs_hal_serial_async_rx_dma_start(RHSHalSerial* serial, uint8_t* buffer, uint16_t buffer_size);

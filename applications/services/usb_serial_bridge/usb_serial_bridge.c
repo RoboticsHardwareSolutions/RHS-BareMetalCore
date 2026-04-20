@@ -40,7 +40,7 @@ struct UsbSerialBridge
     RHSThread* tx_thread;
 
     RHSStreamBuffer* rx_stream;
-    RHSHalSerialId   serial_handle;
+    RHSHalSerial*    serial_handle;
 
     RHSMutex* usb_mutex;
 
@@ -67,14 +67,14 @@ static const CdcCallbacks cdc_cb = {
     // vcp_on_line_config,
 };
 
-static void serial_rx_cb(RHSHalSerialRxEvent event, void* context)
+static void serial_rx_cb(RHSHalSerial* handle, RHSHalSerialRxEvent event, void* context)
 {
     UsbSerialBridge* usb_serial = (UsbSerialBridge*) context;
 
-    rhs_hal_serial_async_rx(usb_serial->cfg.serial_ch);
+    rhs_hal_serial_async_rx(handle);
     if (event & (RHSHalSerialRxEventData))
     {
-        uint8_t data = rhs_hal_serial_async_rx(usb_serial->cfg.serial_ch);
+        uint8_t data = rhs_hal_serial_async_rx(handle);
         rhs_stream_buffer_send(usb_serial->rx_stream, &data, 1, 0);
         rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtRxDone);
     }
@@ -95,19 +95,16 @@ static void usb_serial_vcp_deinit(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
     }
 }
 
-static void usb_uart_serial_init(UsbSerialBridge* usb_uart, UsbSerialConfig uart)
+static void usb_uart_serial_init(UsbSerialBridge* usb_uart, uint32_t ch)
 {
-    rhs_assert(!usb_uart->serial_handle);
-
-    rhs_hal_serial_init(uart.serial_ch, 115200);
-    rhs_hal_serial_async_rx_start(uart.serial_ch, serial_rx_cb, usb_uart);
+    usb_uart->serial_handle = rhs_hal_serial_init(ch, 115200);
+    rhs_hal_serial_async_rx_start(usb_uart->serial_handle, serial_rx_cb, usb_uart);
 }
 
 static void usb_uart_serial_deinit(UsbSerialBridge* usb_uart)
 {
-    rhs_assert(usb_uart->serial_handle);
-
     rhs_hal_serial_deinit(usb_uart->serial_handle);
+    usb_uart->serial_handle = NULL;
 }
 
 static int32_t usb_serial_tx_thread(void* context)
@@ -131,7 +128,7 @@ static int32_t usb_serial_tx_thread(void* context)
             {
                 usb_serial->st.tx_cnt += len;
 
-                rhs_hal_serial_tx(usb_serial->cfg.serial_ch, data, len);
+                rhs_hal_serial_tx(usb_serial->serial_handle, data, len);
 
                 if (usb_serial->cfg.software_de_re != 0)
                 {
@@ -157,8 +154,8 @@ static int32_t usb_serial_worker(void* context)
 
     usb_serial_vcp_init(usb_serial, usb_serial->cfg.vcp_ch);
 
-    rhs_hal_serial_init(usb_serial->cfg.serial_ch, usb_serial->cfg.baudrate);
-    rhs_hal_serial_async_rx_start(usb_serial->cfg.serial_ch, serial_rx_cb, usb_serial);
+    usb_serial->serial_handle = rhs_hal_serial_init(usb_serial->cfg.serial_ch, usb_serial->cfg.baudrate);
+    rhs_hal_serial_async_rx_start(usb_serial->serial_handle, serial_rx_cb, usb_serial);
 
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->tx_thread), WorkerEvtCdcRx);
 
@@ -210,7 +207,7 @@ static int32_t usb_serial_worker(void* context)
                 rhs_thread_join(usb_serial->tx_thread);
 
                 usb_uart_serial_deinit(usb_serial);
-                usb_uart_serial_init(usb_serial, usb_serial->cfg_new);
+                usb_uart_serial_init(usb_serial, usb_serial->cfg_new.serial_ch);
 
                 usb_serial->cfg.serial_ch = usb_serial->cfg_new.serial_ch;
 
@@ -369,7 +366,7 @@ static void usb_bridge_cb(char* args, void* context)
 
 UsbSerialBridge* usb_serial_enable(UsbSerialConfig* cfg)
 {
-    UsbSerialBridge* usb_serial = malloc(sizeof(UsbSerialBridge));
+    UsbSerialBridge* usb_serial = calloc(1, sizeof(UsbSerialBridge));
     memcpy(&(usb_serial->cfg_new), cfg, sizeof(UsbSerialConfig));
 
     usb_serial->thread = rhs_thread_alloc("UsbSerialWorker", 1024, usb_serial_worker, usb_serial);

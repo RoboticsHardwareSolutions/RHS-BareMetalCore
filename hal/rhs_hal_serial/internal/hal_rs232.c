@@ -2,7 +2,7 @@
 #include "rhs.h"
 #include "hal_rs232.h"
 #include "rhs_hal_serial.h"
-#include "rhs_hal_serial_types.h"
+#include "rhs_hal_serial_types_i.h"
 
 #define TAG "rs232"
 
@@ -101,14 +101,14 @@ void rhs_hal_rs232_irq_callback(void* context)
     {
         if (serial->rx_byte_callback)
         {
-            serial->rx_byte_callback(event, serial->context);
+            serial->rx_byte_callback(serial, event, serial->context);
         }
     }
     else
     {
         if (serial->rx_dma_callback)
         {
-            serial->rx_dma_callback(event, dma_bytes_available(serial), serial->context);
+            serial->rx_dma_callback(serial, event, dma_bytes_available(serial), serial->context);
         }
     }
 }
@@ -119,7 +119,7 @@ void rhs_hal_rs232_tx_irq_callback(void* context)
     RHSHalSerial* serial = (RHSHalSerial*) context;
     if (serial->tx_byte_callback)
     {
-        serial->tx_byte_callback(serial->context);
+        serial->tx_byte_callback(serial, serial->context);
     }
     else
     {
@@ -129,7 +129,7 @@ void rhs_hal_rs232_tx_irq_callback(void* context)
         }
         if (serial->tx_dma_callback)
         {
-            serial->tx_dma_callback(serial->context);
+            serial->tx_dma_callback(serial, serial->context);
         }
     }
 }
@@ -259,14 +259,14 @@ void rhs_hal_rs232_irq_callback(void* context)
     {
         if (serial->rx_byte_callback)
         {
-            serial->rx_byte_callback(event, serial->context);
+            serial->rx_byte_callback(serial, event, serial->context);
         }
     }
     else
     {
         if (serial->rx_dma_callback)
         {
-            serial->rx_dma_callback(event, dma_bytes_available(serial), serial->context);
+            serial->rx_dma_callback(serial, event, dma_bytes_available(serial), serial->context);
         }
     }
 }

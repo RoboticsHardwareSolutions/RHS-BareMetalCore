@@ -1,7 +1,8 @@
 #pragma once
 #include "stdint.h"
 #include "stdbool.h"
-#include "rhs_hal_serial_types.h"
+
+typedef struct RHSHalSerial RHSHalSerial;
 
 #define RHS_HAL_SERIAL_DMA_BUFFER_SIZE (1024u)
 

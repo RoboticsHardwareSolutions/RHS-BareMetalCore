@@ -60,10 +60,22 @@ static uint8_t const dual_cdc_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL_DUAL_CDC, 0, DUAL_CDC_CONFIG_TOTAL_LEN, 0, 100),
 
     // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 16, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 32),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0,
+                       4,
+                       EPNUM_CDC_0_NOTIF,
+                       16,
+                       EPNUM_CDC_0_OUT,
+                       EPNUM_CDC_0_IN,
+                       CFG_TUD_CDC_EP_BUFSIZE),
 
     // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 16, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 32),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1,
+                       4,
+                       EPNUM_CDC_1_NOTIF,
+                       16,
+                       EPNUM_CDC_1_OUT,
+                       EPNUM_CDC_1_IN,
+                       CFG_TUD_CDC_EP_BUFSIZE),
 };
 
 //--------------------------------------------------------------------+
@@ -72,11 +84,11 @@ static uint8_t const dual_cdc_configuration[] = {
 
 // array of pointer to string descriptors
 static char const* string_desc_dual_cdc_arr[] = {
-    [STRID_LANGID]       = (const char[]){0x09, 0x04},  // supported language is English (0x0409)
-    [STRID_MANUFACTURER] = "TinyUSB",                   // Manufacturer
-    [STRID_PRODUCT]      = "TinyUSB Device",            // Product
-    [STRID_SERIAL]       = "123456",                    // Serial
-    [STRID_INTERFACE]    = "TinyUSB CDC Interface"      // Interface Description
+    [STRID_LANGID]       = (const char[]) {0x09, 0x04},  // supported language is English (0x0409)
+    [STRID_MANUFACTURER] = "TinyUSB",                    // Manufacturer
+    [STRID_PRODUCT]      = "TinyUSB Device",             // Product
+    [STRID_SERIAL]       = "123456",                     // Serial
+    [STRID_INTERFACE]    = "TinyUSB CDC Interface"       // Interface Description
 
     // STRID_MAC index is handled separately
 };
@@ -161,7 +173,7 @@ RHSHalUsbInterface usb_cdc_desc = {
     .init              = cdc_init,
     .deinit            = cdc_deinit,
     .device_desc       = &desc_device_cdc,
-    .configuration_arr = (uint8_t const* const[]){dual_cdc_configuration},
+    .configuration_arr = (uint8_t const* const[]) {dual_cdc_configuration},
     .string_desc_arr   = (char const* const*) string_desc_dual_cdc_arr,
 };
 

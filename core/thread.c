@@ -51,14 +51,26 @@ struct RHSThread
 
 static RHSMessageQueue* rhs_thread_scrub_message_queue = NULL;
 
-/** Catch threads that are trying to exit wrong way */
-__attribute__((__noreturn__)) void rhs_thread_catch(void)
-{  //-V1082
+/** Catch threads that are trying to exit wrong way - crash implementation */
+static __attribute__((__noreturn__)) void rhs_thread_catch_impl(void) {
     // If you're here it means you're probably doing something wrong
     // with critical sections or with scheduler state
-    asm volatile("nop");                  // extra magic
-    rhs_crash("You are doing it wrong");  //-V779
+    rhs_crash("You are doing it wrong"); //-V779
     __builtin_unreachable();
+}
+
+/**
+ * Terminal stub used as configTASK_RETURN_ADDRESS.
+ * The naked attribute prevents GCC from emitting a prologue, so .cfi_undefined lr
+ * is the first CFI rule GDB sees for this function — telling the DWARF unwinder
+ * that the link register has no saved value and the call chain ends here.
+ * This eliminates garbage frames at the bottom of every task's call stack in
+ * debuggers that use DWARF-based stack unwinding (e.g. cortex-debug / OpenOCD).
+ */
+__attribute__((naked, __noreturn__)) void rhs_thread_catch(void) { //-V1082
+    asm volatile(
+        ".cfi_undefined lr  \n\t" /* tell DWARF unwinder: no return address */
+        "b rhs_thread_catch_impl \n\t");
 }
 
 static void rhs_thread_set_state(RHSThread* thread, RHSThreadState state)

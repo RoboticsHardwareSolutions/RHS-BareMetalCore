@@ -46,6 +46,14 @@ int _write(int file, char* ptr, int len)
     return len;
 }
 
+int __wrap_getchar(void)
+{
+    int c = SEGGER_RTT_GetKey();
+    if (c == -1)
+        return 0;
+    return c;
+}
+
 void rhs_log_init(void)
 {
     mutex = rhs_mutex_alloc(RHSMutexTypeRecursive);
@@ -106,12 +114,12 @@ void rhs_log_print_format(RHSLogLevel level, const char* tag, const char* format
         break;
     }
 
-    SEGGER_RTT_printf(0, "%s%d:\t[%s][%s]:\t", color, rhs_get_tick(), log_letter, tag);
+    printf("%s%d:\t[%s][%s]:\t", color, rhs_get_tick(), log_letter, tag);
     va_list ParamList;
     va_start(ParamList, format);
-    SEGGER_RTT_vprintf(0, format, &ParamList);
+    vprintf(format, ParamList);
     va_end(ParamList);
-    SEGGER_RTT_printf(0, "%s\n", _RHS_LOG_CLR_RESET);
+    printf("%s\n", _RHS_LOG_CLR_RESET);
     rhs_mutex_release(mutex);
 }
 

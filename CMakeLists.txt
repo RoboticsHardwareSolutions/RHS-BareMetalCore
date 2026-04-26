@@ -24,6 +24,9 @@ add_library(${PROJECT_NAME} STATIC
         core/record.c
         core/critical.c
 )
+
+# link wrappers for getchar in log.c 
+target_link_options(${PROJECT_NAME} PUBLIC "-Wl,--wrap=getchar")
 target_sources(${PROJECT_NAME} PUBLIC ${CMAKE_BINARY_DIR}/applications.c)
 
 target_include_directories(

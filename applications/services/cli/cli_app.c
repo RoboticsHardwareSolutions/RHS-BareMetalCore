@@ -3,7 +3,6 @@
 #include "rhs.h"
 #include "rhs_hal.h"
 #include <stddef.h>
-#include "SEGGER_RTT.h"
 #include "rhs_version.h"
 
 #define TAG "cli"
@@ -49,11 +48,10 @@ void cli_add_command(Cli* app, const char* name, CliCallback callback, void* con
 
 static char cli_getc(void)
 {
-    char c = 0;
-
-    // Only for RTT (it will be not here in the future)
     static bool enter = false;
-    SEGGER_RTT_Read(0, &c, 1);
+
+    char c = getchar();
+
     if (c != 0)
     {
         enter = true;
@@ -102,7 +100,6 @@ void cli_handle_enter(Cli* app)
 void cli_process_input(Cli* app)
 {
     char in_chr = cli_getc();
-
 
     if (in_chr == CliSymbolAsciiTab)
     {
@@ -250,12 +247,14 @@ void cli_command_top(char* args, void* context)
                item->name,
                item->state,
                item->priority,
-               item->cpu < 1 ? "<1%" : ({
-                   char buffer[12];
-                   itoa(item->cpu, buffer, 10);
-                   strcat(buffer, "%");
-                   buffer;
-               }),
+               item->cpu < 1 ? "<1%"
+                             : (
+                                   {
+                                       char buffer[12];
+                                       itoa(item->cpu, buffer, 10);
+                                       strcat(buffer, "%");
+                                       buffer;
+                                   }),
                item->stack_min_free);
     }
 

@@ -31,14 +31,12 @@ static void rhs_hal_cortex_configure_mpu(void)
      * Mark SRAM2 (0x2007C000..0x20080000, 16KB) as non-cacheable.
      * MPU requires power-of-two region size and alignment.
      * Base address and size are taken from linker script symbols.
-     * The first subregion (2KB) covers .noinit_log and is excluded
-     * from this region (falls through to background = cacheable).
      */
     mpu.Enable           = MPU_REGION_ENABLE;
     mpu.Number           = MPU_REGION_NUMBER7;
     mpu.BaseAddress      = (uint32_t)&_sram2_start;
     mpu.Size             = MPU_REGION_SIZE_16KB;
-    mpu.SubRegionDisable = 0x03;
+    mpu.SubRegionDisable = 0x00;
     mpu.TypeExtField     = MPU_TEX_LEVEL1;
     mpu.AccessPermission = MPU_REGION_FULL_ACCESS;
     mpu.DisableExec      = MPU_INSTRUCTION_ACCESS_ENABLE;

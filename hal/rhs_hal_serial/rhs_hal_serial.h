@@ -24,17 +24,15 @@ RHSHalSerial* rhs_hal_serial_init(RHSHalSerialId id, uint32_t baud);
 void rhs_hal_serial_deinit(RHSHalSerial* serial);
 
 void rhs_hal_serial_tx(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buffer_size);
-/** Receive callback
+
+/** Transmit callback
  *
  * @warning    Callback will be called in interrupt context, ensure thread
  *             safety on your side.
  * @param      serial   Serial handle
- * @param      event    RHSHalSerialRxEvent
  * @param      context  Callback context provided earlier
  */
 typedef void (*RHSHalSerialAsyncTxCallback)(RHSHalSerial* serial, void* context);
-
-void rhs_hal_serial_async_tx_dma_configure(RHSHalSerial* serial);
 
 /** Transmits data in semi-blocking mode
  *
@@ -50,11 +48,10 @@ void rhs_hal_serial_async_tx_dma_configure(RHSHalSerial* serial);
  */
 typedef void (*RHSHalSerialDMATxCallback)(RHSHalSerial* serial, void* context);
 
-void rhs_hal_serial_async_tx_dma_start(RHSHalSerial*             serial,
-                                       RHSHalSerialDMATxCallback callback,
-                                       void*                     context,
-                                       const uint8_t*            buffer,
-                                       uint16_t                  buffer_size);
+void rhs_hal_serial_async_tx_dma_configure(RHSHalSerial* serial, RHSHalSerialDMATxCallback callback, void* context);
+
+
+void rhs_hal_serial_async_tx_dma_start(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buffer_size);
 
 /** Serial RX events */
 typedef enum
@@ -86,7 +83,10 @@ typedef void (*RHSHalSerialAsyncRxCallback)(RHSHalSerial* serial, RHSHalSerialRx
  * @param      data_len  Received data
  * @param      context   Callback context provided earlier
  */
-typedef void (*RHSHalSerialDmaRxCallback)(RHSHalSerial* serial, RHSHalSerialRxEvent event, uint16_t data_len, void* context);
+typedef void (*RHSHalSerialDmaRxCallback)(RHSHalSerial*       serial,
+                                          RHSHalSerialRxEvent event,
+                                          uint16_t            data_len,
+                                          void*               context);
 
 void rhs_hal_serial_async_rx_start(RHSHalSerial* serial, RHSHalSerialAsyncRxCallback callback, void* context);
 

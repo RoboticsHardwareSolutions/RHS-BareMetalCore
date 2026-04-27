@@ -144,9 +144,11 @@ void rhs_hal_serial_tx(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buf
 #endif
 }
 
-void rhs_hal_serial_async_tx_dma_configure(RHSHalSerial* serial)
+void rhs_hal_serial_async_tx_dma_configure(RHSHalSerial* serial, RHSHalSerialDMATxCallback callback, void* context)
 {
-    RHSHalSerialId id = rhs_hal_serial_get_id(serial);
+    RHSHalSerialId id       = rhs_hal_serial_get_id(serial);
+    serial->tx_dma_callback = callback;
+    serial->tx_context      = context;
     switch (id)
     {
     case RHSHalSerialIdRS232:
@@ -168,16 +170,10 @@ void rhs_hal_serial_async_tx_dma_configure(RHSHalSerial* serial)
     }
 }
 
-void rhs_hal_serial_async_tx_dma_start(RHSHalSerial*             serial,
-                                       RHSHalSerialDMATxCallback callback,
-                                       void*                     context,
-                                       const uint8_t*            buffer,
-                                       uint16_t                  buffer_size)
+void rhs_hal_serial_async_tx_dma_start(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buffer_size)
 {
-    RHSHalSerialId id = rhs_hal_serial_get_id(serial);
-    serial->tx_dma_callback  = callback;
+    RHSHalSerialId id        = rhs_hal_serial_get_id(serial);
     serial->tx_byte_callback = NULL;
-    serial->context          = context;
     switch (id)
     {
     case RHSHalSerialIdRS232:
@@ -207,7 +203,7 @@ void rhs_hal_serial_async_rx_start(RHSHalSerial* serial, RHSHalSerialAsyncRxCall
 
     serial->rx_byte_callback = callback;
     serial->rx_dma_callback  = NULL;
-    serial->context          = context;
+    serial->rx_context       = context;
 
     switch (id)
     {
@@ -263,7 +259,7 @@ void rhs_hal_serial_async_rx_dma_configure(RHSHalSerial* serial, RHSHalSerialDma
 
     serial->rx_byte_callback = NULL;
     serial->rx_dma_callback  = callback;
-    serial->context          = context;
+    serial->rx_context       = context;
 
     switch (id)
     {

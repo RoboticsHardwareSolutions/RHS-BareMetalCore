@@ -13,5 +13,6 @@ struct RHSHalSerial
     RHSHalSerialDmaRxCallback   rx_dma_callback;
     RHSHalSerialDMATxCallback   tx_dma_callback;
 
-    void* context;
+    void* rx_context;
+    void* tx_context;
 };

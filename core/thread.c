@@ -52,7 +52,7 @@ struct RHSThread
 static RHSMessageQueue* rhs_thread_scrub_message_queue = NULL;
 
 /** Catch threads that are trying to exit wrong way - crash implementation */
-static __attribute__((__noreturn__)) void rhs_thread_catch_impl(void) {
+static __attribute__((used, __noreturn__)) void rhs_thread_catch_impl(void) {
     // If you're here it means you're probably doing something wrong
     // with critical sections or with scheduler state
     rhs_crash("You are doing it wrong"); //-V779

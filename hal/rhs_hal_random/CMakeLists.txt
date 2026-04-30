@@ -12,4 +12,6 @@ target_include_directories(
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 
+target_link_options(${PROJECT_NAME} PUBLIC "-Wl,--wrap=rand")
+
 target_link_libraries(${PROJECT_NAME} PUBLIC rhs)

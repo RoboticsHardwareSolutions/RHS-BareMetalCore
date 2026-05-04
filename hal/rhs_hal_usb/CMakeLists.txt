@@ -37,8 +37,8 @@ add_library(tinyusb STATIC
 
 target_include_directories(tinyusb
         PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/lib/networking
+        \$\{CMAKE_CURRENT_SOURCE_DIR\}/tinyusb/src
+        \$\{CMAKE_CURRENT_SOURCE_DIR\}/tinyusb/lib/networking
 )
 
 target_compile_options(tinyusb PRIVATE -Wno-conversion -Wno-sign-conversion)

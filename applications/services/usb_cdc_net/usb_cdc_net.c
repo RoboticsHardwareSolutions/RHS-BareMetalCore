@@ -102,7 +102,7 @@ static uint8_t const rndis_configuration[] = {
                          8,
                          EPNUM_NET_OUT,
                          EPNUM_NET_IN,
-                         CFG_TUD_NET_ENDPOINT_SIZE),
+                         64),
 };
 
 static uint8_t const ecm_configuration[] = {
@@ -118,7 +118,7 @@ static uint8_t const ecm_configuration[] = {
                            64,
                            EPNUM_NET_OUT,
                            EPNUM_NET_IN,
-                           CFG_TUD_NET_ENDPOINT_SIZE,
+                           64,
                            CFG_TUD_NET_MTU),
 };
 
@@ -137,7 +137,7 @@ static uint8_t const ncm_configuration[] = {
                            64,
                            EPNUM_NET_OUT,
                            EPNUM_NET_IN,
-                           CFG_TUD_NET_ENDPOINT_SIZE,
+                           64,
                            CFG_TUD_NET_MTU),
 };
 

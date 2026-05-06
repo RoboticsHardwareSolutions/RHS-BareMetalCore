@@ -27,8 +27,10 @@ add_library(tinyusb STATIC
         tinyusb/src/device/usbd_control.c
         tinyusb/src/class/net/ecm_rndis_device.c
         tinyusb/src/class/net/ncm_device.c
-        tinyusb/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
-        tinyusb/src/portable/st/stm32_fsdev/fsdev_common.c
+        tinyusb/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c # For stm32f1 etc. which has no USB FS peripheral
+        tinyusb/src/portable/st/stm32_fsdev/fsdev_common.c # For stm32f1 etc. which has no USB FS peripheral
+        tinyusb/src/portable/synopsys/dwc2/dcd_dwc2.c # For stm32f4 etc. which has USB FS/HS peripheral with DWC IP
+        tinyusb/src/portable/synopsys/dwc2/dwc2_common.c # For stm32f4 etc. which has USB FS/HS peripheral with DWC IP
         tinyusb/lib/networking/rndis_reports.c
 
         tinyusb/src/class/cdc/cdc_device.c
@@ -38,6 +40,7 @@ add_library(tinyusb STATIC
 target_include_directories(tinyusb
         PUBLIC
         \$\{CMAKE_CURRENT_SOURCE_DIR\}/tinyusb/src
+        \$\{CMAKE_CURRENT_SOURCE_DIR\}/tinyusb/src/portable/synopsys/dwc2 # For stm32f4 etc. which has USB FS/HS peripheral with DWC IP
         \$\{CMAKE_CURRENT_SOURCE_DIR\}/tinyusb/lib/networking
 )
 

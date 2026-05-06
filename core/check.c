@@ -74,6 +74,14 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
 {
     __disable_irq();
 
+    static volatile bool in_crash = false;
+    if (in_crash)
+    {
+        rhs_hal_power_reset();
+        __builtin_unreachable();
+    }
+    in_crash = true;
+
     if (rhs_crash_action)
         rhs_crash_action();
 

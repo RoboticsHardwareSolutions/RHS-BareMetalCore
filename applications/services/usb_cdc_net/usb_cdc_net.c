@@ -96,13 +96,7 @@ static uint8_t const rndis_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(CONFIG_ID_RNDIS + 1, ITF_NUM_TOTAL_NET, 0, MAIN_CONFIG_TOTAL_LEN, 0, 100),
 
     // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-    TUD_RNDIS_DESCRIPTOR(ITF_NUM_CDC,
-                         STRID_INTERFACE,
-                         EPNUM_NET_NOTIF,
-                         8,
-                         EPNUM_NET_OUT,
-                         EPNUM_NET_IN,
-                         64),
+    TUD_RNDIS_DESCRIPTOR(ITF_NUM_CDC, STRID_INTERFACE, EPNUM_NET_NOTIF, 8, EPNUM_NET_OUT, EPNUM_NET_IN, 64),
 };
 
 static uint8_t const ecm_configuration[] = {
@@ -158,11 +152,11 @@ static uint8_t const* const configuration_arr[2] = {
 
 // array of pointer to string descriptors
 static char const* string_desc_cdc_net_arr[] = {
-    [STRID_LANGID]       = (const char[]){0x09, 0x04},  // supported language is English (0x0409)
-    [STRID_MANUFACTURER] = "TinyUSB",                   // Manufacturer
-    [STRID_PRODUCT]      = "TinyUSB Device",            // Product
-    [STRID_SERIAL]       = "123456",                    // Serial
-    [STRID_INTERFACE]    = "TinyUSB Network Interface"  // Interface Description
+    [STRID_LANGID]       = (const char[]) {0x09, 0x04},  // supported language is English (0x0409)
+    [STRID_MANUFACTURER] = "TinyUSB",                    // Manufacturer
+    [STRID_PRODUCT]      = "TinyUSB Device",             // Product
+    [STRID_SERIAL]       = "123456",                     // Serial
+    [STRID_INTERFACE]    = "TinyUSB Network Interface"   // Interface Description
 
     // STRID_MAC index is handled separately
 };
@@ -213,7 +207,7 @@ static bool usb_poll(struct mg_tcpip_if* ifp, bool s1)
     return s1 ? tud_inited() && tud_ready() && tud_connected() : false;
 }
 
-bool mg_random(void* buf, size_t len)
+__attribute__((weak)) bool mg_random(void* buf, size_t len)
 {  // Use on-board RNG
     rhs_hal_random_fill_buf(buf, len);
     return true;

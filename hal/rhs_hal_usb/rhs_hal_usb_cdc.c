@@ -1,8 +1,17 @@
 #include "rhs.h"
 #include "rhs_hal.h"
-#include "rhs_hal_usb_cdc.h"
 #include "cli.h"
 #include <ctype.h>
+
+#if defined(STM32F103xE)
+#    include <stm32f1xx_ll_pwr.h>
+#    include <stm32f1xx_ll_rcc.h>
+#    include <stm32f1xx_hal_gpio.h>
+#elif defined(STM32F407xx)
+#else
+#    error "Device not specified"
+#endif
+
 
 #define TAG "UsbCDC"
 

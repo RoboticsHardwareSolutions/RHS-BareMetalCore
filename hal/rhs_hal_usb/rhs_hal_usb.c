@@ -1,8 +1,5 @@
-#include <rhs_hal_version.h>
-#include <rhs_hal_usb.h>
-#include <rhs_hal_power.h>
 #include <rhs.h>
-#include "hal.h"
+#include <rhs_hal.h>
 
 #include "stm32.h"
 
@@ -32,15 +29,9 @@ void rhs_hal_usb_init(void)
     NVIC_SetPriority(OTG_FS_WKUP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
 
 #elif defined(STM32F4)
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-
-    GPIO_InitStruct.Pin       = GPIO_PIN_11 | GPIO_PIN_12;
-    GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull      = GPIO_NOPULL;
-    GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    RCC->AHB2ENR |= RCC_AHB2ENR_OTGFSEN;
+    gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);  // D-
+    gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);  // D+
     NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
     NVIC_EnableIRQ(OTG_FS_IRQn);
 #else
@@ -68,15 +59,9 @@ void rhs_hal_usb_reinit(void)
     gpio_init(PIN('A', 12), GPIO_MODE_INPUT_FLOATING);  // D+
 
 #elif defined(STM32F4)
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-
-    GPIO_InitStruct.Pin       = GPIO_PIN_11 | GPIO_PIN_12;
-    GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull      = GPIO_NOPULL;
-    GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    RCC->AHB2ENR |= RCC_AHB2ENR_OTGFSEN;
+    gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);  // D-
+    gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);  // D+
     NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
     NVIC_EnableIRQ(OTG_FS_IRQn);
 #else
@@ -97,7 +82,12 @@ void rhs_hal_usb_disable(void)
     gpio_write(PIN('A', 12), 0);
 
 #elif defined(STM32F4)
-#    error "Not implemented"
+    RCC->AHB2ENR &= ~RCC_AHB2ENR_OTGFSEN;
+    gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 0);  // D-
+    gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 0);  // D+
+    gpio_write(PIN('A', 11), 0);
+    gpio_write(PIN('A', 12), 0);
+    NVIC_DisableIRQ(OTG_FS_IRQn);
 #else
 #    error "Unknown platform"
 #endif

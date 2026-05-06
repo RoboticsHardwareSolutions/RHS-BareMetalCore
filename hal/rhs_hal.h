@@ -1,4 +1,5 @@
 #pragma once
+#include "rhs_hal_gpio.h"
 #include "rhs_hal_interrupt.h"
 #include "rhs_hal_cortex.h"
 #include "rhs_hal_version.h"

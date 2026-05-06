@@ -13,6 +13,11 @@
 #    include "stm32g0b1xx.h"
 #    include "stm32g0xx_ll_rcc.h"
 #endif
+
+#if defined(TINYUSB)
+#    include "tusb.h"
+#endif
+
 #include "rhs.h"
 
 #define RHS_HAL_INTERRUPT_DEFAULT_PRIORITY (configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 5)
@@ -193,10 +198,6 @@ void rhs_hal_interrupt_set_isr_ex(RHSHalInterruptId       index,
     }
 }
 
-#if defined(TINYUSB)
-#    include "tusb.h"
-#endif
-
 #ifdef STM32F765xx
 /* CAN 1 RX0 */
 void CAN1_RX0_IRQHandler(void)
@@ -262,7 +263,7 @@ void DMA2_Stream6_IRQHandler(void)
 void OTG_FS_IRQHandler(void)
 {
 #    if defined(TINYUSB)
-#        error "TinyUSB not implemented"
+    tud_int_handler(0);
 #    endif
 }
 

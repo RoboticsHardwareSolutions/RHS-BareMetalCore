@@ -1,7 +1,17 @@
 #include "eth_net.h"
 #include "eth_net_srv.h"
 #include "eth_net_listeners.h"
-#include "hal.h"
+
+#define UUID ((uint8_t*) UID_BASE)  // Unique 96-bit chip ID. TRM 39.1
+
+// Helper macro for MAC generation
+#define GENERATE_LOCALLY_ADMINISTERED_MAC() \
+    {2,                                     \
+     UUID[0] ^ UUID[1],                     \
+     UUID[2] ^ UUID[3],                     \
+     UUID[4] ^ UUID[5],                     \
+     UUID[6] ^ UUID[7] ^ UUID[8],           \
+     UUID[9] ^ UUID[10] ^ UUID[11]}
 
 static void ethernet_init(void)
 {
@@ -396,7 +406,7 @@ int32_t eth_net_service(void* context)
     }
 }
 
-bool mg_random(void* buf, size_t len)
+__attribute__((weak)) bool mg_random(void* buf, size_t len)
 {  // Use on-board RNG
     rhs_hal_random_fill_buf(buf, len);
     return true;

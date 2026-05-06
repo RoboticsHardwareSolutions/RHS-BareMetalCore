@@ -1,8 +1,6 @@
 #include <rhs.h>
 #include <rhs_hal.h>
 
-#include "stm32.h"
-
 #define TAG "RHSHalUsb"
 
 /* Low-level init */

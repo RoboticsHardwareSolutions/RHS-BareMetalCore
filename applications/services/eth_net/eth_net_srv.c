@@ -243,7 +243,7 @@ void eth_net_get_config(EthNet* eth_net, EthNetConfig* config)
     config->gateway = eth_net->mgr->ifp->gw;
 }
 
-void eth_net_cli_command(char* args, void* context)
+static void eth_net_cli_command(char* args, void* context)
 {
     EthNet* eth_net = (EthNet*) context;
     if (args == NULL)
@@ -255,7 +255,7 @@ void eth_net_cli_command(char* args, void* context)
         char* separator = strchr(args, ' ');
         if (separator == NULL || *(separator + 1) == 0)
         {
-            if (strstr(args, "-restart") == args)
+            if (strstr(args, "--restart") == args)
             {
                 // Restart network manager
                 eth_net_set_config(eth_net, &eth_net->config);
@@ -264,7 +264,7 @@ void eth_net_cli_command(char* args, void* context)
             printf("Invalid argument\n");
             return;
         }
-        else if (strstr(args, "-ip") == args)
+        else if (strstr(args, "--ip") == args)
         {
             // Parse IP address from string like "192.168.1.100"
             char*        ip_str = separator + 1;
@@ -283,7 +283,7 @@ void eth_net_cli_command(char* args, void* context)
                 return;
             }
 
-            printf("Invalid IP address format. Expected: eth -ip 192.168.1.100\n");
+            printf("Invalid IP address format. Expected: eth --ip 192.168.1.100\n");
             return;
         }
         printf("Invalid argument\n");

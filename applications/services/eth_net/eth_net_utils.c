@@ -76,34 +76,15 @@ int string_to_ip(const char* ip_str, unsigned int* a, unsigned int* b, unsigned 
     return 0;
 }
 
-// static int string_to_ip(const char* str_ip, uint32_t* ip_addr)
-// {
-//     if (str_ip == NULL || ip_addr == NULL)
-//     {
-//         return -1;
-//     }
-
-//     unsigned int octet1, octet2, octet3, octet4;
-//     if (parse_ip_address(str_ip, &octet1, &octet2, &octet3, &octet4) != 0)
-//     {
-//         return -1;
-//     }
-
-//     // Validate octets
-//     if (octet1 > 255 || octet2 > 255 || octet3 > 255 || octet4 > 255)
-//     {
-//         return -1;
-//     }
-
-//     // Convert to network byte order
-//     uint8_t* octets = (uint8_t*) ip_addr;
-//     octets[3]       = (uint8_t) octet1;
-//     octets[2]       = (uint8_t) octet2;
-//     octets[1]       = (uint8_t) octet3;
-//     octets[0]       = (uint8_t) octet4;
-
-//     return 0;
-// }
+/**
+ * @brief Convert four octets into IP address string
+ * @param a First octet
+ * @param b Second octet
+ * @param c Third octet
+ * @param d Fourth octet
+ * @param str_buf Buffer to store resulting string (must be at least 16 bytes)
+ * @return 0 on success, -1 on error
+ */
 int ip_to_string(unsigned int a, unsigned int b, unsigned int c, unsigned int d, char* str_buf)
 {
     if (str_buf == NULL)

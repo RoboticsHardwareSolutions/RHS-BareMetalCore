@@ -391,7 +391,7 @@ static int32_t cdc_net_application(void* context)
     rhs_hal_usb_set_interface(prev_intf);
 }
 
-void timer_cb(void* context)
+static void timer_cb(void* context)
 {
     CdcNet* cdc_net = (CdcNet*) context;
     usb_cdc_net_disable(cdc_net);
@@ -417,7 +417,7 @@ void usb_cdc_net_disable(CdcNet* cdc_net)
     free(cdc_net);
 }
 
-void web_app(char* args, void* context)
+static void web_app(char* args, void* context)
 {
     (void) context;
     static CdcNet* cdc_net = NULL;
@@ -426,7 +426,7 @@ void web_app(char* args, void* context)
     {
         printf("web_start: missing argument\r\n");
     }
-    else if (strstr(args, "start") == args)
+    else if (strstr(args, "--start") == args)
     {
         cdc_net = usb_cdc_net_enable();
         if (cdc_net == NULL)
@@ -436,7 +436,7 @@ void web_app(char* args, void* context)
         }
         printf("web_start: started\r\n");
     }
-    else if (strstr(args, "stop") == args)
+    else if (strstr(args, "--stop") == args)
     {
         if (cdc_net == NULL)
         {

@@ -29,8 +29,6 @@ rhs_ip_to_mongoose_format("${RHS_ETH_NET_NETMASK}" MG_TCPIP_MASK_VALUE)
 
 add_library(${PROJECT_NAME} STATIC 
     eth_net_srv.c
-    eth_net_listeners.c
-    eth_net_utils.c
 )
 
 target_include_directories(
@@ -74,12 +72,12 @@ target_compile_definitions(
 target_link_libraries(
         ${PROJECT_NAME}
         PUBLIC
+        net_utils
         mongoose
         PRIVATE
+        net_listeners
         rhs
         rhs_hal
 )
-
-add_subdirectory(modbus_tcp)
 
 service(eth_net_service "eth_net" 16384)

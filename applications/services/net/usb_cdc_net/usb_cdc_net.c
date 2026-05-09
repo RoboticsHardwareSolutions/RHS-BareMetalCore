@@ -7,8 +7,9 @@
 
 struct CdcNet
 {
-    RHSThread* thread;
-    bool       finish;
+    struct mg_mgr       mgr;
+    RHSHalUsbInterface* prev_intf;
+    bool                finish;
 };
 
 static RHSTimer* timer;
@@ -351,110 +352,63 @@ static void fn(struct mg_connection* c, int ev, void* ev_data)
     }
 }
 
-static int32_t cdc_net_application(void* context)
+static CdcNet* usb_cdc_net_alloc(void)
 {
-    struct mg_mgr mgr;        // Initialise
-    mg_mgr_init(&mgr);        // Mongoose event manager
-    mg_log_set(MG_LL_DEBUG);  // Set log level
+    CdcNet* cdc_net = malloc(sizeof(CdcNet));
 
-    CdcNet*             cdc_net   = (CdcNet*) context;
-    const uint8_t*      uid       = rhs_hal_version_uid();
-    RHSHalUsbInterface* prev_intf = rhs_hal_usb_get_interface();
+    cdc_net->finish = false;
+
+    mg_mgr_init(&cdc_net->mgr);  // Mongoose event manager
+    mg_log_set(MG_LL_DEBUG);     // Set log level
+
+    const uint8_t* uid = rhs_hal_version_uid();
+    cdc_net->prev_intf = rhs_hal_usb_get_interface();
 
     rhs_hal_usb_set_interface(&usb_cdc_net_desc);
 
     MG_INFO(("Init TCP/IP stack ..."));
-    struct mg_tcpip_driver driver = {.tx = usb_tx, .poll = usb_poll};
-    struct mg_tcpip_if     mif    = {.mac                = GENERATE_LOCALLY_ADMINISTERED_MAC(uid),
-                                     .ip                 = mg_htonl(MG_U32(192, 168, 3, 1)),
-                                     .mask               = mg_htonl(MG_U32(255, 255, 255, 0)),
-                                     .enable_dhcp_server = true,
-                                     .driver             = &driver,
-                                     .recv_queue.size    = 4096};
-    s_ifp                         = &mif;
-    mg_tcpip_init(&mgr, &mif);
-    mg_http_listen(&mgr, "tcp://0.0.0.0:80", fn, cdc_net);
+    struct mg_tcpip_driver* driver = malloc(sizeof(struct mg_tcpip_driver));
+    driver->tx                     = usb_tx;
+    driver->poll                   = usb_poll;
+
+    cdc_net->mgr.ifp                     = malloc(sizeof(struct mg_tcpip_if));
+    cdc_net->mgr.ifp->ip                 = mg_htonl(MG_U32(192, 168, 3, 1));
+    cdc_net->mgr.ifp->mask               = mg_htonl(MG_U32(255, 255, 255, 0));
+    cdc_net->mgr.ifp->enable_dhcp_server = true;
+    cdc_net->mgr.ifp->driver             = driver;
+    cdc_net->mgr.ifp->recv_queue.size    = 4096;
+    memcpy(cdc_net->mgr.ifp->mac, (uint8_t[]) GENERATE_LOCALLY_ADMINISTERED_MAC(uid), 6);
+
+    s_ifp = cdc_net->mgr.ifp;
+
+    mg_tcpip_init(&cdc_net->mgr, cdc_net->mgr.ifp);
+    mg_http_listen(&cdc_net->mgr, "tcp://0.0.0.0:80", fn, cdc_net);
 
     MG_INFO(("Init USB ..."));
     rhs_hal_usb_reinit();
     tusb_init();
 
-    MG_INFO(("Init done, starting main loop ..."));
-    while (!cdc_net->finish)
-    {
-        mg_mgr_poll(&mgr, 0);
-    }
-
-    MG_INFO(("Finish ..."));
-    mg_mgr_free(&mgr);
-    tusb_deinit(0);
-    rhs_hal_usb_set_interface(prev_intf);
-}
-
-static void timer_cb(void* context)
-{
-    CdcNet* cdc_net = (CdcNet*) context;
-    usb_cdc_net_disable(cdc_net);
-}
-
-CdcNet* usb_cdc_net_enable(void)
-{
-    CdcNet* cdc_net = malloc(sizeof(CdcNet));
-    cdc_net->finish = false;
-    cdc_net->thread = rhs_thread_alloc("CDCNetApp", 4096, cdc_net_application, cdc_net);
-    rhs_thread_start(cdc_net->thread);
-    if (timer == NULL)
-        timer = rhs_timer_alloc(timer_cb, RHSTimerTypeOnce, cdc_net);
     return cdc_net;
 }
 
-void usb_cdc_net_disable(CdcNet* cdc_net)
+int32_t cdc_net_srv(void* context)
 {
-    rhs_assert(cdc_net);
-    cdc_net->finish = true;
-    rhs_thread_join(cdc_net->thread);
-    rhs_thread_free(cdc_net->thread);
+    CdcNet* cdc_net = usb_cdc_net_alloc();
+    rhs_record_create(RECORD_CDC_NET, cdc_net);
+
+    MG_INFO(("Init done, starting main loop ..."));
+    while (!cdc_net->finish)
+    {
+        mg_mgr_poll(&cdc_net->mgr, 0);
+    }
+
+    MG_INFO(("Finish ..."));
+
+    free(cdc_net->mgr.ifp->driver);
+    free(cdc_net->mgr.ifp);
+    mg_mgr_free(&cdc_net->mgr);
+    tusb_deinit(0);
+    rhs_hal_usb_set_interface(cdc_net->prev_intf);
+    rhs_record_destroy(RECORD_CDC_NET);
     free(cdc_net);
-}
-
-static void web_app(char* args, void* context)
-{
-    (void) context;
-    static CdcNet* cdc_net = NULL;
-
-    if (args == NULL)
-    {
-        printf("web_start: missing argument\r\n");
-    }
-    else if (strstr(args, "--start") == args)
-    {
-        cdc_net = usb_cdc_net_enable();
-        if (cdc_net == NULL)
-        {
-            printf("web_start: failed to start\r\n");
-            return;
-        }
-        printf("web_start: started\r\n");
-    }
-    else if (strstr(args, "--stop") == args)
-    {
-        if (cdc_net == NULL)
-        {
-            printf("web_start: not running\r\n");
-            return;
-        }
-        usb_cdc_net_disable(cdc_net);
-        cdc_net = NULL;
-    }
-    else
-    {
-        printf("Invalid argument '%s'\r\n", args);
-    }
-}
-
-void usb_cdc_net_start(void)
-{
-    Cli* cli = rhs_record_open(RECORD_CLI);
-    cli_add_command(cli, "web_app", web_app, NULL);
-    rhs_record_close(RECORD_CLI);
 }

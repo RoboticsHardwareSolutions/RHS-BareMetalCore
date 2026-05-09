@@ -1,6 +1,6 @@
 #include "eth_net.h"
 #include "eth_net_srv.h"
-#include "eth_net_listeners.h"
+#include "net_listeners.h"
 
 #define UUID ((uint8_t*) UID_BASE)  // Unique 96-bit chip ID. TRM 39.1
 

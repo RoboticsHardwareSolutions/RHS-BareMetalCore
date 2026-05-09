@@ -6,7 +6,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "mongoose.h"
-#include "eth_net_listeners.h"
+#include "net_listeners.h"
 
 typedef struct
 {

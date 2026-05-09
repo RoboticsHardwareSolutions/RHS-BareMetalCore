@@ -1,6 +1,5 @@
 #pragma once
 #include <stdint.h>
-#include "mongoose.h"
 #include "eth_net.h"
 
 typedef struct

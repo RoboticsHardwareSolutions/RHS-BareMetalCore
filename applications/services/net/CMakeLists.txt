@@ -1,3 +1,23 @@
+cmake_minimum_required(VERSION 3.24)
+project(net)
+
+add_library(${PROJECT_NAME} net.c)
+
+target_include_directories(
+        ${PROJECT_NAME} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}
+        PUBLIC
+        mongoose
+        PRIVATE
+        rhs
+        rhs_hal
+        net_listeners
+)
+
 if(RHS_APPLICATION_USB_CDC_NET)
     message("\t\tRHS_APPLICATION_USB_CDC_NET\t\t- ON")
     add_subdirectory(usb_cdc_net)

@@ -72,12 +72,12 @@ target_compile_definitions(
 target_link_libraries(
         ${PROJECT_NAME}
         PUBLIC
-        net_utils
         mongoose
+        net
+        net_utils
         PRIVATE
-        net_listeners
         rhs
         rhs_hal
 )
 
-service(eth_net_service "eth_net" 16384)
+# service(eth_net_service "eth_net" 16384)

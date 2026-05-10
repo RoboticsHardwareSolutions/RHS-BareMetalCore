@@ -1,9 +1,7 @@
-#include "stdint.h"
+#include "mongoose.h"
 #include "net_utils.h"
+#include "net.h"
 
-#define RECORD_CDC_NET "cdc_net"
+Net* usb_cdc_net_start(void);
 
-typedef struct CdcNet CdcNet;
-
-CdcNet* usb_cdc_net_enable(void);
-
+void usb_cdc_net_stop(Net* net);

@@ -1,6 +1,9 @@
 #include "eth_net.h"
-#include "eth_net_srv.h"
-#include "net_listeners.h"
+#include "rhs.h"
+#include "rhs_hal.h"
+#include "cli.h"
+#include "mongoose.h"
+#include "net_i.h"
 
 #define UUID ((uint8_t*) UID_BASE)  // Unique 96-bit chip ID. TRM 39.1
 
@@ -12,6 +15,14 @@
      UUID[4] ^ UUID[5],                     \
      UUID[6] ^ UUID[7] ^ UUID[8],           \
      UUID[9] ^ UUID[10] ^ UUID[11]}
+
+typedef struct
+{
+    Cli* cli;
+    Net* net;
+} EthNet;
+
+static EthNet* eth;
 
 static void ethernet_init(void)
 {
@@ -92,160 +103,73 @@ static void ethernet_deinit(void)
 #endif
 }
 
-static void eth_net_init_tcpip(EthNet* eth_net)
+static void eth_net_init_tcpip(Net* net)
 {
-    struct mg_tcpip_if*                 ifp         = eth_net->ifp;
-    struct mg_tcpip_driver_stm32f_data* driver_data = (struct mg_tcpip_driver_stm32f_data*) eth_net->driver_data;
-    rhs_assert(eth_net && ifp && driver_data);
+    struct mg_tcpip_if*                 ifp    = malloc(sizeof(struct mg_tcpip_if));
+    struct mg_tcpip_driver_stm32f_data* driver = malloc(sizeof(struct mg_tcpip_driver_stm32f_data));
+    rhs_assert(net && ifp && driver);
 
     // Clear interface and driver data structures
-    memset(eth_net->ifp, 0, sizeof(struct mg_tcpip_if));
-    memset(eth_net->driver_data, 0, sizeof(struct mg_tcpip_driver_stm32f_data));
+    memset(ifp, 0, sizeof(struct mg_tcpip_if));
+    memset(driver, 0, sizeof(struct mg_tcpip_driver_stm32f_data));
 
     // Set default MAC address
     MG_SET_MAC_ADDRESS(config.mac);
 
     // Call user configuration function (weak)
-    if (eth_net_set_config_on_startup)
-    {
-        eth_net_set_config_on_startup(&eth_net->config);
-    }
+    // if (eth_net_set_config_on_startup)
+    // {
+    // eth_net_set_config_on_startup(&app->net->config);
+    // }
 
     // Apply configuration
-    driver_data->mdc_cr   = eth_net->config.mdc_cr;
-    driver_data->phy_addr = eth_net->config.phy_addr;
-    ifp->ip               = eth_net->config.ip;
-    ifp->mask             = eth_net->config.mask;
-    ifp->gw               = eth_net->config.gateway;
-    ifp->driver           = &mg_tcpip_driver_stm32f;
-    ifp->driver_data      = driver_data;
+    driver->mdc_cr   = net->config->mdc_cr;
+    driver->phy_addr = net->config->phy_addr;
+    ifp->ip          = net->config->ip;
+    ifp->mask        = net->config->mask;
+    ifp->gw          = net->config->gateway;
+    ifp->driver      = &mg_tcpip_driver_stm32f;
+    ifp->driver_data = driver;
 
     // Copy MAC address
     for (int i = 0; i < 6; i++)
     {
-        eth_net->ifp->mac[i] = eth_net->config.mac[i];
+        ifp->mac[i] = net->config->mac[i];
     }
 
     // Initialize TCP/IP interface
-    mg_tcpip_init(eth_net->mgr, ifp);
+    mg_tcpip_init(net->mgr, ifp);
     MG_INFO(("Driver: stm32f, MAC: %M", mg_print_mac, ifp->mac));
 }
 
 static EthNet* eth_net_alloc(void)
 {
-    EthNet* eth_net      = malloc(sizeof(EthNet));
-    eth_net->cli         = rhs_record_open(RECORD_CLI);
-    eth_net->mgr         = malloc(sizeof(struct mg_mgr));
-    eth_net->ifp         = malloc(sizeof(struct mg_tcpip_if));
-    eth_net->driver_data = malloc(sizeof(struct mg_tcpip_driver_stm32f_data));
-    eth_net->thread      = rhs_thread_get_current();
-    eth_net->queue       = rhs_message_queue_alloc(3, sizeof(EthNetApiEventMessage));
-    eth_net->listeners   = NULL;  // Initialize listeners list
+    EthNet* app      = malloc(sizeof(EthNet));
+    app->net         = malloc(sizeof(struct Net));
+    app->net->mgr    = malloc(sizeof(struct mg_mgr));
+    app->net->config = malloc(sizeof(NetConfig));
 
     // Initialize config with default values from compile-time macros
-    eth_net->config.ip       = MG_TCPIP_IP;
-    eth_net->config.mask     = MG_TCPIP_MASK;
-    eth_net->config.gateway  = MG_TCPIP_GW;
-    eth_net->config.phy_addr = MG_TCPIP_PHY_ADDR;
-    eth_net->config.mdc_cr   = MG_DRIVER_MDC_CR;
+    app->net->config->ip       = MG_TCPIP_IP;
+    app->net->config->mask     = MG_TCPIP_MASK;
+    app->net->config->gateway  = MG_TCPIP_GW;
+    app->net->config->phy_addr = MG_TCPIP_PHY_ADDR;
+    app->net->config->mdc_cr   = MG_DRIVER_MDC_CR;
 
     // Initialise Mongoose network stack
     ethernet_init();
 
-    mg_log_set(MG_LL_DEBUG);    // Set log level
-    mg_mgr_init(eth_net->mgr);  // and attach it to the interface
+    mg_log_set(MG_LL_DEBUG);     // Set log level
+    mg_mgr_init(app->net->mgr);  // and attach it to the interface
 
-    eth_net_init_tcpip(eth_net);
+    eth_net_init_tcpip(app->net);
 
-    return eth_net;
-}
-
-void eth_net_start_http(EthNet* eth_net, const char* uri, mg_event_handler_t fn, void* context)
-{
-    EthNetApiEventMessage msg = {.lock = api_lock_alloc_locked(),
-                                 .type = EthNetApiEventTypeSetHttp,
-                                 .data = {.interface = {.uri = (char*) uri, .fn = fn, .context = context}}};
-    rhs_message_queue_put(eth_net->queue, &msg, RHSWaitForever);
-    api_lock_wait_unlock_and_free(msg.lock);
-}
-
-void eth_net_start_listener(EthNet* eth_net, const char* uri, mg_event_handler_t fn, void* context)
-{
-    RHSThread* thread = rhs_thread_get_current();
-    RHSApiLock lock   = NULL;
-
-    if (thread != eth_net->thread)
-    {
-        lock = api_lock_alloc_locked();
-    }
-
-    EthNetApiEventMessage msg = {.lock = lock,
-                                 .type = EthNetApiEventTypeSetTcp,
-                                 .data = {.interface = {.uri = (char*) uri, .fn = fn, .context = context}}};
-
-    rhs_message_queue_put(eth_net->queue, &msg, RHSWaitForever);
-
-    if (thread != eth_net->thread)
-    {
-        api_lock_wait_unlock_and_free(msg.lock);
-    }
-}
-
-void eth_net_stop_listener(EthNet* eth_net, const char* uri)
-{
-    RHSThread* thread = rhs_thread_get_current();
-    RHSApiLock lock   = NULL;
-
-    if (thread != eth_net->thread)
-    {
-        lock = api_lock_alloc_locked();
-    }
-
-    EthNetApiEventMessage msg = {.lock = lock,
-                                 .type = EthNetApiEventTypeRstTcp,
-                                 .data = {.interface = {.uri = (char*) uri}}};
-
-    rhs_message_queue_put(eth_net->queue, &msg, RHSWaitForever);
-
-    if (thread != eth_net->thread)
-    {
-        api_lock_wait_unlock_and_free(msg.lock);
-    }
-}
-
-void eth_net_set_config(EthNet* eth_net, EthNetConfig* config)
-{
-    RHSThread* thread = rhs_thread_get_current();
-    RHSApiLock lock   = NULL;
-
-    if (thread != eth_net->thread)
-    {
-        lock = api_lock_alloc_locked();
-    }
-
-    EthNetApiEventMessage msg = {.lock = lock, .type = EthNetApiEventTypeRestart, .data = {.config = *config}};
-    rhs_message_queue_put(eth_net->queue, &msg, RHSWaitForever);
-
-    if (thread != eth_net->thread)
-    {
-        api_lock_wait_unlock_and_free(msg.lock);
-    }
-}
-
-void eth_net_get_config(EthNet* eth_net, EthNetConfig* config)
-{
-    if (eth_net == NULL || config == NULL)
-        return;
-
-    // Copy current configuration to the provided config structure
-    config->ip      = eth_net->mgr->ifp->ip;
-    config->mask    = eth_net->mgr->ifp->mask;
-    config->gateway = eth_net->mgr->ifp->gw;
+    return app;
 }
 
 static void eth_net_cli_command(char* args, void* context)
 {
-    EthNet* eth_net = (EthNet*) context;
+    EthNet* eth = (EthNet*) context;
     if (args == NULL)
     {
         return;
@@ -258,7 +182,7 @@ static void eth_net_cli_command(char* args, void* context)
             if (strstr(args, "--restart") == args)
             {
                 // Restart network manager
-                eth_net_set_config(eth_net, &eth_net->config);
+                // net_set_config(eth->net, &eth->net->config);
                 return;
             }
             printf("Invalid argument\n");
@@ -273,13 +197,13 @@ static void eth_net_cli_command(char* args, void* context)
             if (string_to_ip(ip_str, &a, &b, &c, &d) == 0)
             {
                 // Update IP address in config
-                eth_net->config.ip = MG_IPV4(a, b, c, d);
+                eth->net->config->ip = MG_IPV4(a, b, c, d);
 
                 printf("IP address will be changed to %u.%u.%u.%u\n", a, b, c, d);
                 printf("Restarting network manager...\n");
 
                 // Restart network manager to apply new IP
-                eth_net_set_config(eth_net, &eth_net->config);
+                net_set_config(eth->net, eth->net->config);
                 return;
             }
 
@@ -290,124 +214,31 @@ static void eth_net_cli_command(char* args, void* context)
     }
 }
 
-int32_t eth_net_service(void* context)
+Net* eth_net_start(void)
 {
-    EthNet* app = eth_net_alloc();
-    rhs_record_create(RECORD_ETH_NET, app);
-    cli_add_command(app->cli, "eth", eth_net_cli_command, app);
+    rhs_assert(eth == NULL);
+    eth      = eth_net_alloc();
+    eth->cli = rhs_record_open(RECORD_CLI);
 
-    EthNetApiEventMessage msg;
-    MG_INFO(("Starting event loop"));
-    for (;;)
-    {
-        mg_mgr_poll(app->mgr, 1);  // Infinite event loop
+    int32_t net_worker(void* context);
+    eth->net->thread = rhs_thread_alloc("eth_net", 4 * 1024, net_worker, eth->net);
+    rhs_thread_start(eth->net->thread);
 
-        if (rhs_message_queue_get(app->queue, &msg, 0) == RHSStatusOk)
-        {
-            if (msg.type == EthNetApiEventTypeSetHttp)
-            {
-                // Example of mDNS
-                // uint32_t response_ip = app->mgr->ifp->ip;
-                // struct mg_connection* c = mg_mdns_listen(app->mgr, "sr_yahoo");
-                // if (c != NULL)
-                // {
-                //     memcpy(c->data, &response_ip, sizeof(response_ip));
-                //     MG_INFO(("mDNS responder started"));
-                // }
-                mg_http_listen(app->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
-                MG_INFO(("HTTP server started on %s", msg.data.interface.uri));
+    cli_add_command(eth->cli, "eth", eth_net_cli_command, eth);
 
-                // Add listener to the buffer for later restoration
-                eth_net_listeners_add(&app->listeners,
-                                      EthNetListenerTypeHttp,
-                                      msg.data.interface.uri,
-                                      msg.data.interface.fn,
-                                      msg.data.interface.context);
-            }
-            else if (msg.type == EthNetApiEventTypeSetTcp)
-            {
-                mg_listen(app->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
-                MG_INFO(("TCP server started on %s", msg.data.interface.uri));
-
-                // Add listener to the buffer for later restoration
-                eth_net_listeners_add(&app->listeners,
-                                      EthNetListenerTypeTcp,
-                                      msg.data.interface.uri,
-                                      msg.data.interface.fn,
-                                      msg.data.interface.context);
-            }
-            else if (msg.type == EthNetApiEventTypeRstTcp)
-            {
-                struct mg_connection* c;
-                struct mg_addr        target_addr;
-
-                uint16_t port = mg_url_port(msg.data.interface.uri);
-
-                // Parse the target URL to get address
-                if (mg_aton(mg_url_host(msg.data.interface.uri), &target_addr))
-                {
-                    // Close all connections matching this listener address
-                    for (c = app->mgr->conns; c != NULL; c = c->next)
-                    {
-                        // Check if this is a listening connection with matching address
-                        if (c->is_listening && c->loc.port == mg_htons(port))
-                        {
-                            MG_INFO(("ip %s, port %d", c->loc.ip, mg_htons(c->loc.port)));
-                            c->is_closing = 1;
-                        }
-                    }
-
-                    // Process the closing - this will actually close the sockets
-                    mg_mgr_poll(app->mgr, 0);
-
-                    // Remove listener from the stored list
-                    if (eth_net_listeners_remove(&app->listeners, msg.data.interface.uri) != true)
-                    {
-                        MG_ERROR(("Listener not found in stored list: %s", msg.data.interface.uri));
-                    }
-                }
-                else
-                {
-                    MG_ERROR(("invalid listening URL: %s", msg.data.interface.uri));
-                }
-            }
-            else if (msg.type == EthNetApiEventTypeRestart)
-            {
-                struct mg_connection* c;
-                app->mgr->ifp->ip   = msg.data.config.ip;
-                app->mgr->ifp->mask = msg.data.config.mask;
-                app->mgr->ifp->gw   = msg.data.config.gateway;
-
-                // Close all existing connections
-                for (c = app->mgr->conns; c != NULL; c = c->next)
-                    c->is_closing = 1;
-                mg_mgr_poll(app->mgr, 0);
-
-                // Restore all registered listeners
-                MG_INFO(("Restoring listeners..."));
-                for (EthNetListener* listener = app->listeners; listener != NULL; listener = listener->next)
-                {
-                    if (listener->type == EthNetListenerTypeHttp)
-                    {
-                        mg_http_listen(app->mgr, listener->uri, listener->fn, listener->context);
-                        MG_INFO(("Restored HTTP server on %s", listener->uri));
-                    }
-                    else if (listener->type == EthNetListenerTypeTcp)
-                    {
-                        mg_listen(app->mgr, listener->uri, listener->fn, listener->context);
-                        MG_INFO(("Restored TCP server on %s", listener->uri));
-                    }
-                }
-            }
-
-            if (msg.lock)
-                api_lock_unlock(msg.lock);
-        }
-    }
+    return eth->net;
 }
 
-__attribute__((weak)) bool mg_random(void* buf, size_t len)
-{  // Use on-board RNG
-    rhs_hal_random_fill_buf(buf, len);
-    return true;
+void eth_net_stop(Net* net)
+{
+    rhs_assert(eth != NULL);
+    rhs_assert(eth->net == net);
+    rhs_crash("Not implemented yet");
+    rhs_record_close(RECORD_CLI);
+    rhs_thread_join(eth->net->thread);
+    rhs_thread_free(eth->net->thread);
+    free(eth->net->mgr);
+    free(eth->net);
+    free(eth);
+    eth = NULL;
 }

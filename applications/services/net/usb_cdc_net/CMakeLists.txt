@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(usb_cdc_net C)
+project(cdc_net C)
 set(CMAKE_C_STANDARD 11)
 
 add_library(${PROJECT_NAME} STATIC usb_cdc_net.c)
@@ -11,7 +11,7 @@ target_include_directories(
 
 # Check if tinyusb and mongoose targets are available
 if(NOT TARGET tinyusb OR NOT TARGET mongoose)
-    message(FATAL_ERROR "tinyusb and mongoose libraries must be available to build usb_cdc_net")
+        message(FATAL_ERROR "tinyusb and mongoose libraries must be available to build usb_cdc_net")
 endif()
 
 # Enable RNDIS and ECM support in TinyUSB
@@ -31,11 +31,13 @@ target_compile_definitions(
 
 target_link_libraries(
         ${PROJECT_NAME}
+        PUBLIC
+        mongoose
+        net
+        net_utils
         PRIVATE
         rhs
         rhs_hal
         tinyusb
         mongoose
 )
-
-service(cdc_net_srv "cdc_net_srv" 8192)

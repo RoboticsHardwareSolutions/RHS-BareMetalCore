@@ -2,17 +2,9 @@
 #include "rhs_hal.h"
 #include "usb_cdc_net.h"
 #include "mongoose.h"
+#include "net_i.h"
 #include "tusb.h"
 #include "cli.h"
-
-struct CdcNet
-{
-    struct mg_mgr       mgr;
-    RHSHalUsbInterface* prev_intf;
-    bool                finish;
-};
-
-static RHSTimer* timer;
 
 // Helper macro for MAC generation
 #define GENERATE_LOCALLY_ADMINISTERED_MAC(UUID) \
@@ -52,6 +44,15 @@ enum
 #endif
     CONFIG_ID_COUNT
 };
+
+typedef struct
+{
+    Cli*                cli;
+    Net*                net;
+    RHSHalUsbInterface* prev_intf;
+} CdcNet;
+
+static CdcNet* cdc;
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -169,12 +170,11 @@ static RHSHalUsbInterface usb_cdc_net_desc = {
 };
 
 #define TAG "cdc_net"
-static struct mg_tcpip_if* s_ifp;
-uint8_t                    tud_network_mac_address[6] = {2, 2, 0x84, 0x6A, 0x96, 0};
+uint8_t tud_network_mac_address[6] = {2, 2, 0x84, 0x6A, 0x96, 0};
 
 bool tud_network_recv_cb(const uint8_t* buf, uint16_t len)
 {
-    mg_tcpip_qwrite((void*) buf, len, s_ifp);
+    mg_tcpip_qwrite((void*) buf, len, cdc->net->mgr->ifp);
     // MG_INFO(("RECV %hu", len));
     // mg_hexdump(buf, len);
     tud_network_recv_renew();
@@ -208,207 +208,99 @@ static bool usb_poll(struct mg_tcpip_if* ifp, bool s1)
     return s1 ? tud_inited() && tud_ready() && tud_connected() : false;
 }
 
-__attribute__((weak)) bool mg_random(void* buf, size_t len)
-{  // Use on-board RNG
-    rhs_hal_random_fill_buf(buf, len);
-    return true;
-}
-
-static void fn(struct mg_connection* c, int ev, void* ev_data)
+static void cdc_net_init_tcpip(Net* net)
 {
-    if (ev == MG_EV_HTTP_MSG)
+    struct mg_tcpip_if*     ifp    = malloc(sizeof(struct mg_tcpip_if));
+    struct mg_tcpip_driver* driver = malloc(sizeof(struct mg_tcpip_driver));
+    rhs_assert(net && ifp && driver);
+
+    // Clear interface and driver data structures
+    memset(ifp, 0, sizeof(struct mg_tcpip_if));
+    memset(driver, 0, sizeof(struct mg_tcpip_driver));
+
+    // Set default MAC address
+    MG_SET_MAC_ADDRESS(config.mac);
+
+    // Call user configuration function (weak)
+    // if (cdc_net_set_config_on_startup)
+    // {
+    // cdc_net_set_config_on_startup(&app->net->config);
+    // }
+
+    // Apply configuration
+
+    driver->tx   = usb_tx;
+    driver->poll = usb_poll;
+
+    ifp->ip                 = mg_htonl(MG_U32(192, 168, 3, 1));
+    ifp->mask               = mg_htonl(MG_U32(255, 255, 255, 0));
+    ifp->gw                 = net->config->gateway;
+    ifp->enable_dhcp_server = true;
+    ifp->driver             = driver;
+    ifp->recv_queue.size    = 4096;
+
+    // Copy MAC address
+    for (int i = 0; i < 6; i++)
     {
-        struct mg_http_message* hm = (struct mg_http_message*) ev_data;
-        if (mg_match(hm->uri, mg_str("/"), NULL))
-        {
-            const char* html = "<!DOCTYPE html>"
-                               "<html lang='en'>"
-                               "<head>"
-                               "    <title>RHS PLC</title>"
-                               "    <meta charset='UTF-8'>"
-                               "    <meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                               "    <style>"
-                               "        body { "
-                               "            font-family: Arial, sans-serif; "
-                               "            background: #f5f5f5; "
-                               "            margin: 0; "
-                               "            padding: 20px; "
-                               "        }"
-                               "        .container { "
-                               "            max-width: 400px; "
-                               "            margin: 50px auto; "
-                               "            background: white; "
-                               "            padding: 30px; "
-                               "            border-radius: 8px; "
-                               "            box-shadow: 0 2px 10px rgba(0,0,0,0.1); "
-                               "            text-align: center; "
-                               "        }"
-                               "        h1 { "
-                               "            color: #333; "
-                               "            margin: 0 0 10px 0; "
-                               "            font-size: 24px; "
-                               "        }"
-                               "        .subtitle { "
-                               "            color: #666; "
-                               "            margin-bottom: 30px; "
-                               "            font-size: 14px; "
-                               "        }"
-                               "        .info { "
-                               "            text-align: left; "
-                               "            margin: 20px 0; "
-                               "        }"
-                               "        .info-item { "
-                               "            margin: 10px 0; "
-                               "            padding: 8px 0; "
-                               "            border-bottom: 1px solid #eee; "
-                               "        }"
-                               "        .info-label { "
-                               "            color: #888; "
-                               "            font-size: 12px; "
-                               "        }"
-                               "        .info-value { "
-                               "            color: #333; "
-                               "            font-weight: bold; "
-                               "        }"
-                               "        .exit-button { "
-                               "            background: #dc3545; "
-                               "            color: white; "
-                               "            border: none; "
-                               "            padding: 10px 20px; "
-                               "            border-radius: 4px; "
-                               "            cursor: pointer; "
-                               "            margin-top: 20px; "
-                               "            text-decoration: none; "
-                               "            display: inline-block; "
-                               "        }"
-                               "        .exit-button:hover { "
-                               "            background: #c82333; "
-                               "        }"
-                               "    </style>"
-                               "</head>"
-                               "<body>"
-                               "    <div class='container'>"
-                               "        <h1>RHS PLC</h1>"
-                               "        <p class='subtitle'>Industrial Controller Management System</p>"
-                               "        <div class='info'>"
-                               "            <div class='info-item'>"
-                               "                <div class='info-label'>Status</div>"
-                               "                <div class='info-value'>Online</div>"
-                               "            </div>"
-                               "            <div class='info-item'>"
-                               "                <div class='info-label'>IP Address</div>"
-                               "                <div class='info-value'>192.168.3.1</div>"
-                               "            </div>"
-                               "            <div class='info-item'>"
-                               "                <div class='info-label'>Interface</div>"
-                               "                <div class='info-value'>RNDIS/Ethernet</div>"
-                               "            </div>"
-                               "            <div class='info-item'>"
-                               "                <div class='info-label'>Version</div>"
-                               "                <div class='info-value'>v1.0.0</div>"
-                               "            </div>"
-                               "        </div>"
-                               "        <a href='/exit' class='exit-button'>Exit</a>"
-                               "    </div>"
-                               "</body>"
-                               "</html>";
-            mg_http_reply(c, 200, "Content-Type: text/html\r\n", "%s", html);
-        }
-        else if (mg_match(hm->uri, mg_str("/exit"), NULL))
-        {
-            // Handle exit button click
-            rhs_timer_start(timer, 100);  // Start timer to allow response to be sent
-            const char* response =
-                "<!DOCTYPE html>"
-                "<html lang='en'>"
-                "<head>"
-                "    <title>Exit</title>"
-                "    <meta charset='UTF-8'>"
-                "    <style>"
-                "        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }"
-                "        .message { color: #667eea; font-size: 1.5em; margin-bottom: 20px; }"
-                "        .info { color: #666; font-size: 14px; text-align: left; max-width: 400px; margin: 0 auto; }"
-                "    </style>"
-                "</head>"
-                "<body>"
-                "    <div class='message'>Application is shutting down...</div>"
-                "    <div class='info'>"
-                "        <h3>What happens next:</h3>"
-                "        <ul>"
-                "            <li>Device will be reconfigured</li>"
-                "            <li>Network interface will be disconnected</li>"
-                "            <li>Control will be available via RTT terminal</li>"
-                "        </ul>"
-                "        <p><strong>Note:</strong> VCP (Virtual COM Port) control is not implemented yet</p>"
-                "    </div>"
-                "</body>"
-                "</html>";
-            mg_http_reply(c, 200, "Content-Type: text/html\r\n", "%s", response);
-        }
-        else
-        {
-            mg_http_reply(c, 404, "", "Not found\n");
-        }
+        ifp->mac[i] = net->config->mac[i];
     }
+
+    // Initialize TCP/IP interface
+    mg_tcpip_init(net->mgr, ifp);
+    MG_INFO(("Driver: stm32f, MAC: %M", mg_print_mac, ifp->mac));
 }
 
 static CdcNet* usb_cdc_net_alloc(void)
 {
-    CdcNet* cdc_net = malloc(sizeof(CdcNet));
+    CdcNet* app      = malloc(sizeof(CdcNet));
+    app->net         = malloc(sizeof(struct Net));
+    app->net->mgr    = malloc(sizeof(struct mg_mgr));
+    app->net->config = malloc(sizeof(NetConfig));
 
-    cdc_net->finish = false;
-
-    mg_mgr_init(&cdc_net->mgr);  // Mongoose event manager
-    mg_log_set(MG_LL_DEBUG);     // Set log level
+    mg_mgr_init(app->net->mgr);  // Mongoose event manager
 
     const uint8_t* uid = rhs_hal_version_uid();
-    cdc_net->prev_intf = rhs_hal_usb_get_interface();
+    app->prev_intf     = rhs_hal_usb_get_interface();
 
     rhs_hal_usb_set_interface(&usb_cdc_net_desc);
 
     MG_INFO(("Init TCP/IP stack ..."));
-    struct mg_tcpip_driver* driver = malloc(sizeof(struct mg_tcpip_driver));
-    driver->tx                     = usb_tx;
-    driver->poll                   = usb_poll;
 
-    cdc_net->mgr.ifp                     = malloc(sizeof(struct mg_tcpip_if));
-    cdc_net->mgr.ifp->ip                 = mg_htonl(MG_U32(192, 168, 3, 1));
-    cdc_net->mgr.ifp->mask               = mg_htonl(MG_U32(255, 255, 255, 0));
-    cdc_net->mgr.ifp->enable_dhcp_server = true;
-    cdc_net->mgr.ifp->driver             = driver;
-    cdc_net->mgr.ifp->recv_queue.size    = 4096;
-    memcpy(cdc_net->mgr.ifp->mac, (uint8_t[]) GENERATE_LOCALLY_ADMINISTERED_MAC(uid), 6);
-
-    s_ifp = cdc_net->mgr.ifp;
-
-    mg_tcpip_init(&cdc_net->mgr, cdc_net->mgr.ifp);
-    mg_http_listen(&cdc_net->mgr, "tcp://0.0.0.0:80", fn, cdc_net);
+    cdc_net_init_tcpip(app->net);
 
     MG_INFO(("Init USB ..."));
     rhs_hal_usb_reinit();
     tusb_init();
 
-    return cdc_net;
+    return app;
 }
 
-int32_t cdc_net_srv(void* context)
+Net* usb_cdc_net_start(void)
 {
-    CdcNet* cdc_net = usb_cdc_net_alloc();
-    rhs_record_create(RECORD_CDC_NET, cdc_net);
+    rhs_assert(cdc == NULL);
+    cdc      = usb_cdc_net_alloc();
+    cdc->cli = rhs_record_open(RECORD_CLI);
 
-    MG_INFO(("Init done, starting main loop ..."));
-    while (!cdc_net->finish)
-    {
-        mg_mgr_poll(&cdc_net->mgr, 0);
-    }
+    int32_t net_worker(void* context);
+    cdc->net->thread = rhs_thread_alloc("cdc_net", 4 * 1024, net_worker, cdc->net);
+    rhs_thread_start(cdc->net->thread);
 
-    MG_INFO(("Finish ..."));
+    // cli_add_command(cdc->cli, "cdc", usb_cdc_net_cli_command, cdc);
 
-    free(cdc_net->mgr.ifp->driver);
-    free(cdc_net->mgr.ifp);
-    mg_mgr_free(&cdc_net->mgr);
+    return cdc->net;
+}
+
+void usb_cdc_net_stop(Net* net)
+{
+    rhs_assert(cdc != NULL);
+    rhs_assert(cdc->net == net);
+    rhs_crash("Not implemented yet");
     tusb_deinit(0);
-    rhs_hal_usb_set_interface(cdc_net->prev_intf);
-    rhs_record_destroy(RECORD_CDC_NET);
-    free(cdc_net);
+    rhs_record_close(RECORD_CLI);
+    rhs_thread_join(cdc->net->thread);
+    rhs_thread_free(cdc->net->thread);
+    free(cdc->net->mgr);
+    free(cdc->net);
+    free(cdc);
+    cdc = NULL;
 }

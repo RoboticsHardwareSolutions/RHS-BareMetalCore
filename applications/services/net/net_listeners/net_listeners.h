@@ -1,22 +1,21 @@
 #pragma once
 
 #include "mongoose.h"
-#include "net_utils.h"
 
 typedef enum
 {
-    EthNetListenerTypeHttp = 0,
-    EthNetListenerTypeTcp  = 1,
-} EthNetListenerType;
+    NetListenerTypeHttp = 0,
+    NetListenerTypeTcp  = 1,
+} NetListenerType;
 
-typedef struct EthNetListener
+typedef struct NetListener
 {
-    EthNetListenerType     type;
-    char*                  uri;
-    mg_event_handler_t     fn;
-    void*                  context;
-    struct EthNetListener* next;
-} EthNetListener;
+    NetListenerType     type;
+    char*               uri;
+    mg_event_handler_t  fn;
+    void*               context;
+    struct NetListener* next;
+} NetListener;
 
 /**
  * @brief Add a new listener to the list
@@ -26,11 +25,11 @@ typedef struct EthNetListener
  * @param fn Event handler function
  * @param context User context pointer
  */
-void eth_net_listeners_add(EthNetListener**   listeners,
-                           EthNetListenerType type,
-                           const char*        uri,
-                           mg_event_handler_t fn,
-                           void*              context);
+void net_listeners_add(NetListener**      listeners,
+                       NetListenerType    type,
+                       const char*        uri,
+                       mg_event_handler_t fn,
+                       void*              context);
 
 /**
  * @brief Remove a listener from the list by URI
@@ -38,4 +37,4 @@ void eth_net_listeners_add(EthNetListener**   listeners,
  * @param uri URI string to match
  * @return true if listener was found and removed, false otherwise
  */
-bool eth_net_listeners_remove(EthNetListener** listeners, const char* uri);
+bool net_listeners_remove(NetListener** listeners, const char* uri);

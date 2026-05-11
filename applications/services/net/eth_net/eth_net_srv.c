@@ -113,15 +113,6 @@ static void eth_net_init_tcpip(Net* net)
     memset(ifp, 0, sizeof(struct mg_tcpip_if));
     memset(driver, 0, sizeof(struct mg_tcpip_driver_stm32f_data));
 
-    // Set default MAC address
-    MG_SET_MAC_ADDRESS(config.mac);
-
-    // Call user configuration function (weak)
-    // if (eth_net_set_config_on_startup)
-    // {
-    // eth_net_set_config_on_startup(&app->net->config);
-    // }
-
     // Apply configuration
     driver->mdc_cr   = net->config->mdc_cr;
     driver->phy_addr = net->config->phy_addr;
@@ -150,9 +141,20 @@ static EthNet* eth_net_alloc(void)
     app->net->config = malloc(sizeof(NetConfig));
 
     // Initialize config with default values from compile-time macros
-    app->net->config->ip       = MG_TCPIP_IP;
-    app->net->config->mask     = MG_TCPIP_MASK;
-    app->net->config->gateway  = MG_TCPIP_GW;
+    unsigned int a, b, c, d;
+
+    if (string_to_ip(ETH_NET_IP_STRING, &a, &b, &c, &d) == 0)
+    {
+        app->net->config->ip = MG_IPV4(a, b, c, d);
+    }
+    if (string_to_ip(ETH_NET_MASK_STRING, &a, &b, &c, &d) == 0)
+    {
+        app->net->config->mask = MG_IPV4(a, b, c, d);
+    }
+    if (string_to_ip(ETH_NET_GW_STRING, &a, &b, &c, &d) == 0)
+    {
+        app->net->config->gateway = MG_IPV4(a, b, c, d);
+    }
     app->net->config->phy_addr = MG_TCPIP_PHY_ADDR;
     app->net->config->mdc_cr   = MG_DRIVER_MDC_CR;
 

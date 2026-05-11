@@ -2,7 +2,24 @@ cmake_minimum_required(VERSION 3.24)
 project(cdc_net C)
 set(CMAKE_C_STANDARD 11)
 
+# cdc_net configuration options
+if(NOT DEFINED RHS_CDC_NET_IP)
+    set(RHS_CDC_NET_IP "192.168.3.100" CACHE STRING "Static IP address for cdc_net service")
+endif()
+
+if(NOT DEFINED RHS_CDC_NET_GATEWAY)
+    set(RHS_CDC_NET_GATEWAY "192.168.3.1" CACHE STRING "Gateway address for cdc_net service")
+endif()
+
+if(NOT DEFINED RHS_CDC_NET_NETMASK)
+    set(RHS_CDC_NET_NETMASK "255.255.255.0" CACHE STRING "Network mask for cdc_net service")
+endif()
+
 add_library(${PROJECT_NAME} STATIC usb_cdc_net.c)
+
+target_compile_definitions(${PROJECT_NAME} PUBLIC CDC_NET_IP_STRING="${RHS_CDC_NET_IP}")
+target_compile_definitions(${PROJECT_NAME} PUBLIC CDC_NET_GW_STRING="${RHS_CDC_NET_GATEWAY}")
+target_compile_definitions(${PROJECT_NAME} PUBLIC CDC_NET_MASK_STRING="${RHS_CDC_NET_NETMASK}")
 
 target_include_directories(
         ${PROJECT_NAME} PUBLIC

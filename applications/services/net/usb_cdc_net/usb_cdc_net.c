@@ -218,22 +218,12 @@ static void cdc_net_init_tcpip(Net* net)
     memset(ifp, 0, sizeof(struct mg_tcpip_if));
     memset(driver, 0, sizeof(struct mg_tcpip_driver));
 
-    // Set default MAC address
-    MG_SET_MAC_ADDRESS(config.mac);
-
-    // Call user configuration function (weak)
-    // if (cdc_net_set_config_on_startup)
-    // {
-    // cdc_net_set_config_on_startup(&app->net->config);
-    // }
-
     // Apply configuration
-
     driver->tx   = usb_tx;
     driver->poll = usb_poll;
 
-    ifp->ip                 = mg_htonl(MG_U32(192, 168, 3, 1));
-    ifp->mask               = mg_htonl(MG_U32(255, 255, 255, 0));
+    ifp->ip                 = net->config->ip;
+    ifp->mask               = net->config->mask;
     ifp->gw                 = net->config->gateway;
     ifp->enable_dhcp_server = true;
     ifp->driver             = driver;
@@ -256,6 +246,22 @@ static CdcNet* usb_cdc_net_alloc(void)
     app->net         = malloc(sizeof(struct Net));
     app->net->mgr    = malloc(sizeof(struct mg_mgr));
     app->net->config = malloc(sizeof(NetConfig));
+
+    // Initialize config with default values from compile-time macros
+    unsigned int a, b, c, d;
+
+    if (string_to_ip(CDC_NET_IP_STRING, &a, &b, &c, &d) == 0)
+    {
+        app->net->config->ip = MG_IPV4(a, b, c, d);
+    }
+    if (string_to_ip(CDC_NET_MASK_STRING, &a, &b, &c, &d) == 0)
+    {
+        app->net->config->mask = MG_IPV4(a, b, c, d);
+    }
+    if (string_to_ip(CDC_NET_GW_STRING, &a, &b, &c, &d) == 0)
+    {
+        app->net->config->gateway = MG_IPV4(a, b, c, d);
+    }
 
     mg_mgr_init(app->net->mgr);  // Mongoose event manager
 

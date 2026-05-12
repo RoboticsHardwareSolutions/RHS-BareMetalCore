@@ -32,7 +32,7 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size);
  * @return RHS_FLASH_EX_OK if success, RHS_FLASH_EX_BUSY if called from ISR and mutex unavailable, RHS_FLASH_EX_ERROR
  * otherwise
  */
-int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size);
+int rhs_hal_flash_ex_write(uint32_t addr, const uint8_t* p_data, uint32_t size);
 
 /**
  * @brief erase full flash

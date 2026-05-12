@@ -203,11 +203,11 @@ int rhs_hal_flash_ex_erase_chip(void)
     return error;
 }
 
-int rhs_hal_flash_ex_write(uint32_t addr, uint8_t* p_data, uint32_t size)
+int rhs_hal_flash_ex_write(uint32_t addr, const uint8_t* p_data, uint32_t size)
 {
-    uint32_t end_addr, current_size, current_addr;
-    uint8_t* write_data;
-    int      error = RHS_FLASH_EX_OK;
+    uint32_t       end_addr, current_size, current_addr;
+    const uint8_t* write_data;
+    int            error = RHS_FLASH_EX_OK;
     rhs_assert(addr + size <= MT25QL128ABA_FLASH_SIZE);
 
     RHS_CRITICAL_ENTER();

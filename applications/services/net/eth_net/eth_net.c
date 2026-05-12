@@ -5,15 +5,13 @@
 #include "mongoose.h"
 #include "net_i.h"
 
-#define UUID ((uint8_t*) UID_BASE)  // Unique 96-bit chip ID. TRM 39.1
-
 typedef struct
 {
+    Net  net;
     Cli* cli;
-    Net* net;
 } EthNet;
 
-static EthNet* eth;
+static_assert(offsetof(EthNet, net) == 0, "EthNet must be compatible with Net for safe casting");
 
 static void ethernet_init(void)
 {
@@ -126,15 +124,18 @@ static void eth_net_init_tcpip(Net* net, const EthPhyConfig* phy_config)
 
 static EthNet* eth_net_alloc(const NetConfig* net_config, const EthPhyConfig* phy_config)
 {
-    EthNet* app      = malloc(sizeof(EthNet));
-    app->net         = malloc(sizeof(struct Net));
-    app->net->mgr    = malloc(sizeof(struct mg_mgr));
-    app->net->config = malloc(sizeof(NetConfig));
+    EthNet* app   = malloc(sizeof(EthNet));
+    rhs_assert(app != NULL);
+
+    memset(app, 0, sizeof(*app));
+    app->net.mgr    = malloc(sizeof(struct mg_mgr));
+    app->net.config = malloc(sizeof(NetConfig));
+    rhs_assert(app->net.mgr != NULL && app->net.config != NULL);
 
     // Use provided base config if valid, otherwise use defaults from compile-time macros
     if (net_config != NULL && net_config->ip != 0 && net_config->mask != 0)
     {
-        memcpy(app->net->config, net_config, sizeof(NetConfig));
+        memcpy(app->net.config, net_config, sizeof(NetConfig));
     }
     else
     {
@@ -142,26 +143,26 @@ static EthNet* eth_net_alloc(const NetConfig* net_config, const EthPhyConfig* ph
         uint8_t      mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
         if (string_to_ip(ETH_NET_IP_STRING, &a, &b, &c, &d) == 0)
         {
-            app->net->config->ip = MG_IPV4(a, b, c, d);
+            app->net.config->ip = MG_IPV4(a, b, c, d);
         }
         if (string_to_ip(ETH_NET_MASK_STRING, &a, &b, &c, &d) == 0)
         {
-            app->net->config->mask = MG_IPV4(a, b, c, d);
+            app->net.config->mask = MG_IPV4(a, b, c, d);
         }
         if (string_to_ip(ETH_NET_GW_STRING, &a, &b, &c, &d) == 0)
         {
-            app->net->config->gateway = MG_IPV4(a, b, c, d);
+            app->net.config->gateway = MG_IPV4(a, b, c, d);
         }
 
-        memcpy(app->net->config->mac, mac, sizeof(mac));
+        memcpy(app->net.config->mac, mac, sizeof(mac));
     }
 
     // Initialise Mongoose network stack
     ethernet_init();
 
-    mg_mgr_init(app->net->mgr);  // and attach it to the interface
+    mg_mgr_init(app->net.mgr);  // and attach it to the interface
 
-    eth_net_init_tcpip(app->net, phy_config);
+    eth_net_init_tcpip(&app->net, phy_config);
 
     return app;
 }
@@ -196,13 +197,13 @@ static void eth_net_cli_command(char* args, void* context)
             if (string_to_ip(ip_str, &a, &b, &c, &d) == 0)
             {
                 // Update IP address in config
-                eth->net->config->ip = MG_IPV4(a, b, c, d);
+                eth->net.config->ip = MG_IPV4(a, b, c, d);
 
                 printf("IP address will be changed to %u.%u.%u.%u\n", a, b, c, d);
                 printf("Restarting network manager...\n");
 
                 // Restart network manager to apply new IP
-                net_set_config(eth->net, eth->net->config);
+                net_set_config(&eth->net, eth->net.config);
                 return;
             }
 
@@ -215,30 +216,27 @@ static void eth_net_cli_command(char* args, void* context)
 
 Net* eth_net_start(const NetConfig* net_config, const EthPhyConfig* phy_config)
 {
-    rhs_assert(eth == NULL);
-    eth      = eth_net_alloc(net_config, phy_config);
-    eth->cli = rhs_record_open(RECORD_CLI);
+    EthNet* app = eth_net_alloc(net_config, phy_config);
+    app->cli    = rhs_record_open(RECORD_CLI);
 
     int32_t net_worker(void* context);
-    eth->net->thread = rhs_thread_alloc("eth_net", 4 * 1024, net_worker, eth->net);
-    rhs_thread_start(eth->net->thread);
+    app->net.thread = rhs_thread_alloc("eth_net", 4 * 1024, net_worker, &app->net);
+    rhs_thread_start(app->net.thread);
 
-    cli_add_command(eth->cli, "eth", eth_net_cli_command, eth);
+    cli_add_command(app->cli, "eth", eth_net_cli_command, app);
 
-    return eth->net;
+    return &app->net;
 }
 
 void eth_net_stop(Net* net)
 {
-    rhs_assert(eth != NULL);
-    rhs_assert(eth->net == net);
+    rhs_assert(net != NULL);
+    EthNet* app = (EthNet*) net;
     rhs_crash("Not implemented yet");
     rhs_record_close(RECORD_CLI);
-    rhs_thread_join(eth->net->thread);
-    rhs_thread_free(eth->net->thread);
-    free(eth->net->config);
-    free(eth->net->mgr);
-    free(eth->net);
-    free(eth);
-    eth = NULL;
+    rhs_thread_join(app->net.thread);
+    rhs_thread_free(app->net.thread);
+    free(app->net.config);
+    free(app->net.mgr);
+    free(app);
 }

@@ -38,12 +38,14 @@ enum
 
 typedef struct
 {
+    Net                 net;
     Cli*                cli;
-    Net*                net;
     RHSHalUsbInterface* prev_intf;
 } CdcNet;
 
-static CdcNet* cdc;
+static_assert(offsetof(CdcNet, net) == 0, "CdcNet must be compatible with Net for safe casting");
+
+static Net* usb_cdc_active_net;
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -165,7 +167,8 @@ uint8_t tud_network_mac_address[6] = {2, 2, 0x84, 0x6A, 0x96, 0};
 
 bool tud_network_recv_cb(const uint8_t* buf, uint16_t len)
 {
-    mg_tcpip_qwrite((void*) buf, len, cdc->net->mgr->ifp);
+    rhs_assert(usb_cdc_active_net != NULL);
+    mg_tcpip_qwrite((void*) buf, len, usb_cdc_active_net->mgr->ifp);
     // MG_INFO(("RECV %hu", len));
     // mg_hexdump(buf, len);
     tud_network_recv_renew();
@@ -228,20 +231,23 @@ static void cdc_net_init_tcpip(Net* net)
 
     // Initialize TCP/IP interface
     mg_tcpip_init(net->mgr, ifp);
-    MG_INFO(("Driver: TCPIP, MAC: %M", mg_print_mac, ifp->mac));
+    MG_INFO(("Driver: CDC TCPIP, MAC: %M", mg_print_mac, ifp->mac));
 }
 
 static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
 {
-    CdcNet* app      = malloc(sizeof(CdcNet));
-    app->net         = malloc(sizeof(struct Net));
-    app->net->mgr    = malloc(sizeof(struct mg_mgr));
-    app->net->config = malloc(sizeof(NetConfig));
+    CdcNet* app = malloc(sizeof(CdcNet));
+    rhs_assert(app != NULL);
+
+    memset(app, 0, sizeof(*app));
+    app->net.mgr    = malloc(sizeof(struct mg_mgr));
+    app->net.config = malloc(sizeof(NetConfig));
+    rhs_assert(app->net.mgr != NULL && app->net.config != NULL);
 
     // Use provided config if valid, otherwise use defaults from compile-time macros
     if (config != NULL && config->ip != 0 && config->mask != 0)
     {
-        memcpy(app->net->config, config, sizeof(NetConfig));
+        memcpy(app->net.config, config, sizeof(NetConfig));
     }
     else
     {
@@ -250,62 +256,70 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
         uint8_t      mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
         if (string_to_ip(CDC_NET_IP_STRING, &a, &b, &c, &d) == 0)
         {
-            app->net->config->ip = MG_IPV4(a, b, c, d);
+            app->net.config->ip = MG_IPV4(a, b, c, d);
         }
         if (string_to_ip(CDC_NET_MASK_STRING, &a, &b, &c, &d) == 0)
         {
-            app->net->config->mask = MG_IPV4(a, b, c, d);
+            app->net.config->mask = MG_IPV4(a, b, c, d);
         }
         if (string_to_ip(CDC_NET_GW_STRING, &a, &b, &c, &d) == 0)
         {
-            app->net->config->gateway = MG_IPV4(a, b, c, d);
+            app->net.config->gateway = MG_IPV4(a, b, c, d);
         }
 
-        memcpy(app->net->config->mac, mac, sizeof(mac));
+        memcpy(app->net.config->mac, mac, sizeof(mac));
     }
-    memcpy(tud_network_mac_address, app->net->config->mac, sizeof(tud_network_mac_address));
+    memcpy(tud_network_mac_address, app->net.config->mac, sizeof(tud_network_mac_address));
 
-    mg_mgr_init(app->net->mgr);  // Mongoose event manager
+    mg_mgr_init(app->net.mgr);  // Mongoose event manager
 
     app->prev_intf = rhs_hal_usb_get_interface();
 
     rhs_hal_usb_set_interface(&usb_cdc_net_desc);
 
-    cdc_net_init_tcpip(app->net);
+    cdc_net_init_tcpip(&app->net);
 
     rhs_hal_usb_reinit();
     tusb_init();
+
+    usb_cdc_active_net = &app->net;
 
     return app;
 }
 
 Net* usb_cdc_net_start(const NetConfig* config)
 {
-    rhs_assert(cdc == NULL);
-    cdc      = usb_cdc_net_alloc(config);
-    cdc->cli = rhs_record_open(RECORD_CLI);
+    if(usb_cdc_active_net != NULL)
+    {
+        MG_ERROR(("USB CDC network interface is already active"));
+        return usb_cdc_active_net;
+    }
+    CdcNet* app = usb_cdc_net_alloc(config);
+    app->cli    = rhs_record_open(RECORD_CLI);
 
     int32_t net_worker(void* context);
-    cdc->net->thread = rhs_thread_alloc("cdc_net", 4 * 1024, net_worker, cdc->net);
-    rhs_thread_start(cdc->net->thread);
+    app->net.thread = rhs_thread_alloc("cdc_net", 4 * 1024, net_worker, &app->net);
+    rhs_thread_start(app->net.thread);
 
-    // cli_add_command(cdc->cli, "cdc", usb_cdc_net_cli_command, cdc);
+    // cli_add_command(app->cli, "cdc", usb_cdc_net_cli_command, app);
 
-    return cdc->net;
+    return &app->net;
 }
 
 void usb_cdc_net_stop(Net* net)
 {
-    rhs_assert(cdc != NULL);
-    rhs_assert(cdc->net == net);
+    rhs_assert(net != NULL);
+    CdcNet* app = (CdcNet*) net;
     rhs_crash("Not implemented yet");
     tusb_deinit(0);
     rhs_record_close(RECORD_CLI);
-    rhs_thread_join(cdc->net->thread);
-    rhs_thread_free(cdc->net->thread);
-    free(cdc->net->config);
-    free(cdc->net->mgr);
-    free(cdc->net);
-    free(cdc);
-    cdc = NULL;
+    rhs_thread_join(app->net.thread);
+    rhs_thread_free(app->net.thread);
+    free(app->net.config);
+    free(app->net.mgr);
+    if (usb_cdc_active_net == &app->net)
+    {
+        usb_cdc_active_net = NULL;
+    }
+    free(app);
 }

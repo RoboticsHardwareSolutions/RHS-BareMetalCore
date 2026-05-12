@@ -51,7 +51,6 @@ target_link_libraries(
         PUBLIC
         mongoose
         net
-        net_utils
         PRIVATE
         rhs
         rhs_hal

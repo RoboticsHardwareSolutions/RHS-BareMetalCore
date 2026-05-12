@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cli.h"
 #include "net.h"
 
 typedef struct NetListener NetListener;
@@ -11,4 +12,5 @@ struct Net
     NetListener*     listeners;  // Linked list of registered listeners
     RHSThread*       thread;
     RHSMessageQueue* queue;
+    Cli*             cli;
 };

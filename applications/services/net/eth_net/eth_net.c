@@ -167,63 +167,15 @@ static EthNet* eth_net_alloc(const NetConfig* net_config, const EthPhyConfig* ph
     return app;
 }
 
-static void eth_net_cli_command(char* args, void* context)
-{
-    EthNet* eth = (EthNet*) context;
-    if (args == NULL)
-    {
-        return;
-    }
-    else
-    {
-        char* separator = strchr(args, ' ');
-        if (separator == NULL || *(separator + 1) == 0)
-        {
-            if (strstr(args, "--restart") == args)
-            {
-                // Restart network manager
-                // net_set_config(eth->net, &eth->net->config);
-                return;
-            }
-            printf("Invalid argument\n");
-            return;
-        }
-        else if (strstr(args, "--ip") == args)
-        {
-            // Parse IP address from string like "192.168.1.100"
-            char*        ip_str = separator + 1;
-            unsigned int a, b, c, d;
-
-            if (string_to_ip(ip_str, &a, &b, &c, &d) == 0)
-            {
-                // Update IP address in config
-                eth->net.config->ip = MG_IPV4(a, b, c, d);
-
-                printf("IP address will be changed to %u.%u.%u.%u\n", a, b, c, d);
-                printf("Restarting network manager...\n");
-
-                // Restart network manager to apply new IP
-                net_set_config(&eth->net, eth->net.config);
-                return;
-            }
-
-            printf("Invalid IP address format. Expected: eth --ip 192.168.1.100\n");
-            return;
-        }
-        printf("Invalid argument\n");
-    }
-}
-
 Net* eth_net_start(const NetConfig* net_config, const EthPhyConfig* phy_config)
 {
     EthNet* app = eth_net_alloc(net_config, phy_config);
-    app->cli    = rhs_record_open(RECORD_CLI);
 
     int32_t net_worker(void* context);
-    app->net.thread = rhs_thread_alloc("eth_net", 4 * 1024, net_worker, &app->net);
+    char t_name[64];
+    snprintf(t_name, sizeof(t_name), "eth_net%d", phy_config->mdc_cr);
+    app->net.thread = rhs_thread_alloc(t_name, 4 * 1024, net_worker, &app->net);
     rhs_thread_start(app->net.thread);
-
-    cli_add_command(app->cli, "eth", eth_net_cli_command, app);
 
     return &app->net;
 }
@@ -233,7 +185,6 @@ void eth_net_stop(Net* net)
     rhs_assert(net != NULL);
     EthNet* app = (EthNet*) net;
     rhs_crash("Not implemented yet");
-    rhs_record_close(RECORD_CLI);
     rhs_thread_join(app->net.thread);
     rhs_thread_free(app->net.thread);
     free(app->net.config);

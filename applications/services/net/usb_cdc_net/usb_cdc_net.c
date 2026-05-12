@@ -45,7 +45,7 @@ typedef struct
 
 static_assert(offsetof(CdcNet, net) == 0, "CdcNet must be compatible with Net for safe casting");
 
-static Net* usb_cdc_active_net;
+static CdcNet* usb_cdc_active_net;
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -295,13 +295,10 @@ Net* usb_cdc_net_start(const NetConfig* config)
         return usb_cdc_active_net;
     }
     CdcNet* app = usb_cdc_net_alloc(config);
-    app->cli    = rhs_record_open(RECORD_CLI);
 
     int32_t net_worker(void* context);
     app->net.thread = rhs_thread_alloc("cdc_net", 4 * 1024, net_worker, &app->net);
     rhs_thread_start(app->net.thread);
-
-    // cli_add_command(app->cli, "cdc", usb_cdc_net_cli_command, app);
 
     return &app->net;
 }
@@ -312,7 +309,6 @@ void usb_cdc_net_stop(Net* net)
     CdcNet* app = (CdcNet*) net;
     rhs_crash("Not implemented yet");
     tusb_deinit(0);
-    rhs_record_close(RECORD_CLI);
     rhs_thread_join(app->net.thread);
     rhs_thread_free(app->net.thread);
     free(app->net.config);

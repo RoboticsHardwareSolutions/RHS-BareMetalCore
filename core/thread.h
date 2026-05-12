@@ -97,6 +97,8 @@ RHSThread* rhs_thread_get_current(void);
 
 RHSThreadId rhs_thread_get_id(RHSThread* thread);
 
+const char* rhs_thread_get_name(RHSThreadId thread_id);
+
 /**
  * @brief Set the thread flags of a RHSThread.
  *

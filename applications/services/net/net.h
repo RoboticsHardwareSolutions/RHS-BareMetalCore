@@ -4,6 +4,7 @@
 #include "rhs.h"
 #include "rhs_hal.h"
 #include "mongoose.h"
+#include "net_utils.h"
 
 // Helper macro for MAC generation
 #define GENERATE_LOCALLY_ADMINISTERED_MAC(UUID) \

@@ -11,6 +11,7 @@ target_include_directories(
 target_link_libraries(
         ${PROJECT_NAME}
         PUBLIC
+        net_utils
         mongoose
         PRIVATE
         rhs

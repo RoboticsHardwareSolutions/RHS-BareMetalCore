@@ -30,6 +30,53 @@ typedef struct
     NetApiEventData data;
 } NetApiEventMessage;
 
+static void net_cli_command(char* args, void* context)
+{
+    Net* net = (Net*) context;
+    if (args == NULL)
+    {
+        return;
+    }
+    else
+    {
+        char* separator = strchr(args, ' ');
+        if (separator == NULL || *(separator + 1) == 0)
+        {
+            if (strstr(args, "--restart") == args)
+            {
+                // Restart network manager
+                net_set_config(net, net->config);
+                return;
+            }
+            printf("Invalid argument\n");
+            return;
+        }
+        else if (strstr(args, "--ip") == args)
+        {
+            // Parse IP address from string like "192.168.1.100"
+            char*        ip_str = separator + 1;
+            unsigned int a, b, c, d;
+
+            if (string_to_ip(ip_str, &a, &b, &c, &d) == 0)
+            {
+                // Update IP address in config
+                net->config->ip = MG_IPV4(a, b, c, d);
+
+                printf("IP address will be changed to %u.%u.%u.%u\n", a, b, c, d);
+                printf("Restarting network manager...\n");
+
+                // Restart network manager to apply new IP
+                net_set_config(net, net->config);
+                return;
+            }
+
+            printf("Invalid IP address format. Expected: eth --ip 192.168.1.100\n");
+            return;
+        }
+        printf("Invalid argument\n");
+    }
+}
+
 void net_start_http(Net* net, const char* uri, mg_event_handler_t fn, void* context)
 {
     NetApiEventMessage msg = {.lock = api_lock_alloc_locked(),
@@ -116,6 +163,8 @@ int32_t net_worker(void* context)
     Net* net       = (Net*) context;
     net->queue     = rhs_message_queue_alloc(3, sizeof(NetApiEventMessage));
     net->listeners = NULL;  // Initialize listeners list
+    net->cli       = rhs_record_open(RECORD_CLI);
+    cli_add_command(net->cli, rhs_thread_get_name(rhs_thread_get_id(net->thread)), net_cli_command, net);
 
     NetApiEventMessage msg;
     MG_INFO(("Starting event loop"));
@@ -225,6 +274,7 @@ int32_t net_worker(void* context)
                 api_lock_unlock(msg.lock);
         }
     }
+    rhs_record_close(RECORD_CLI);
 }
 
 __attribute__((weak)) bool mg_random(void* buf, size_t len)

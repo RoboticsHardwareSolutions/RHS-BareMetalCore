@@ -28,8 +28,8 @@ enum
 enum
 {
 #if CFG_TUD_ECM_RNDIS
-    CONFIG_ID_RNDIS = 0,
-    CONFIG_ID_ECM   = 1,
+    CONFIG_ID_ECM   = 0,  // ECM first: default for Android/macOS/Linux
+    CONFIG_ID_RNDIS = 1,  // RNDIS second: Windows
 #else
     CONFIG_ID_NCM = 0,
 #endif
@@ -132,10 +132,9 @@ static uint8_t const ncm_configuration[] = {
 
 #endif
 
-// Configuration array: RNDIS and CDC-ECM
-// - Windows only works with RNDIS
-// - MacOS only works with CDC-ECM
-// - Linux will work on both
+// Configuration array: CDC-ECM and RNDIS
+// - Android/macOS/Linux: CDC-ECM (Config 1, default)
+// - Windows: RNDIS (Config 2)
 static uint8_t const* const configuration_arr[2] = {
 #if CFG_TUD_ECM_RNDIS
     [CONFIG_ID_RNDIS] = rndis_configuration,

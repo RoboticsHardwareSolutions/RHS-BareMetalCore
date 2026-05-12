@@ -16,7 +16,7 @@ if(NOT DEFINED RHS_ETH_NET_NETMASK)
 endif()
 
 add_library(${PROJECT_NAME} STATIC
-    eth_net_srv.c
+    eth_net.c
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC ETH_NET_IP_STRING="${RHS_ETH_NET_IP}")
@@ -62,5 +62,3 @@ target_link_libraries(
     rhs
     rhs_hal
 )
-
-# service(eth_net_service "eth_net" 16384)

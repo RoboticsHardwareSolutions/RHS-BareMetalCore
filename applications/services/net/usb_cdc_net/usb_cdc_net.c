@@ -6,15 +6,6 @@
 #include "tusb.h"
 #include "cli.h"
 
-// Helper macro for MAC generation
-#define GENERATE_LOCALLY_ADMINISTERED_MAC(UUID) \
-    {2,                                         \
-     UUID[0] ^ UUID[1],                         \
-     UUID[2] ^ UUID[3],                         \
-     UUID[4] ^ UUID[5],                         \
-     UUID[6] ^ UUID[7] ^ UUID[8],               \
-     UUID[9] ^ UUID[10] ^ UUID[11]}
-
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
  * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
  *
@@ -237,54 +228,61 @@ static void cdc_net_init_tcpip(Net* net)
 
     // Initialize TCP/IP interface
     mg_tcpip_init(net->mgr, ifp);
-    MG_INFO(("Driver: stm32f, MAC: %M", mg_print_mac, ifp->mac));
+    MG_INFO(("Driver: TCPIP, MAC: %M", mg_print_mac, ifp->mac));
 }
 
-static CdcNet* usb_cdc_net_alloc(void)
+static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
 {
     CdcNet* app      = malloc(sizeof(CdcNet));
     app->net         = malloc(sizeof(struct Net));
     app->net->mgr    = malloc(sizeof(struct mg_mgr));
     app->net->config = malloc(sizeof(NetConfig));
 
-    // Initialize config with default values from compile-time macros
-    unsigned int a, b, c, d;
+    // Use provided config if valid, otherwise use defaults from compile-time macros
+    if (config != NULL && config->ip != 0 && config->mask != 0)
+    {
+        memcpy(app->net->config, config, sizeof(NetConfig));
+    }
+    else
+    {
+        // Initialize config with default values from compile-time macros
+        unsigned int a, b, c, d;
+        uint8_t      mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
+        if (string_to_ip(CDC_NET_IP_STRING, &a, &b, &c, &d) == 0)
+        {
+            app->net->config->ip = MG_IPV4(a, b, c, d);
+        }
+        if (string_to_ip(CDC_NET_MASK_STRING, &a, &b, &c, &d) == 0)
+        {
+            app->net->config->mask = MG_IPV4(a, b, c, d);
+        }
+        if (string_to_ip(CDC_NET_GW_STRING, &a, &b, &c, &d) == 0)
+        {
+            app->net->config->gateway = MG_IPV4(a, b, c, d);
+        }
 
-    if (string_to_ip(CDC_NET_IP_STRING, &a, &b, &c, &d) == 0)
-    {
-        app->net->config->ip = MG_IPV4(a, b, c, d);
+        memcpy(app->net->config->mac, mac, sizeof(mac));
     }
-    if (string_to_ip(CDC_NET_MASK_STRING, &a, &b, &c, &d) == 0)
-    {
-        app->net->config->mask = MG_IPV4(a, b, c, d);
-    }
-    if (string_to_ip(CDC_NET_GW_STRING, &a, &b, &c, &d) == 0)
-    {
-        app->net->config->gateway = MG_IPV4(a, b, c, d);
-    }
+    memcpy(tud_network_mac_address, app->net->config->mac, sizeof(tud_network_mac_address));
 
     mg_mgr_init(app->net->mgr);  // Mongoose event manager
 
-    const uint8_t* uid = rhs_hal_version_uid();
-    app->prev_intf     = rhs_hal_usb_get_interface();
+    app->prev_intf = rhs_hal_usb_get_interface();
 
     rhs_hal_usb_set_interface(&usb_cdc_net_desc);
 
-    MG_INFO(("Init TCP/IP stack ..."));
-
     cdc_net_init_tcpip(app->net);
 
-    MG_INFO(("Init USB ..."));
     rhs_hal_usb_reinit();
     tusb_init();
 
     return app;
 }
 
-Net* usb_cdc_net_start(void)
+Net* usb_cdc_net_start(const NetConfig* config)
 {
     rhs_assert(cdc == NULL);
-    cdc      = usb_cdc_net_alloc();
+    cdc      = usb_cdc_net_alloc(config);
     cdc->cli = rhs_record_open(RECORD_CLI);
 
     int32_t net_worker(void* context);
@@ -305,6 +303,7 @@ void usb_cdc_net_stop(Net* net)
     rhs_record_close(RECORD_CLI);
     rhs_thread_join(cdc->net->thread);
     rhs_thread_free(cdc->net->thread);
+    free(cdc->net->config);
     free(cdc->net->mgr);
     free(cdc->net);
     free(cdc);

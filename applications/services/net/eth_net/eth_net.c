@@ -7,15 +7,6 @@
 
 #define UUID ((uint8_t*) UID_BASE)  // Unique 96-bit chip ID. TRM 39.1
 
-// Helper macro for MAC generation
-#define GENERATE_LOCALLY_ADMINISTERED_MAC() \
-    {2,                                     \
-     UUID[0] ^ UUID[1],                     \
-     UUID[2] ^ UUID[3],                     \
-     UUID[4] ^ UUID[5],                     \
-     UUID[6] ^ UUID[7] ^ UUID[8],           \
-     UUID[9] ^ UUID[10] ^ UUID[11]}
-
 typedef struct
 {
     Cli* cli;
@@ -103,7 +94,7 @@ static void ethernet_deinit(void)
 #endif
 }
 
-static void eth_net_init_tcpip(Net* net)
+static void eth_net_init_tcpip(Net* net, const EthPhyConfig* phy_config)
 {
     struct mg_tcpip_if*                 ifp    = malloc(sizeof(struct mg_tcpip_if));
     struct mg_tcpip_driver_stm32f_data* driver = malloc(sizeof(struct mg_tcpip_driver_stm32f_data));
@@ -113,9 +104,9 @@ static void eth_net_init_tcpip(Net* net)
     memset(ifp, 0, sizeof(struct mg_tcpip_if));
     memset(driver, 0, sizeof(struct mg_tcpip_driver_stm32f_data));
 
-    // Apply configuration
-    driver->mdc_cr   = net->config->mdc_cr;
-    driver->phy_addr = net->config->phy_addr;
+    // Apply Ethernet-specific PHY configuration (use provided values or defaults)
+    driver->mdc_cr   = phy_config ? phy_config->mdc_cr : MG_DRIVER_MDC_CR;
+    driver->phy_addr = phy_config ? phy_config->phy_addr : MG_TCPIP_PHY_ADDR;
     ifp->ip          = net->config->ip;
     ifp->mask        = net->config->mask;
     ifp->gw          = net->config->gateway;
@@ -133,38 +124,44 @@ static void eth_net_init_tcpip(Net* net)
     MG_INFO(("Driver: stm32f, MAC: %M", mg_print_mac, ifp->mac));
 }
 
-static EthNet* eth_net_alloc(void)
+static EthNet* eth_net_alloc(const NetConfig* net_config, const EthPhyConfig* phy_config)
 {
     EthNet* app      = malloc(sizeof(EthNet));
     app->net         = malloc(sizeof(struct Net));
     app->net->mgr    = malloc(sizeof(struct mg_mgr));
     app->net->config = malloc(sizeof(NetConfig));
 
-    // Initialize config with default values from compile-time macros
-    unsigned int a, b, c, d;
+    // Use provided base config if valid, otherwise use defaults from compile-time macros
+    if (net_config != NULL && net_config->ip != 0 && net_config->mask != 0)
+    {
+        memcpy(app->net->config, net_config, sizeof(NetConfig));
+    }
+    else
+    {
+        unsigned int a, b, c, d;
+        uint8_t      mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
+        if (string_to_ip(ETH_NET_IP_STRING, &a, &b, &c, &d) == 0)
+        {
+            app->net->config->ip = MG_IPV4(a, b, c, d);
+        }
+        if (string_to_ip(ETH_NET_MASK_STRING, &a, &b, &c, &d) == 0)
+        {
+            app->net->config->mask = MG_IPV4(a, b, c, d);
+        }
+        if (string_to_ip(ETH_NET_GW_STRING, &a, &b, &c, &d) == 0)
+        {
+            app->net->config->gateway = MG_IPV4(a, b, c, d);
+        }
 
-    if (string_to_ip(ETH_NET_IP_STRING, &a, &b, &c, &d) == 0)
-    {
-        app->net->config->ip = MG_IPV4(a, b, c, d);
+        memcpy(app->net->config->mac, mac, sizeof(mac));
     }
-    if (string_to_ip(ETH_NET_MASK_STRING, &a, &b, &c, &d) == 0)
-    {
-        app->net->config->mask = MG_IPV4(a, b, c, d);
-    }
-    if (string_to_ip(ETH_NET_GW_STRING, &a, &b, &c, &d) == 0)
-    {
-        app->net->config->gateway = MG_IPV4(a, b, c, d);
-    }
-    app->net->config->phy_addr = MG_TCPIP_PHY_ADDR;
-    app->net->config->mdc_cr   = MG_DRIVER_MDC_CR;
 
     // Initialise Mongoose network stack
     ethernet_init();
 
-    mg_log_set(MG_LL_DEBUG);     // Set log level
     mg_mgr_init(app->net->mgr);  // and attach it to the interface
 
-    eth_net_init_tcpip(app->net);
+    eth_net_init_tcpip(app->net, phy_config);
 
     return app;
 }
@@ -216,10 +213,10 @@ static void eth_net_cli_command(char* args, void* context)
     }
 }
 
-Net* eth_net_start(void)
+Net* eth_net_start(const NetConfig* net_config, const EthPhyConfig* phy_config)
 {
     rhs_assert(eth == NULL);
-    eth      = eth_net_alloc();
+    eth      = eth_net_alloc(net_config, phy_config);
     eth->cli = rhs_record_open(RECORD_CLI);
 
     int32_t net_worker(void* context);
@@ -239,6 +236,7 @@ void eth_net_stop(Net* net)
     rhs_record_close(RECORD_CLI);
     rhs_thread_join(eth->net->thread);
     rhs_thread_free(eth->net->thread);
+    free(eth->net->config);
     free(eth->net->mgr);
     free(eth->net);
     free(eth);

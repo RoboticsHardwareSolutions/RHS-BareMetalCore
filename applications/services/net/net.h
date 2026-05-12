@@ -5,6 +5,14 @@
 #include "rhs_hal.h"
 #include "mongoose.h"
 
+// Helper macro for MAC generation
+#define GENERATE_LOCALLY_ADMINISTERED_MAC(UUID) \
+    {2,                                         \
+     UUID[0] ^ UUID[1],                         \
+     UUID[2] ^ UUID[3],                         \
+     UUID[4] ^ UUID[5],                         \
+     UUID[6] ^ UUID[7] ^ UUID[8],               \
+     UUID[9] ^ UUID[10] ^ UUID[11]}
 
 typedef struct
 {
@@ -12,8 +20,6 @@ typedef struct
     uint32_t mask;      // Network mask (e.g., MG_IPV4(255, 255, 255, 0))
     uint32_t gateway;   // Gateway address (e.g., MG_IPV4(192, 168, 1, 1))
     uint8_t  mac[6];    // MAC address
-    uint8_t  phy_addr;  // PHY address
-    uint8_t  mdc_cr;    // MDC clock divider
 } NetConfig;
 
 typedef struct Net Net;

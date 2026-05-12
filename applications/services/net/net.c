@@ -35,6 +35,31 @@ static void net_cli_command(char* args, void* context)
     Net* net = (Net*) context;
     if (args == NULL)
     {
+        struct mg_tcpip_if* ifp = net->mgr->ifp;
+        printf("Status:\n");
+        printf("  Link:    %s\n", (ifp->state >= MG_TCPIP_STATE_UP) ? "UP" : "DOWN");
+        printf("  IP:      %u.%u.%u.%u\n",
+               ifp->ip & 0xFF,
+               (ifp->ip >> 8) & 0xFF,
+               (ifp->ip >> 16) & 0xFF,
+               (ifp->ip >> 24) & 0xFF);
+        printf("  Mask:    %u.%u.%u.%u\n",
+               ifp->mask & 0xFF,
+               (ifp->mask >> 8) & 0xFF,
+               (ifp->mask >> 16) & 0xFF,
+               (ifp->mask >> 24) & 0xFF);
+        printf("  Gateway: %u.%u.%u.%u\n",
+               ifp->gw & 0xFF,
+               (ifp->gw >> 8) & 0xFF,
+               (ifp->gw >> 16) & 0xFF,
+               (ifp->gw >> 24) & 0xFF);
+        printf("  MAC:     %02X:%02X:%02X:%02X:%02X:%02X\n",
+               ifp->mac[0],
+               ifp->mac[1],
+               ifp->mac[2],
+               ifp->mac[3],
+               ifp->mac[4],
+               ifp->mac[5]);
         return;
     }
     else
@@ -74,6 +99,21 @@ static void net_cli_command(char* args, void* context)
             return;
         }
         printf("Invalid argument\n");
+    }
+}
+
+static void net_mdns_start(Net* net)
+{
+    const char* name = rhs_thread_get_name(rhs_thread_get_id(net->thread));
+    cli_add_command(net->cli, name, net_cli_command, net);
+
+    // Example of mDNS
+    struct mg_connection* c = mg_mdns_listen(net->mgr, (char*) name);
+    if (c != NULL)
+    {
+        uint32_t response_ip = net->mgr->ifp->ip;
+        memcpy(c->data, &response_ip, sizeof(response_ip));
+        MG_INFO(("mDNS on http://%s.local started", name));
     }
 }
 
@@ -164,10 +204,12 @@ int32_t net_worker(void* context)
     net->queue     = rhs_message_queue_alloc(3, sizeof(NetApiEventMessage));
     net->listeners = NULL;  // Initialize listeners list
     net->cli       = rhs_record_open(RECORD_CLI);
-    cli_add_command(net->cli, rhs_thread_get_name(rhs_thread_get_id(net->thread)), net_cli_command, net);
+
+    net_mdns_start(net);
 
     NetApiEventMessage msg;
     MG_INFO(("Starting event loop"));
+
     for (;;)
     {
         mg_mgr_poll(net->mgr, 0);  // Infinite event loop
@@ -176,14 +218,6 @@ int32_t net_worker(void* context)
         {
             if (msg.type == NetApiEventTypeSetHttp)
             {
-                // Example of mDNS
-                // uint32_t response_ip = net->mgr->ifp->ip;
-                // struct mg_connection* c = mg_mdns_listen(net->mgr, "sr_yahoo");
-                // if (c != NULL)
-                // {
-                //     memcpy(c->data, &response_ip, sizeof(response_ip));
-                //     MG_INFO(("mDNS responder started"));
-                // }
                 mg_http_listen(net->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
                 MG_INFO(("HTTP server started on %s", msg.data.interface.uri));
 

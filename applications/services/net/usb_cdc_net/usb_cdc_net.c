@@ -45,7 +45,7 @@ typedef struct
 
 static_assert(offsetof(CdcNet, net) == 0, "CdcNet must be compatible with Net for safe casting");
 
-static CdcNet* usb_cdc_active_net;
+static Net* usb_cdc_active_net;
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -269,7 +269,6 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
 
         memcpy(app->net.config->mac, mac, sizeof(mac));
     }
-    memcpy(tud_network_mac_address, app->net.config->mac, sizeof(tud_network_mac_address));
 
     mg_mgr_init(app->net.mgr);  // Mongoose event manager
 

@@ -59,9 +59,9 @@ const uint16_t* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 
     case STRID_SERIAL:
     {
-        static const char hex[] = "0123456789ABCDEF";
-        const uint8_t*    uid   = rhs_hal_version_uid();
-        size_t            out   = 0;
+        static const char hex[]     = "0123456789ABCDEF";
+        const uint8_t*    uid       = rhs_hal_version_uid();
+        size_t            out       = 0;
         const size_t      max_chars = (sizeof(_desc_str) / sizeof(_desc_str[0])) - 1;
 
         if (uid)
@@ -77,7 +77,7 @@ const uint16_t* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
         chr_count = (unsigned int) out;
         break;
     }
-
+#if CFG_TUD_ECM_RNDIS || CFG_TUD_NCM
     case STRID_MAC:
         // Convert MAC address into UTF-16
         for (unsigned i = 0; i < sizeof(tud_network_mac_address); i++)
@@ -86,7 +86,7 @@ const uint16_t* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
             _desc_str[1 + chr_count++] = "0123456789ABCDEF"[(tud_network_mac_address[i] >> 0) & 0xf];
         }
         break;
-
+#endif
     default:
     {
         // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.

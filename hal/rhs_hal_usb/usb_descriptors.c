@@ -1,4 +1,5 @@
 #include "tusb.h"
+#include "../rhs_hal_version/rhs_hal_version.h"
 
 // Configuration mode
 // 0 : enumerated as Network (RNDIS/ECM/NCM). Board button is not pressed when enumerating
@@ -36,54 +37,84 @@ uint8_t const* tud_descriptor_device_cb(void)
 // Descriptor contents must exist long enough for transfer to complete
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index)
 {
+    if (index >= desc.bNumConfigurations)
+        return NULL;
     return config[index];
 }
 
 // Invoked when received GET STRING DESCRIPTOR request
 // Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
-uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
+const uint16_t* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 {
     (void) langid;
     static uint16_t _desc_str[32];
     unsigned int    chr_count = 0;
 
-    if (STRID_LANGID == index)
+    switch (index)
     {
-        memcpy(&_desc_str[1], string_desc_arr[STRID_LANGID], 2);
+    case STRID_LANGID:
+        memcpy(&_desc_str[1], string_desc_arr[0], 2);
         chr_count = 1;
-    }
-#if CFG_TUD_ECM_RNDIS || CFG_TUD_NCM
-    else if (STRID_MAC == index)
-    {
-        // Convert MAC address into UTF-16
+        break;
 
+    case STRID_SERIAL:
+    {
+        static const char hex[] = "0123456789ABCDEF";
+        const uint8_t*    uid   = rhs_hal_version_uid();
+        size_t            out   = 0;
+        const size_t      max_chars = (sizeof(_desc_str) / sizeof(_desc_str[0])) - 1;
+
+        if (uid)
+        {
+            // STM32 UID is 96-bit (12 bytes); represent it as 24 hex characters.
+            for (size_t i = 0; i < 12 && (out + 1) < max_chars; i++)
+            {
+                _desc_str[1 + out++] = (uint16_t) hex[(uid[i] >> 4) & 0x0F];
+                _desc_str[1 + out++] = (uint16_t) hex[uid[i] & 0x0F];
+            }
+        }
+
+        chr_count = (unsigned int) out;
+        break;
+    }
+
+    case STRID_MAC:
+        // Convert MAC address into UTF-16
         for (unsigned i = 0; i < sizeof(tud_network_mac_address); i++)
         {
             _desc_str[1 + chr_count++] = "0123456789ABCDEF"[(tud_network_mac_address[i] >> 4) & 0xf];
             _desc_str[1 + chr_count++] = "0123456789ABCDEF"[(tud_network_mac_address[i] >> 0) & 0xf];
         }
-    }
-#endif
-    else
+        break;
+
+    default:
     {
         // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
 
-        if (!(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0])))
+        if (index >= sizeof(string_desc_arr) / sizeof(string_desc_arr[0]))
+        {
             return NULL;
+        }
 
         const char* str = string_desc_arr[index];
 
         // Cap at max char
-        chr_count = (uint8_t) strlen(str);
-        if (chr_count > (TU_ARRAY_SIZE(_desc_str) - 1))
-            chr_count = TU_ARRAY_SIZE(_desc_str) - 1;
+        chr_count = strlen(str);
+
+        const size_t max_count = sizeof(_desc_str) / sizeof(_desc_str[0]) - 1;  // -1 for string type
+        if (chr_count > max_count)
+        {
+            chr_count = max_count;
+        }
 
         // Convert ASCII string into UTF-16
-        for (unsigned int i = 0; i < chr_count; i++)
+        for (size_t i = 0; i < chr_count; i++)
         {
             _desc_str[1 + i] = str[i];
         }
+        break;
+    }
     }
 
     // first byte is length (including header), second byte is string type

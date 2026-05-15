@@ -32,7 +32,7 @@ if(NOT TARGET tinyusb OR NOT TARGET mongoose)
 endif()
 
 # Enable RNDIS and ECM support in TinyUSB
-target_compile_definitions(tinyusb PUBLIC -DCFG_TUD_ECM_RNDIS=1)
+# target_compile_definitions(tinyusb PUBLIC -DCFG_TUD_ECM_RNDIS=1)
 
 # Configure Mongoose options
 target_compile_definitions(

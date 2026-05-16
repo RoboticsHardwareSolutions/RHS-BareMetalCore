@@ -1,10 +1,10 @@
-#include "eth_net_listeners.h"
-#include "rhs.h"
 #include <string.h>
 #include <stdlib.h>
+#include "rhs.h"
+#include "net_listeners.h"
 
-void eth_net_listeners_add(EthNetListener**   listeners,
-                           EthNetListenerType type,
+void net_listeners_add(NetListener**   listeners,
+                           NetListenerType type,
                            const char*        uri,
                            mg_event_handler_t fn,
                            void*              context)
@@ -13,7 +13,7 @@ void eth_net_listeners_add(EthNetListener**   listeners,
     rhs_assert(uri);
 
     // Allocate new listener
-    EthNetListener* listener = malloc(sizeof(EthNetListener));
+    NetListener* listener = malloc(sizeof(NetListener));
     rhs_assert(listener);
 
     // Allocate and copy URI string
@@ -34,7 +34,7 @@ void eth_net_listeners_add(EthNetListener**   listeners,
     }
     else
     {
-        EthNetListener* current = *listeners;
+        NetListener* current = *listeners;
         while (current->next != NULL)
         {
             current = current->next;
@@ -45,7 +45,7 @@ void eth_net_listeners_add(EthNetListener**   listeners,
     MG_INFO(("Listener added: type=%d, uri=%s", type, uri));
 }
 
-bool eth_net_listeners_remove(EthNetListener** listeners, const char* uri)
+bool net_listeners_remove(NetListener** listeners, const char* uri)
 {
     rhs_assert(listeners);
     rhs_assert(uri);
@@ -55,8 +55,8 @@ bool eth_net_listeners_remove(EthNetListener** listeners, const char* uri)
         return false;
     }
 
-    EthNetListener* current  = *listeners;
-    EthNetListener* previous = NULL;
+    NetListener* current  = *listeners;
+    NetListener* previous = NULL;
 
     while (current != NULL)
     {

@@ -1,7 +1,6 @@
 #pragma once
 #include <stdint.h>
-#include "mongoose.h"
-#include "eth_net.h"
+#include "net.h"
 
 typedef struct
 {
@@ -23,4 +22,4 @@ typedef struct
 
 } ModbusTcpApi;
 
-void modbus_tcp_start(EthNet* app, ModbusTcpApi* api, uint16_t port);
+void modbus_tcp_start(Net* app, ModbusTcpApi* api, uint16_t port);

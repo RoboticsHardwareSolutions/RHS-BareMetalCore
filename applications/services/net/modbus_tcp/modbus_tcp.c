@@ -348,7 +348,7 @@ static void modbus_ev_handler(struct mg_connection* c, int ev, void* ev_data)
     (void) ev_data;
 }
 
-void modbus_tcp_start(EthNet* app, ModbusTcpApi* api, uint16_t port)
+void modbus_tcp_start(Net* app, ModbusTcpApi* api, uint16_t port)
 {
     static uint16_t current_port = 0;
     static char     new_addr[32];
@@ -360,11 +360,11 @@ void modbus_tcp_start(EthNet* app, ModbusTcpApi* api, uint16_t port)
     {
         static char current_addr[32];
         snprintf(current_addr, sizeof(current_addr), "tcp://0.0.0.0:%u", current_port);
-        eth_net_stop_listener(app, current_addr);
+        net_stop_listener(app, current_addr);
     }
 
     snprintf(new_addr, sizeof(new_addr), "tcp://0.0.0.0:%u", port);
-    eth_net_start_listener(app, new_addr, modbus_ev_handler, api);
+    net_start_listener(app, new_addr, modbus_ev_handler, api);
 
     current_port = port;
 }

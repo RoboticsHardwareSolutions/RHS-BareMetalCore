@@ -52,10 +52,11 @@ struct RHSThread
 static RHSMessageQueue* rhs_thread_scrub_message_queue = NULL;
 
 /** Catch threads that are trying to exit wrong way - crash implementation */
-static __attribute__((used, __noreturn__)) void rhs_thread_catch_impl(void) {
+static __attribute__((used, __noreturn__)) void rhs_thread_catch_impl(void)
+{
     // If you're here it means you're probably doing something wrong
     // with critical sections or with scheduler state
-    rhs_crash("You are doing it wrong"); //-V779
+    rhs_crash("You are doing it wrong");  //-V779
     __builtin_unreachable();
 }
 
@@ -67,10 +68,10 @@ static __attribute__((used, __noreturn__)) void rhs_thread_catch_impl(void) {
  * This eliminates garbage frames at the bottom of every task's call stack in
  * debuggers that use DWARF-based stack unwinding (e.g. cortex-debug / OpenOCD).
  */
-__attribute__((naked, __noreturn__)) void rhs_thread_catch(void) { //-V1082
-    asm volatile(
-        ".cfi_undefined lr  \n\t" /* tell DWARF unwinder: no return address */
-        "b rhs_thread_catch_impl \n\t");
+__attribute__((naked, __noreturn__)) void rhs_thread_catch(void)
+{                                          //-V1082
+    asm volatile(".cfi_undefined lr  \n\t" /* tell DWARF unwinder: no return address */
+                 "b rhs_thread_catch_impl \n\t");
 }
 
 static void rhs_thread_set_state(RHSThread* thread, RHSThreadState state)
@@ -121,6 +122,23 @@ void rhs_thread_set_name(RHSThread* thread, const char* name)
     }
 
     thread->name = name ? strdup(name) : NULL;
+}
+
+const char* rhs_thread_get_name(RHSThreadId thread_id)
+{
+    TaskHandle_t hTask = (TaskHandle_t) thread_id;
+    const char*  name;
+
+    if (RHS_IS_IRQ_MODE() || (hTask == NULL))
+    {
+        name = NULL;
+    }
+    else
+    {
+        name = pcTaskGetName(hTask);
+    }
+
+    return name;
 }
 
 RHSThread* rhs_thread_alloc(const char* name, uint32_t stack_size, RHSThreadCallback callback, void* context)

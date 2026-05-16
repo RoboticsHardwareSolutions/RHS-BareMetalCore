@@ -6,9 +6,9 @@ static HAL_StatusTypeDef mt25ql128aba_qspi_command(QSPI_HandleTypeDef* Ctx, QSPI
     return HAL_QSPI_Command(Ctx, Cmd, Timeout);
 }
 
-static HAL_StatusTypeDef mt25ql128aba_qspi_transmit(QSPI_HandleTypeDef* Ctx, uint8_t* pData, uint32_t Timeout)
+static HAL_StatusTypeDef mt25ql128aba_qspi_transmit(QSPI_HandleTypeDef* Ctx, const uint8_t* pData, uint32_t Timeout)
 {
-    return HAL_QSPI_Transmit(Ctx, pData, Timeout);
+    return HAL_QSPI_Transmit(Ctx, (uint8_t*)pData, Timeout);
 }
 
 static HAL_StatusTypeDef mt25ql128aba_qspi_receive(QSPI_HandleTypeDef* Ctx, uint8_t* pData, uint32_t Timeout)
@@ -16,10 +16,10 @@ static HAL_StatusTypeDef mt25ql128aba_qspi_receive(QSPI_HandleTypeDef* Ctx, uint
     return HAL_QSPI_Receive(Ctx, pData, Timeout);
 }
 
-static HAL_StatusTypeDef mt25ql128aba_qspi_auto_polling(QSPI_HandleTypeDef*            Ctx,
-                                                         QSPI_CommandTypeDef*           Cmd,
-                                                         QSPI_AutoPollingTypeDef*       Cfg,
-                                                         uint32_t                        Timeout)
+static HAL_StatusTypeDef mt25ql128aba_qspi_auto_polling(QSPI_HandleTypeDef*      Ctx,
+                                                        QSPI_CommandTypeDef*     Cmd,
+                                                        QSPI_AutoPollingTypeDef* Cfg,
+                                                        uint32_t                 Timeout)
 {
     return HAL_QSPI_AutoPolling(Ctx, Cmd, Cfg, Timeout);
 }
@@ -476,7 +476,7 @@ int mt25ql128aba_write_disable(QSPI_HandleTypeDef* Ctx, mt25ql128aba_interface_t
 
 int mt25ql128aba_page_program(QSPI_HandleTypeDef*      Ctx,
                               mt25ql128aba_interface_t Mode,
-                              uint8_t*                 pData,
+                              const uint8_t*           pData,
                               uint32_t                 WriteAddr,
                               uint32_t                 Size)
 {

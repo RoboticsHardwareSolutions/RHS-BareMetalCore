@@ -91,12 +91,6 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
     {
     }
 
-    // Check if debug enabled by DAP
-    // https://developer.arm.com/documentation/ddi0403/d/Debug-Architecture/ARMv7-M-Debug/Debug-register-support-in-the-SCS/Debug-Halting-Control-and-Status-Register--DHCSR?lang=en
-#if defined(CoreDebug) && defined(CoreDebug_DHCSR_C_DEBUGEN_Msk)
-    bool debug = (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U;
-#endif
-
     const char* last_separator = strrchr(context.file, '/');
     if (last_separator != NULL)
     {
@@ -129,20 +123,32 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
     rhs_save_stack_info();
     RHS_LOG_D("Assert", "Message: %s. Called from file: %s, line: %d\n", m, context.file, context.line);
 
-#if defined(CoreDebug) && defined(CoreDebug_DHCSR_C_DEBUGEN_Msk)
+// Halt CPU (breakpoint) when hitting error, only apply for Cortex M3, M4, M7, M33. M55
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_8M_MAIN__) ||                      \
+    defined(__ARM_ARCH_8_1M_MAIN__) || defined(__ARM7M__) || defined(__ARM7EM__) || defined(__ARM8M_MAINLINE__) || \
+    defined(__ARM8EM_MAINLINE__)
+    bool debug = false;
+#    if defined(CoreDebug) && defined(CoreDebug_DHCSR_C_DEBUGEN_Msk)
+    debug = (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U;
+#    else
+    volatile uint32_t* ARM_CM_DHCSR = ((volatile uint32_t*) 0xE000EDF0UL); /* Cortex M CoreDebug->DHCSR */
+    debug                           = (0u != ((*ARM_CM_DHCSR) & 1UL));
+#    endif
     if (debug)
+        __asm("BKPT #0\n");
+
+#elif defined(__riscv) && !defined(ESP_PLATFORM)
+    __asm("ebreak\n");
+
+#elif defined(_mips)
+    __asm("sdbbp 0");
+
+#else // For other architectures infinite loop is used to halt the CPU, 
+    for (;;)
     {
-        for (;;)
-        {
-        }
     }
-    else
-    {
-        rhs_hal_power_reset();
-    }
-#else
-    // __BKPT(0U);
-    rhs_hal_power_reset();
 #endif
+    rhs_hal_power_reset();
+    
     __builtin_unreachable();
 }

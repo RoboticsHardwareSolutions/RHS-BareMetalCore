@@ -31,9 +31,6 @@ if(NOT TARGET tinyusb OR NOT TARGET mongoose)
         message(FATAL_ERROR "tinyusb and mongoose libraries must be available to build usb_cdc_net")
 endif()
 
-# Enable RNDIS and ECM support in TinyUSB
-# target_compile_definitions(tinyusb PUBLIC -DCFG_TUD_ECM_RNDIS=1)
-
 # Configure Mongoose options
 target_compile_definitions(
         mongoose
@@ -55,5 +52,4 @@ target_link_libraries(
         rhs
         rhs_hal
         tinyusb
-        mongoose
 )

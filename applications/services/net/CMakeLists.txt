@@ -13,9 +13,9 @@ target_link_libraries(
         PUBLIC
         net_utils
         mongoose
-        PRIVATE
         rhs
         rhs_hal
+        PRIVATE
         net_listeners
 )
 

@@ -2,34 +2,6 @@
 #include "net_i.h"
 #include "net_listeners.h"
 
-typedef struct
-{
-    char*              uri;
-    mg_event_handler_t fn;
-    void*              context;
-} NetApiEventDataInterface;
-
-typedef union
-{
-    NetApiEventDataInterface interface;
-    NetConfig                config;
-} NetApiEventData;
-
-typedef enum
-{
-    NetApiEventTypeSetHttp = 0,
-    NetApiEventTypeSetTcp  = 1,
-    NetApiEventTypeRstTcp  = 2,
-    NetApiEventTypeRestart = 7,
-} NetApiEventType;
-
-typedef struct
-{
-    RHSApiLock      lock;
-    NetApiEventType type;
-    NetApiEventData data;
-} NetApiEventMessage;
-
 static void net_cli_command(char* args, void* context)
 {
     Net* net = (Net*) context;
@@ -201,8 +173,6 @@ void net_get_config(Net* net, NetConfig* config)
 int32_t net_worker(void* context)
 {
     Net* net       = (Net*) context;
-    net->queue     = rhs_message_queue_alloc(3, sizeof(NetApiEventMessage));
-    net->listeners = NULL;  // Initialize listeners list
     net->cli       = rhs_record_open(RECORD_CLI);
 
     net_mdns_start(net);

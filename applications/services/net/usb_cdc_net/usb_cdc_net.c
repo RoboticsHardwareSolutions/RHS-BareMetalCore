@@ -491,6 +491,8 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
     rhs_assert(app != NULL);
 
     memset(app, 0, sizeof(*app));
+    app->net.queue = rhs_message_queue_alloc(3, sizeof(NetApiEventMessage));
+
     app->net.mgr    = malloc(sizeof(struct mg_mgr));
     app->net.config = malloc(sizeof(NetConfig));
     rhs_assert(app->net.mgr != NULL && app->net.config != NULL);

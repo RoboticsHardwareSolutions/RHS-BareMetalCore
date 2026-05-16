@@ -108,7 +108,7 @@ static void net_mdns_start(Net* net)
     cli_add_command(net->cli, name, net_cli_command, net);
 
     // Example of mDNS
-    struct mg_connection* c = mg_mdns_listen(net->mgr, (char*) name);
+    struct mg_connection* c = mg_mdns_listen(net->mgr, NULL, (char*) name);
     if (c != NULL)
     {
         uint32_t response_ip = net->mgr->ifp->ip;
@@ -256,7 +256,7 @@ int32_t net_worker(void* context)
                         // Check if this is a listening connection with matching address
                         if (c->is_listening && c->loc.port == mg_htons(port))
                         {
-                            MG_INFO(("ip %s, port %d", c->loc.ip, mg_htons(c->loc.port)));
+                            MG_INFO(("ip %s, port %d", c->loc.addr.ip, mg_htons(c->loc.port)));
                             c->is_closing = 1;
                         }
                     }

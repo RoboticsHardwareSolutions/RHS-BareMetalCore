@@ -5,11 +5,12 @@
 // 0 : enumerated as Network (RNDIS/ECM/NCM). Board button is not pressed when enumerating
 // 1 : enumerated as Dual CDC. Board button is pressed when enumerating
 static tusb_desc_device_t desc;
-static uint8_t const**    config          = NULL;
-static char const**       string_desc_arr = NULL;
+static uint8_t const**    config                 = NULL;
+static char const**       string_desc_arr        = NULL;
+static size_t             string_desc_arr_count  = 0;
 
 // Switches the USB descriptor mode and updates pointers to descriptors
-void descriptor_switch_mode(tusb_desc_device_t* new_desc, uint8_t const** new_config, char const** new_string_desc_arr)
+void descriptor_switch_mode(tusb_desc_device_t* new_desc, uint8_t const** new_config, char const** new_string_desc_arr, size_t new_string_desc_arr_count)
 {
     if (new_desc)
         desc = *new_desc;
@@ -23,6 +24,8 @@ void descriptor_switch_mode(tusb_desc_device_t* new_desc, uint8_t const** new_co
         string_desc_arr = new_string_desc_arr;
     else
         string_desc_arr = NULL;  // or set to a default string descriptor array if available
+
+    string_desc_arr_count = new_string_desc_arr_count;
 }
 
 // Invoked when received GET DEVICE DESCRIPTOR
@@ -92,7 +95,7 @@ const uint16_t* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
         // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
 
-        if (index >= sizeof(string_desc_arr) / sizeof(string_desc_arr[0]))
+        if (index >= string_desc_arr_count)
         {
             return NULL;
         }

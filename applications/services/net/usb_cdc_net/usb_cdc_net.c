@@ -408,9 +408,10 @@ static char const* string_desc_cdc_net_arr[] = {
 };
 
 static RHSHalUsbInterface usb_cdc_net_desc = {
-    .device_desc       = &desc_cdc_net,
-    .configuration_arr = configuration_fs_arr,  // TODO - support high speed configurations
-    .string_desc_arr   = (char const* const*) string_desc_cdc_net_arr,
+    .device_desc            = &desc_cdc_net,
+    .configuration_arr      = configuration_fs_arr,  // TODO - support high speed configurations
+    .string_desc_arr        = (char const* const*) string_desc_cdc_net_arr,
+    .string_desc_arr_count  = TU_ARRAY_SIZE(string_desc_cdc_net_arr),
 };
 
 #define TAG "cdc_net"

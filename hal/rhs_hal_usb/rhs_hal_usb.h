@@ -18,6 +18,7 @@ struct RHSHalUsbInterface
     tusb_desc_device_t const* device_desc;
     uint8_t const* const*     configuration_arr;
     char const* const*        string_desc_arr;
+    size_t                    string_desc_arr_count;
 };
 
 /** USB device low-level initialization

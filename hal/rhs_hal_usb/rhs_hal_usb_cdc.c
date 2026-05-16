@@ -169,11 +169,12 @@ static void cdc_deinit(void)
 }
 
 RHSHalUsbInterface usb_cdc_desc = {
-    .init              = cdc_init,
-    .deinit            = cdc_deinit,
-    .device_desc       = &desc_device_cdc,
-    .configuration_arr = (uint8_t const* const[]) {dual_cdc_configuration},
-    .string_desc_arr   = (char const* const*) string_desc_dual_cdc_arr,
+    .init                  = cdc_init,
+    .deinit                = cdc_deinit,
+    .device_desc           = &desc_device_cdc,
+    .configuration_arr     = (uint8_t const* const[]) {dual_cdc_configuration},
+    .string_desc_arr       = (char const* const*) string_desc_dual_cdc_arr,
+    .string_desc_arr_count = TU_ARRAY_SIZE(string_desc_dual_cdc_arr),
 };
 
 static int32_t usb_dual_cdc(void* context)

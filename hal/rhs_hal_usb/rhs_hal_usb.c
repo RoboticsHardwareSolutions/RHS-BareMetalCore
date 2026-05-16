@@ -93,7 +93,8 @@ void rhs_hal_usb_disable(void)
 
 extern void descriptor_switch_mode(tusb_desc_device_t* new_desc,
                                    uint8_t const**     new_config,
-                                   char const**        new_string_desc_arr);
+                                   char const**        new_string_desc_arr,
+                                   size_t              new_string_desc_arr_count);
 
 static RHSHalUsbInterface* s_usb_desc = NULL;
 
@@ -112,7 +113,8 @@ void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface)
         // TODO chech if iface different from current
         descriptor_switch_mode((tusb_desc_device_t*) iface->device_desc,
                                (uint8_t const**) iface->configuration_arr,
-                               (char const**) iface->string_desc_arr);
+                               (char const**) iface->string_desc_arr,
+                               iface->string_desc_arr_count);
 
         if (iface->init)
             iface->init();

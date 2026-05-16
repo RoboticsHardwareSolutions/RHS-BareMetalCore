@@ -17,10 +17,10 @@
 
 typedef struct
 {
-    uint32_t ip;        // IP address (e.g., MG_IPV4(192, 168, 1, 100))
-    uint32_t mask;      // Network mask (e.g., MG_IPV4(255, 255, 255, 0))
-    uint32_t gateway;   // Gateway address (e.g., MG_IPV4(192, 168, 1, 1))
-    uint8_t  mac[6];    // MAC address
+    char    ip[16];      // IP address string (e.g., "192.168.1.100")
+    char    mask[16];    // Network mask string (e.g., "255.255.255.0")
+    char    gateway[16]; // Gateway address string (e.g., "192.168.1.1")
+    uint8_t mac[6];      // MAC address
 } NetConfig;
 
 typedef struct Net Net;

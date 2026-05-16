@@ -467,18 +467,39 @@ static void cdc_net_init_tcpip(Net* net)
     driver->tx   = usb_tx;
     driver->poll = usb_poll;
 
-    ifp->ip                 = net->config->ip;
-    ifp->mask               = net->config->mask;
-    ifp->gw                 = net->config->gateway;
+    if (net->config->ip[0] == '\0')
+    {
+        strcpy(net->config->ip, CDC_NET_IP_STRING);
+    }
+    if (net->config->mask[0] == '\0')
+    {
+        strcpy(net->config->mask, CDC_NET_MASK_STRING);
+    }
+    if (net->config->gateway[0] == '\0')
+    {
+        strcpy(net->config->gateway, CDC_NET_GW_STRING);
+    }
+    if (net->config->mac[0] == 0 && net->config->mac[1] == 0 && net->config->mac[2] == 0 && net->config->mac[3] == 0 &&
+        net->config->mac[4] == 0 && net->config->mac[5] == 0)
+    {
+        uint8_t mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
+        memcpy(net->config->mac, mac, sizeof(mac));
+    }
+    // Initialize config with default values from compile-time macros
+    unsigned int a, b, c, d;
+    rhs_assert(string_to_ip(net->config->ip, &a, &b, &c, &d) == 0);
+    ifp->ip = MG_IPV4(a, b, c, d);
+    rhs_assert(string_to_ip(net->config->mask, &a, &b, &c, &d) == 0);
+    ifp->mask = MG_IPV4(a, b, c, d);
+    rhs_assert(string_to_ip(net->config->gateway, &a, &b, &c, &d) == 0);
+    ifp->gw = MG_IPV4(a, b, c, d);
+    rhs_assert(net->config->mac[0] != 0 || net->config->mac[1] != 0 || net->config->mac[2] != 0 ||
+               net->config->mac[3] != 0 || net->config->mac[4] != 0 || net->config->mac[5] != 0);
+    memcpy(ifp->mac, net->config->mac, sizeof(net->config->mac));
+
     ifp->enable_dhcp_server = true;
     ifp->driver             = driver;
     ifp->recv_queue.size    = 4096;
-
-    // Copy MAC address
-    for (int i = 0; i < 6; i++)
-    {
-        ifp->mac[i] = net->config->mac[i];
-    }
 
     // Initialize TCP/IP interface
     mg_tcpip_init(net->mgr, ifp);
@@ -497,30 +518,17 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
     app->net.config = malloc(sizeof(NetConfig));
     rhs_assert(app->net.mgr != NULL && app->net.config != NULL);
 
-    // Use provided config if valid, otherwise use defaults from compile-time macros
-    if (config != NULL && config->ip != 0 && config->mask != 0)
+    if (config == NULL)
     {
-        memcpy(app->net.config, config, sizeof(NetConfig));
+        strcpy(app->net.config->ip, CDC_NET_IP_STRING);
+        strcpy(app->net.config->mask, CDC_NET_MASK_STRING);
+        strcpy(app->net.config->gateway, CDC_NET_GW_STRING);
+        uint8_t mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
+        memcpy(app->net.config->mac, mac, sizeof(mac));
     }
     else
     {
-        // Initialize config with default values from compile-time macros
-        unsigned int a, b, c, d;
-        uint8_t      mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
-        if (string_to_ip(CDC_NET_IP_STRING, &a, &b, &c, &d) == 0)
-        {
-            app->net.config->ip = MG_IPV4(a, b, c, d);
-        }
-        if (string_to_ip(CDC_NET_MASK_STRING, &a, &b, &c, &d) == 0)
-        {
-            app->net.config->mask = MG_IPV4(a, b, c, d);
-        }
-        if (string_to_ip(CDC_NET_GW_STRING, &a, &b, &c, &d) == 0)
-        {
-            app->net.config->gateway = MG_IPV4(a, b, c, d);
-        }
-
-        memcpy(app->net.config->mac, mac, sizeof(mac));
+        memcpy(app->net.config, config, sizeof(NetConfig));
     }
 
     mg_mgr_init(app->net.mgr);  // Mongoose event manager

@@ -57,7 +57,7 @@ static void net_cli_command(char* args, void* context)
             if (string_to_ip(ip_str, &a, &b, &c, &d) == 0)
             {
                 // Update IP address in config
-                net->config->ip = MG_IPV4(a, b, c, d);
+                ip_to_string(a, b, c, d, net->config->ip);
 
                 printf("IP address will be changed to %u.%u.%u.%u\n", a, b, c, d);
                 printf("Restarting network manager...\n");
@@ -165,9 +165,12 @@ void net_get_config(Net* net, NetConfig* config)
         return;
 
     // Copy current configuration to the provided config structure
-    config->ip      = net->mgr->ifp->ip;
-    config->mask    = net->mgr->ifp->mask;
-    config->gateway = net->mgr->ifp->gw;
+    uint8_t* ip_b = (uint8_t*)&net->mgr->ifp->ip;
+    uint8_t* mk_b = (uint8_t*)&net->mgr->ifp->mask;
+    uint8_t* gw_b = (uint8_t*)&net->mgr->ifp->gw;
+    ip_to_string(ip_b[0], ip_b[1], ip_b[2], ip_b[3], config->ip);
+    ip_to_string(mk_b[0], mk_b[1], mk_b[2], mk_b[3], config->mask);
+    ip_to_string(gw_b[0], gw_b[1], gw_b[2], gw_b[3], config->gateway);
 }
 
 int32_t net_worker(void* context)
@@ -248,9 +251,13 @@ int32_t net_worker(void* context)
             else if (msg.type == NetApiEventTypeRestart)
             {
                 struct mg_connection* c;
-                net->mgr->ifp->ip   = msg.data.config.ip;
-                net->mgr->ifp->mask = msg.data.config.mask;
-                net->mgr->ifp->gw   = msg.data.config.gateway;
+                unsigned int pa, pb, pc, pd;
+                if (string_to_ip(msg.data.config.ip, &pa, &pb, &pc, &pd) == 0)
+                    net->mgr->ifp->ip = MG_IPV4(pa, pb, pc, pd);
+                if (string_to_ip(msg.data.config.mask, &pa, &pb, &pc, &pd) == 0)
+                    net->mgr->ifp->mask = MG_IPV4(pa, pb, pc, pd);
+                if (string_to_ip(msg.data.config.gateway, &pa, &pb, &pc, &pd) == 0)
+                    net->mgr->ifp->gw = MG_IPV4(pa, pb, pc, pd);
 
                 // Close all existing connections
                 for (c = net->mgr->conns; c != NULL; c = c->next)

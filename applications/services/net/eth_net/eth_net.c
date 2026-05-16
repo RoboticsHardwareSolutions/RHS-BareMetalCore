@@ -101,60 +101,69 @@ static void eth_net_init_tcpip(Net* net, const EthPhyConfig* phy_config)
     // Clear interface and driver data structures
     memset(ifp, 0, sizeof(struct mg_tcpip_if));
     memset(driver, 0, sizeof(struct mg_tcpip_driver_stm32f_data));
+    if (net->config->ip[0] == '\0')
+    {
+        strcpy(net->config->ip, ETH_NET_IP_STRING);
+    }
+    if (net->config->mask[0] == '\0')
+    {
+        strcpy(net->config->mask, ETH_NET_MASK_STRING);
+    }
+    if (net->config->gateway[0] == '\0')
+    {
+        strcpy(net->config->gateway, ETH_NET_GW_STRING);
+    }
+    if (net->config->mac[0] == 0 && net->config->mac[1] == 0 && net->config->mac[2] == 0 && net->config->mac[3] == 0 &&
+        net->config->mac[4] == 0 && net->config->mac[5] == 0)
+    {
+        uint8_t mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
+        memcpy(net->config->mac, mac, sizeof(mac));
+    }
+    // Initialize config with default values from compile-time macros
+    unsigned int a, b, c, d;
+    rhs_assert(string_to_ip(net->config->ip, &a, &b, &c, &d) == 0);
+    ifp->ip = MG_IPV4(a, b, c, d);
+    rhs_assert(string_to_ip(net->config->mask, &a, &b, &c, &d) == 0);
+    ifp->mask = MG_IPV4(a, b, c, d);
+    rhs_assert(string_to_ip(net->config->gateway, &a, &b, &c, &d) == 0);
+    ifp->gw = MG_IPV4(a, b, c, d);
+    rhs_assert(net->config->mac[0] != 0 || net->config->mac[1] != 0 || net->config->mac[2] != 0 ||
+               net->config->mac[3] != 0 || net->config->mac[4] != 0 || net->config->mac[5] != 0);
+    memcpy(ifp->mac, net->config->mac, sizeof(net->config->mac));
 
     // Apply Ethernet-specific PHY configuration (use provided values or defaults)
     driver->mdc_cr   = phy_config ? phy_config->mdc_cr : MG_DRIVER_MDC_CR;
     driver->phy_addr = phy_config ? phy_config->phy_addr : MG_TCPIP_PHY_ADDR;
-    ifp->ip          = net->config->ip;
-    ifp->mask        = net->config->mask;
-    ifp->gw          = net->config->gateway;
     ifp->driver      = &mg_tcpip_driver_stm32f;
     ifp->driver_data = driver;
-
-    // Copy MAC address
-    for (int i = 0; i < 6; i++)
-    {
-        ifp->mac[i] = net->config->mac[i];
-    }
 
     // Initialize TCP/IP interface
     mg_tcpip_init(net->mgr, ifp);
     MG_INFO(("Driver: stm32f, MAC: %M", mg_print_mac, ifp->mac));
 }
 
-static EthNet* eth_net_alloc(const NetConfig* net_config, const EthPhyConfig* phy_config)
+static EthNet* eth_net_alloc(const NetConfig* config, const EthPhyConfig* phy_config)
 {
     EthNet* app   = malloc(sizeof(EthNet));
     rhs_assert(app != NULL);
 
     memset(app, 0, sizeof(*app));
+    app->net.queue = rhs_message_queue_alloc(3, sizeof(NetApiEventMessage));
     app->net.mgr    = malloc(sizeof(struct mg_mgr));
     app->net.config = malloc(sizeof(NetConfig));
     rhs_assert(app->net.mgr != NULL && app->net.config != NULL);
 
-    // Use provided base config if valid, otherwise use defaults from compile-time macros
-    if (net_config != NULL && net_config->ip != 0 && net_config->mask != 0)
+    if (config == NULL)
     {
-        memcpy(app->net.config, net_config, sizeof(NetConfig));
+        strcpy(app->net.config->ip, ETH_NET_IP_STRING);
+        strcpy(app->net.config->mask, ETH_NET_MASK_STRING);
+        strcpy(app->net.config->gateway, ETH_NET_GW_STRING);
+        uint8_t mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
+        memcpy(app->net.config->mac, mac, sizeof(mac));
     }
     else
     {
-        unsigned int a, b, c, d;
-        uint8_t      mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
-        if (string_to_ip(ETH_NET_IP_STRING, &a, &b, &c, &d) == 0)
-        {
-            app->net.config->ip = MG_IPV4(a, b, c, d);
-        }
-        if (string_to_ip(ETH_NET_MASK_STRING, &a, &b, &c, &d) == 0)
-        {
-            app->net.config->mask = MG_IPV4(a, b, c, d);
-        }
-        if (string_to_ip(ETH_NET_GW_STRING, &a, &b, &c, &d) == 0)
-        {
-            app->net.config->gateway = MG_IPV4(a, b, c, d);
-        }
-
-        memcpy(app->net.config->mac, mac, sizeof(mac));
+        memcpy(app->net.config, config, sizeof(NetConfig));
     }
 
     // Initialise Mongoose network stack

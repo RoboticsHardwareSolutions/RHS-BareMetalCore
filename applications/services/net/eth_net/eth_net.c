@@ -1,14 +1,11 @@
 #include "eth_net.h"
 #include "rhs.h"
 #include "rhs_hal.h"
-#include "cli.h"
-#include "mongoose.h"
 #include "net_i.h"
 
 typedef struct
 {
     Net  net;
-    Cli* cli;
 } EthNet;
 
 static_assert(offsetof(EthNet, net) == 0, "EthNet must be compatible with Net for safe casting");

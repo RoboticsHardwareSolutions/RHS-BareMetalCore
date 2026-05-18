@@ -1,6 +1,11 @@
 #pragma once
+#include "stdint.h"
 
-#include "eth_net.h"
+typedef struct
+{
+    uint8_t phy_addr;  // PHY address (NULL = use default MG_TCPIP_PHY_ADDR)
+    uint8_t mdc_cr;    // MDC clock divider (NULL = use default MG_DRIVER_MDC_CR)
+} UsbEthBridgePhyConfig;
 
 /**
  * @brief Opaque bridge handle.
@@ -23,7 +28,7 @@ typedef struct UsbEthBridge UsbEthBridge;
  *                    MG_DRIVER_MDC_CR).
  * @return  Handle to the running bridge.
  */
-UsbEthBridge* usb_eth_bridge_start(const EthPhyConfig* phy_config);
+UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config);
 
 /**
  * @brief Stop the bridge and release all resources.

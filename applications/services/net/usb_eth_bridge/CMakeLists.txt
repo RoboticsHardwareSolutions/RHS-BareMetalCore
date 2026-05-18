@@ -35,9 +35,7 @@ target_link_libraries(
     ${PROJECT_NAME}
     PUBLIC
     mongoose
-    eth_net   # for EthPhyConfig type and mg_tcpip_driver_stm32f_data
     PRIVATE
     rhs
     rhs_hal
-    tinyusb
 )

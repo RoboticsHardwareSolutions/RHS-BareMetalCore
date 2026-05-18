@@ -2,7 +2,7 @@ This example demonstrates how to create a new application that uses the `eth_net
 
 ### Creating a new application
 
-0. Set the `eth_net` service in your toolchain `set(RHS_SERVICE_ETH_NET ON)`
+0. Set the `eth_net` service in your toolchain `set(RHS_APPLICATION_ETH_NET ON)`
 1. Create a new folder in the project.
 2. Create a new CMakeLists.txt file (don't forget to add_subdirectory in the parent CMakeLists.txt) in the folder with the following content:
 ```cmake
@@ -39,7 +39,7 @@ service(new_app "new_app" 1024) # Registers the new application as a service wit
 
 struct NewApp
 {
-    EthNet*  net; // Network manager instance
+    Net*  net; // Network manager instance
     RHSevent* event; // Event for synchronization
     // Add other members as needed
 };
@@ -47,7 +47,7 @@ struct NewApp
 NewApp* app_alloc(void)
 {
     NewApp* app = malloc(sizeof(NewApp)); // Allocate memory for the application structure
-    app->net    = rhs_record_open(RECORD_ETH_NET); // Get a network manager instance. Your application will be waiting while EthNet service is not ready, so you can be sure that this call will succeed.
+    app->net    = eth_net_start(NULL, NULL); // Get a network manager instance
     app->event  = rhs_event_alloc(); // Allocate an event for synchronization
     return app;
 }
@@ -68,7 +68,7 @@ static void _ev_handler(struct mg_connection* c, int ev, void* ev_data)
         const char* response = "Received data!";
         size_t response_len = strlen(response);
         mg_send(c, response, response_len);
-        rhs_event_flag_set(app->event, EthNetEventDataReceived); // Set an event flag if you want to signal the main loop
+        rhs_event_flag_set(app->event, AppEventDataReceived); // Set an event flag if you want to signal the main loop
     }
 }
 
@@ -80,12 +80,12 @@ int32_t new_app(void* context)
     RHS_LOG_I(TAG, "Hello from new_app!");
 
     // Start a TCP listener on port 2345 with the event handler and pass the application context
-    eth_net_start_listener(app->net, "tcp://0.0.0.0:2345", _ev_handler, app);
+    net_start_listener(app->net, "tcp://0.0.0.0:2345", _ev_handler, app);
 
     for (;;)
     {
-        uint32_t flags = rhs_event_flag_wait(app->event, EthNetEventDataReceived, RHSFlagWaitAny, RHSWaitForever);
-        if (flags & EthNetEventDataReceived)
+        uint32_t flags = rhs_event_flag_wait(app->event, AppEventDataReceived, RHSFlagWaitAny, RHSWaitForever);
+        if (flags & AppEventDataReceived)
         {
             // Handle the event (e.g., process received data)
             RHS_LOG_I(TAG, "Data received event handled in main loop");

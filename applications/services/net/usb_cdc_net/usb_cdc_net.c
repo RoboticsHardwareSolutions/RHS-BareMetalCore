@@ -1,10 +1,9 @@
 #include "rhs.h"
 #include "rhs_hal.h"
 #include "usb_cdc_net.h"
-#include "mongoose.h"
 #include "net_i.h"
 #include "tusb.h"
-#include "cli.h"
+#include "tud_net_dispatch.h"
 
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
  * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
@@ -45,7 +44,6 @@ enum
 typedef struct
 {
     Net                 net;
-    Cli*                cli;
     RHSHalUsbInterface* prev_intf;
 } CdcNet;
 
@@ -415,9 +413,8 @@ static RHSHalUsbInterface usb_cdc_net_desc = {
 };
 
 #define TAG "cdc_net"
-uint8_t tud_network_mac_address[6] = {2, 2, 0x84, 0x6A, 0x96, 0};
 
-bool tud_network_recv_cb(const uint8_t* buf, uint16_t len)
+static bool cdc_net_recv_cb(const uint8_t* buf, uint16_t len)
 {
     rhs_assert(usb_cdc_active_net != NULL);
     mg_tcpip_qwrite((void*) buf, len, usb_cdc_active_net->mgr->ifp);
@@ -427,14 +424,20 @@ bool tud_network_recv_cb(const uint8_t* buf, uint16_t len)
     return true;
 }
 
-void tud_network_init_cb(void) {}
+static void cdc_net_init_cb(void) {}
 
-uint16_t tud_network_xmit_cb(uint8_t* dst, void* ref, uint16_t arg)
+static uint16_t cdc_net_xmit_cb(uint8_t* dst, void* ref, uint16_t arg)
 {
     // MG_INFO(("SEND %hu", arg));
     memcpy(dst, ref, arg);
     return arg;
 }
+
+static const TudNetOps cdc_net_ops = {
+    .recv = cdc_net_recv_cb,
+    .init = cdc_net_init_cb,
+    .xmit = cdc_net_xmit_cb,
+};
 
 static size_t usb_tx(const void* buf, size_t len, struct mg_tcpip_if* ifp)
 {
@@ -544,6 +547,7 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
     tusb_init();
 
     usb_cdc_active_net = &app->net;
+    tud_net_dispatch_set(&cdc_net_ops);
 
     return app;
 }
@@ -568,6 +572,7 @@ void usb_cdc_net_stop(Net* net)
 {
     rhs_assert(net != NULL);
     CdcNet* app = (CdcNet*) net;
+    tud_net_dispatch_clear();
     rhs_crash("Not implemented yet");
     tusb_deinit(0);
     rhs_thread_join(app->net.thread);

@@ -8,11 +8,9 @@
  * To receive all frames from the LAN (not just those addressed to our MAC)
  * the ETH MAC filter is switched to promiscuous mode after driver init.
  *
- * This file defines the TinyUSB network callbacks (tud_network_recv_cb etc.)
- * and the USB descriptor data.  Do NOT link usb_cdc_net.c in the same build.
- *
- * USB descriptor block is derived from usb_cdc_net.c and kept in sync manually.
- * To avoid duplication long-term, consider extracting it to usb_cdc_net_desc.c/h.
+ * TinyUSB network callbacks are owned by tud_net_dispatch.c.  This module
+ * registers its handlers via tud_net_dispatch_set() at start and clears them
+ * at stop, allowing runtime switching with usb_cdc_net.
  */
 
 #include "usb_eth_bridge.h"
@@ -20,6 +18,7 @@
 #include "rhs_hal.h"
 #include "mongoose.h"
 #include "tusb.h"
+#include "tud_net_dispatch.h"
 
 #define _PID_MAP(itf, n) ((CFG_TUD_##itf) << (n))
 #define USB_PID                                                                    \
@@ -106,10 +105,7 @@ static uint8_t const* const bridge_cfg_arr[CONFIG_ID_COUNT] = {
 
 #endif  /* CFG_TUD_ECM_RNDIS */
 
-/* String descriptors - same order/indices as usb_cdc_net.c */
-uint8_t tud_network_mac_address[6] = {2, 2, 0x84, 0x6A, 0x96, 0};
-
-static char const* bridge_string_arr[] = {
+/* String descriptors - same order/indices as usb_cdc_net.c */static char const* bridge_string_arr[] = {
     [STRID_LANGID]       = (const char[]){0x09, 0x04},
     [STRID_MANUFACTURER] = "TinyUSB",
     [STRID_PRODUCT]      = "USB-ETH Bridge",
@@ -138,7 +134,7 @@ struct UsbEthBridge
 static UsbEthBridge* g_bridge = NULL;
 
 /* Called from TinyUSB task context when a frame arrives from the USB host. */
-bool tud_network_recv_cb(const uint8_t* buf, uint16_t len)
+static bool bridge_recv_cb(const uint8_t* buf, uint16_t len)
 {
     UsbEthBridge* b = g_bridge;
     if(b != NULL && b->eth_ifp.state >= MG_TCPIP_STATE_UP)
@@ -149,14 +145,20 @@ bool tud_network_recv_cb(const uint8_t* buf, uint16_t len)
     return true;
 }
 
-void tud_network_init_cb(void) {}
+static void bridge_init_cb(void) {}
 
 /* Called by TinyUSB to copy a queued TX frame into its internal buffer. */
-uint16_t tud_network_xmit_cb(uint8_t* dst, void* ref, uint16_t arg)
+static uint16_t bridge_xmit_cb(uint8_t* dst, void* ref, uint16_t arg)
 {
     memcpy(dst, ref, arg);
     return arg;
 }
+
+static const TudNetOps bridge_ops = {
+    .recv = bridge_recv_cb,
+    .init = bridge_init_cb,
+    .xmit = bridge_xmit_cb,
+};
 
 static void bridge_eth_hw_init(void)
 {
@@ -244,7 +246,7 @@ static int32_t bridge_worker(void* ctx)
  * Public API
  * ========================================================================= */
 
-UsbEthBridge* usb_eth_bridge_start(const EthPhyConfig* phy_config)
+UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config)
 {
     rhs_assert(g_bridge == NULL);  /* only one bridge instance allowed */
 
@@ -256,8 +258,8 @@ UsbEthBridge* usb_eth_bridge_start(const EthPhyConfig* phy_config)
     bridge_eth_hw_init();
 
     /* Bridge device MAC: use UID-derived locally administered address */
-    uint8_t mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
-    memcpy(b->eth_ifp.mac, mac, sizeof(mac));
+    // uint8_t mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
+    // memcpy(b->eth_ifp.mac, mac, sizeof(mac));
 
     b->eth_drv_data.mdc_cr   = phy_config ? phy_config->mdc_cr   : MG_DRIVER_MDC_CR;
     b->eth_drv_data.phy_addr = phy_config ? phy_config->phy_addr : MG_TCPIP_PHY_ADDR;
@@ -283,12 +285,13 @@ UsbEthBridge* usb_eth_bridge_start(const EthPhyConfig* phy_config)
 
     /* --- Publish and start worker ----------------------------------------- */
     g_bridge = b;
+    tud_net_dispatch_set(&bridge_ops);
 
     b->thread = rhs_thread_alloc("usb_eth_bridge", 2 * 1024, bridge_worker, b);
     rhs_thread_start(b->thread);
 
-    MG_INFO(("USB-ETH bridge started, MAC: %02X:%02X:%02X:%02X:%02X:%02X",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]));
+    // MG_INFO(("USB-ETH bridge started, MAC: %02X:%02X:%02X:%02X:%02X:%02X",
+            //  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]));
 
     return b;
 }
@@ -296,6 +299,7 @@ UsbEthBridge* usb_eth_bridge_start(const EthPhyConfig* phy_config)
 void usb_eth_bridge_stop(UsbEthBridge* bridge)
 {
     rhs_assert(bridge != NULL);
+    tud_net_dispatch_clear();
     rhs_crash("Not implemented yet");
 
     /* Sketch of teardown (fill in when implementing stop):

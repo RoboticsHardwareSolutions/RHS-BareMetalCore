@@ -51,5 +51,4 @@ target_link_libraries(
         PRIVATE
         rhs
         rhs_hal
-        tinyusb
 )

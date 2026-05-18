@@ -12,9 +12,10 @@
  */
 typedef struct
 {
-    bool (*recv)(const uint8_t* buf, uint16_t len);
-    void (*init)(void);
-    uint16_t (*xmit)(uint8_t* dst, void* ref, uint16_t arg);
+    bool (*recv)(const uint8_t* buf, uint16_t len, void* context);
+    void (*init)(void* context);
+    uint16_t (*xmit)(uint8_t* dst, void* ref, uint16_t arg, void* context);
+    void *context; /* optional user context pointer, not used by tud_net_dispatch.c */
 } TudNetOps;
 
 /**

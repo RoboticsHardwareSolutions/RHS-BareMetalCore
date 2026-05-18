@@ -49,8 +49,6 @@ typedef struct
 
 static_assert(offsetof(CdcNet, net) == 0, "CdcNet must be compatible with Net for safe casting");
 
-static Net* usb_cdc_active_net;
-
 //--------------------------------------------------------------------+
 // Device Descriptors
 //--------------------------------------------------------------------+
@@ -415,30 +413,30 @@ static RHSHalUsbInterface usb_cdc_net_desc = {
 
 #define TAG "cdc_net"
 
-static bool cdc_net_recv_cb(const uint8_t* buf, uint16_t len)
+static TudNetOps cdc_net_ops = {0};
+
+static bool cdc_net_recv_cb(const uint8_t* buf, uint16_t len, void* context)
 {
-    rhs_assert(usb_cdc_active_net != NULL);
-    mg_tcpip_qwrite((void*) buf, len, usb_cdc_active_net->mgr->ifp);
+    rhs_assert(context);
+    mg_tcpip_qwrite((void*) buf, len, ((Net*) context)->mgr->ifp);
     // MG_INFO(("RECV %hu", len));
     // mg_hexdump(buf, len);
     tud_network_recv_renew();
     return true;
 }
 
-static void cdc_net_init_cb(void) {}
-
-static uint16_t cdc_net_xmit_cb(uint8_t* dst, void* ref, uint16_t arg)
+static void cdc_net_init_cb(void* context)
 {
+    (void) context;
+}
+
+static uint16_t cdc_net_xmit_cb(uint8_t* dst, void* ref, uint16_t arg, void* context)
+{
+    (void) context;
     // MG_INFO(("SEND %hu", arg));
     memcpy(dst, ref, arg);
     return arg;
 }
-
-static const TudNetOps cdc_net_ops = {
-    .recv = cdc_net_recv_cb,
-    .init = cdc_net_init_cb,
-    .xmit = cdc_net_xmit_cb,
-};
 
 static size_t usb_tx(const void* buf, size_t len, struct mg_tcpip_if* ifp)
 {
@@ -547,7 +545,11 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
     rhs_hal_usb_reinit();
     tusb_init();
 
-    usb_cdc_active_net = &app->net;
+    cdc_net_ops.recv    = cdc_net_recv_cb;
+    cdc_net_ops.init    = cdc_net_init_cb;
+    cdc_net_ops.xmit    = cdc_net_xmit_cb;
+    cdc_net_ops.context = &app->net;
+
     tud_net_dispatch_set(&cdc_net_ops);
 
     return app;
@@ -555,11 +557,6 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
 
 Net* usb_cdc_net_start(const NetConfig* config)
 {
-    if (usb_cdc_active_net != NULL)
-    {
-        MG_ERROR(("USB CDC network interface is already active"));
-        return usb_cdc_active_net;
-    }
     CdcNet* app = usb_cdc_net_alloc(config);
 
     int32_t net_worker(void* context);
@@ -580,9 +577,5 @@ void usb_cdc_net_stop(Net* net)
     rhs_thread_free(app->net.thread);
     free(app->net.config);
     free(app->net.mgr);
-    if (usb_cdc_active_net == &app->net)
-    {
-        usb_cdc_active_net = NULL;
-    }
     free(app);
 }

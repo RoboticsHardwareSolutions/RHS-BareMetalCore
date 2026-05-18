@@ -215,13 +215,12 @@ struct UsbEthBridge
     RHSThread*                         thread;
 };
 
-/* Single global instance - only one bridge may be active at a time */
-static UsbEthBridge* g_bridge = NULL;
+static TudNetOps bridge_ops = {0};
 
 /* Called from TinyUSB task context when a frame arrives from the USB host. */
-static bool bridge_recv_cb(const uint8_t* buf, uint16_t len)
+static bool bridge_recv_cb(const uint8_t* buf, uint16_t len, void* context)
 {
-    UsbEthBridge* b = g_bridge;
+    UsbEthBridge* b = (UsbEthBridge*) context;
     if (b != NULL && b->eth_ifp.state >= MG_TCPIP_STATE_UP)
     {
         mg_tcpip_driver_stm32f.tx(buf, len, &b->eth_ifp);
@@ -230,20 +229,18 @@ static bool bridge_recv_cb(const uint8_t* buf, uint16_t len)
     return true;
 }
 
-static void bridge_init_cb(void) {}
+static void bridge_init_cb(void* context)
+{
+    (void) context;
+}
 
 /* Called by TinyUSB to copy a queued TX frame into its internal buffer. */
-static uint16_t bridge_xmit_cb(uint8_t* dst, void* ref, uint16_t arg)
+static uint16_t bridge_xmit_cb(uint8_t* dst, void* ref, uint16_t arg, void* context)
 {
+    (void) context;
     memcpy(dst, ref, arg);
     return arg;
 }
-
-static const TudNetOps bridge_ops = {
-    .recv = bridge_recv_cb,
-    .init = bridge_init_cb,
-    .xmit = bridge_xmit_cb,
-};
 
 static void bridge_eth_hw_init(void)
 {
@@ -335,8 +332,6 @@ static int32_t bridge_worker(void* ctx)
 
 UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config)
 {
-    rhs_assert(g_bridge == NULL); /* only one bridge instance allowed */
-
     UsbEthBridge* b = malloc(sizeof(UsbEthBridge));
     rhs_assert(b != NULL);
     memset(b, 0, sizeof(*b));
@@ -371,7 +366,10 @@ UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config)
     tusb_init();
 
     /* --- Publish and start worker ----------------------------------------- */
-    g_bridge = b;
+    bridge_ops.recv    = bridge_recv_cb;
+    bridge_ops.init    = bridge_init_cb;
+    bridge_ops.xmit    = bridge_xmit_cb;
+    bridge_ops.context = b;
     tud_net_dispatch_set(&bridge_ops);
 
     b->thread = rhs_thread_alloc("usb_eth_bridge", 2 * 1024, bridge_worker, b);

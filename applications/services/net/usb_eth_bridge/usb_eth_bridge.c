@@ -105,7 +105,73 @@ static uint8_t const* const bridge_cfg_arr[CONFIG_ID_COUNT] = {
 
 #endif  /* CFG_TUD_ECM_RNDIS */
 
-/* String descriptors - same order/indices as usb_cdc_net.c */static char const* bridge_string_arr[] = {
+#if CFG_TUD_NCM
+/* Used by Windows to auto-bind the NCM driver (WINNCM). */
+#    define BOS_TOTAL_LEN (TUD_BOS_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
+#    define MS_OS_20_DESC_LEN 0xB2
+
+const uint8_t desc_bos[] = {
+    TUD_BOS_DESCRIPTOR(BOS_TOTAL_LEN, 1),
+    TUD_BOS_MS_OS_20_DESCRIPTOR(MS_OS_20_DESC_LEN, 1),
+};
+
+const uint8_t* tud_descriptor_bos_cb(void)
+{
+    return desc_bos;
+}
+
+/* clang-format off */
+const uint8_t desc_ms_os_20[] = {
+  U16_TO_U8S_LE(0x000A), U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR), U32_TO_U8S_LE(0x06030000),
+  U16_TO_U8S_LE(MS_OS_20_DESC_LEN),
+  U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION), 0, 0,
+  U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A),
+  U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION), ITF_NUM_CDC, 0,
+  U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A - 0x08),
+  U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID), 'W', 'I', 'N', 'N', 'C', 'M', 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A - 0x08 - 0x08 - 0x14), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
+  U16_TO_U8S_LE(0x0007),
+  U16_TO_U8S_LE(0x002A),
+  'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00, 'r',
+  0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00, 0x00, 0x00,
+  U16_TO_U8S_LE(0x0050),
+  '{', 0x00, '1', 0x00, '2', 0x00, '3', 0x00, '4', 0x00, '5', 0x00, '6', 0x00, '7', 0x00, '8', 0x00, '-', 0x00, '0',
+  0x00, 'D', 0x00, '0', 0x00, '8', 0x00, '-', 0x00, '4', 0x00, '3', 0x00, 'F', 0x00, 'D', 0x00, '-', 0x00, '8', 0x00,
+  'B', 0x00, '3', 0x00, 'E', 0x00, '-', 0x00, '1', 0x00, '2', 0x00, '7', 0x00, 'C', 0x00, 'A', 0x00, '8', 0x00, 'A',
+  0x00, 'F', 0x00, 'F', 0x00, 'F', 0x00, '9', 0x00, 'D', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+/* clang-format on */
+
+TU_VERIFY_STATIC(sizeof(desc_ms_os_20) == MS_OS_20_DESC_LEN, "Incorrect size");
+
+bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, const tusb_control_request_t* request)
+{
+    if(stage != CONTROL_STAGE_SETUP)
+    {
+        return true;
+    }
+
+    switch(request->bmRequestType_bit.type)
+    {
+    case TUSB_REQ_TYPE_VENDOR:
+        if(request->bRequest == 1 && request->wIndex == 7)
+        {
+            uint16_t total_len;
+            memcpy(&total_len, desc_ms_os_20 + 8, 2);
+            return tud_control_xfer(rhport, request, (void*)(uintptr_t)desc_ms_os_20, total_len);
+        }
+        break;
+    default:
+        break;
+    }
+
+    return false;
+}
+#endif
+
+/* String descriptors - same order/indices as usb_cdc_net.c */
+static char const* bridge_string_arr[] = {
     [STRID_LANGID]       = (const char[]){0x09, 0x04},
     [STRID_MANUFACTURER] = "TinyUSB",
     [STRID_PRODUCT]      = "USB-ETH Bridge",

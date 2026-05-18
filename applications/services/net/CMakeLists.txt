@@ -39,6 +39,17 @@ if(RHS_SERVICE_ETH_NET OR RHS_APPLICATION_USB_CDC_NET)
         message("\t\tRHS_SERVICE_ETH_NET\t\t\t\t- OFF")
     endif()
 
+    if(RHS_APPLICATION_USB_ETH_BRIDGE)
+        if(RHS_APPLICATION_USB_CDC_NET)
+            message(FATAL_ERROR "RHS_APPLICATION_USB_ETH_BRIDGE and RHS_APPLICATION_USB_CDC_NET "
+                                "cannot be enabled at the same time (conflicting TinyUSB network callbacks)")
+        endif()
+        message("\t\tRHS_APPLICATION_USB_ETH_BRIDGE\t\t- ON")
+        add_subdirectory(usb_eth_bridge)
+    else()
+        message("\t\tRHS_APPLICATION_USB_ETH_BRIDGE\t\t- OFF")
+    endif()
+
     add_subdirectory(net_listeners)
     add_subdirectory(net_utils)
     add_subdirectory(modbus_tcp)

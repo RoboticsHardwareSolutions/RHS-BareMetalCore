@@ -23,20 +23,20 @@ void tud_net_dispatch_clear(void)
 
 bool tud_network_recv_cb(const uint8_t* buf, uint16_t len)
 {
-    if(s_ops && s_ops->recv)
+    if (s_ops && s_ops->recv)
         return s_ops->recv(buf, len);
     return false;
 }
 
 void tud_network_init_cb(void)
 {
-    if(s_ops && s_ops->init)
+    if (s_ops && s_ops->init)
         s_ops->init();
 }
 
 uint16_t tud_network_xmit_cb(uint8_t* dst, void* ref, uint16_t arg)
 {
-    if(s_ops && s_ops->xmit)
+    if (s_ops && s_ops->xmit)
         return s_ops->xmit(dst, ref, arg);
     return 0;
 }

@@ -12,8 +12,8 @@
  */
 typedef struct
 {
-    bool     (*recv)(const uint8_t* buf, uint16_t len);
-    void     (*init)(void);
+    bool (*recv)(const uint8_t* buf, uint16_t len);
+    void (*init)(void);
     uint16_t (*xmit)(uint8_t* dst, void* ref, uint16_t arg);
 } TudNetOps;
 

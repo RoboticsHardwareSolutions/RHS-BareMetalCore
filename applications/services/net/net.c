@@ -287,9 +287,3 @@ int32_t net_worker(void* context)
     }
     rhs_record_close(RECORD_CLI);
 }
-
-__attribute__((weak)) bool mg_random(void* buf, size_t len)
-{  // Use on-board RNG
-    rhs_hal_random_fill_buf(buf, len);
-    return true;
-}

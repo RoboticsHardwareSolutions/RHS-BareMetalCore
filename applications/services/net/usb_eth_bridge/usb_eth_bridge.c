@@ -404,9 +404,3 @@ void usb_eth_bridge_stop(UsbEthBridge* bridge)
      *   free(bridge);
      */
 }
-
-__attribute__((weak)) bool mg_random(void* buf, size_t len)
-{  // Use on-board RNG
-    rhs_hal_random_fill_buf(buf, len);
-    return true;
-}

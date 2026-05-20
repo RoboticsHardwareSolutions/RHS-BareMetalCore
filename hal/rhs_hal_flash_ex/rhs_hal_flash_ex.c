@@ -228,7 +228,7 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
     /* Check Flash busy ? */
     if (flash_wait_ready(10) != 0)
     {
-        error = RHS_FLASH_EX_ERROR;
+        error = RHS_FLASH_EX_BUSY;
     }
     else if (mt25ql128aba_read(&hqspi, MT25QL128ABA_QPI_MODE, p_data, addr, size) != 0)
     {
@@ -249,7 +249,7 @@ int rhs_hal_flash_ex_erase_chip(void)
     /* Check Flash busy ? */
     if (flash_wait_ready(10) != 0)
     {
-        error = RHS_FLASH_EX_ERROR;
+        error = RHS_FLASH_EX_BUSY;
     } /* Enable write operations */
     else if (mt25ql128aba_write_enable(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
     {
@@ -303,7 +303,7 @@ int rhs_hal_flash_ex_write(uint32_t addr, const uint8_t* p_data, uint32_t size)
     {
         if (flash_wait_ready(10) != 0)
         {
-            error = RHS_FLASH_EX_ERROR;
+            error = RHS_FLASH_EX_BUSY;
             break;
         }
         if (mt25ql128aba_write_enable(&hqspi, MT25QL128ABA_QPI_MODE) != 0)
@@ -346,7 +346,7 @@ int rhs_hal_flash_ex_block_erase(uint32_t addr, uint32_t size)
     /* Check Flash busy ? */
     if (flash_wait_ready(10) != 0)
     {
-        error = RHS_FLASH_EX_ERROR;
+        error = RHS_FLASH_EX_BUSY;
     }
     else
     {

@@ -70,7 +70,7 @@ static void rhs_save_stack_info(void)
     }
 }
 
-_Noreturn void __rhs_crash_implementation(CallContext context, char* m)
+_Noreturn void __rhs_crash_implementation(const char* file, int line, char* m)
 {
     __disable_irq();
 
@@ -91,10 +91,10 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
     {
     }
 
-    const char* last_separator = strrchr(context.file, '/');
+    const char* last_separator = strrchr(file, '/');
     if (last_separator != NULL)
     {
-        context.file = last_separator + 1;
+        file = last_separator + 1;
     }
 #if defined(TIMESTAMPER_RTC)
     {
@@ -110,18 +110,18 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
                          (uint32_t) datetime.minutes,
                          (uint32_t) datetime.seconds,
                          m,
-                         context.file,
-                         context.line);
+                         file,
+                         line);
         }
     }
 #else
     if (rhs_log_save)
     {
-        rhs_log_save("%u: msg: %s. file: %s, line: %d;", rhs_get_tick(), m, context.file, context.line);
+        rhs_log_save("%u: msg: %s. file: %s, line: %d;", rhs_get_tick(), m, file, line);
     }
 #endif
     rhs_save_stack_info();
-    RHS_LOG_D("Assert", "Message: %s. Called from file: %s, line: %d\n", m, context.file, context.line);
+    RHS_LOG_D("Assert", "Message: %s. Called from file: %s, line: %d\n", m, file, line);
 
 // Halt CPU (breakpoint) when hitting error, only apply for Cortex M3, M4, M7, M33. M55
 #if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_8M_MAIN__) ||                      \
@@ -152,3 +152,5 @@ _Noreturn void __rhs_crash_implementation(CallContext context, char* m)
     
     __builtin_unreachable();
 }
+
+

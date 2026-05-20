@@ -85,6 +85,12 @@ int string_to_ip(const char* ip_str, unsigned int* a, unsigned int* b, unsigned 
  * @param str_buf Buffer to store resulting string (must be at least 16 bytes)
  * @return 0 on success, -1 on error
  */
+int ip_string_is_valid(const char* ip_str)
+{
+    unsigned int a, b, c, d;
+    return string_to_ip(ip_str, &a, &b, &c, &d) == 0 ? 1 : 0;
+}
+
 int ip_to_string(unsigned int a, unsigned int b, unsigned int c, unsigned int d, char* str_buf)
 {
     if (str_buf == NULL)

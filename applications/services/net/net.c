@@ -140,7 +140,7 @@ void net_stop_listener(Net* net, const char* uri)
     }
 }
 
-void net_set_config(Net* net, NetConfig* config)
+void net_set_config(Net* net, const NetConfig* config)
 {
     RHSThread* thread = rhs_thread_get_current();
     RHSApiLock lock   = NULL;
@@ -150,7 +150,8 @@ void net_set_config(Net* net, NetConfig* config)
         lock = api_lock_alloc_locked();
     }
 
-    NetApiEventMessage msg = {.lock = lock, .type = NetApiEventTypeRestart, .data = {.config = *config}};
+    NetApiEventMessage msg = {.lock = lock, .type = NetApiEventTypeRestart};
+    memcpy(&msg.data.config, config, sizeof(NetConfig));
     rhs_message_queue_put(net->queue, &msg, RHSWaitForever);
 
     if (thread != net->thread)
@@ -165,9 +166,9 @@ void net_get_config(Net* net, NetConfig* config)
         return;
 
     // Copy current configuration to the provided config structure
-    uint8_t* ip_b = (uint8_t*)&net->mgr->ifp->ip;
-    uint8_t* mk_b = (uint8_t*)&net->mgr->ifp->mask;
-    uint8_t* gw_b = (uint8_t*)&net->mgr->ifp->gw;
+    uint8_t* ip_b = (uint8_t*) &net->mgr->ifp->ip;
+    uint8_t* mk_b = (uint8_t*) &net->mgr->ifp->mask;
+    uint8_t* gw_b = (uint8_t*) &net->mgr->ifp->gw;
     ip_to_string(ip_b[0], ip_b[1], ip_b[2], ip_b[3], config->ip);
     ip_to_string(mk_b[0], mk_b[1], mk_b[2], mk_b[3], config->mask);
     ip_to_string(gw_b[0], gw_b[1], gw_b[2], gw_b[3], config->gateway);
@@ -175,8 +176,8 @@ void net_get_config(Net* net, NetConfig* config)
 
 int32_t net_worker(void* context)
 {
-    Net* net       = (Net*) context;
-    net->cli       = rhs_record_open(RECORD_CLI);
+    Net* net = (Net*) context;
+    net->cli = rhs_record_open(RECORD_CLI);
 
     net_mdns_start(net);
 
@@ -251,7 +252,7 @@ int32_t net_worker(void* context)
             else if (msg.type == NetApiEventTypeRestart)
             {
                 struct mg_connection* c;
-                unsigned int pa, pb, pc, pd;
+                unsigned int          pa, pb, pc, pd;
                 if (string_to_ip(msg.data.config.ip, &pa, &pb, &pc, &pd) == 0)
                     net->mgr->ifp->ip = MG_IPV4(pa, pb, pc, pd);
                 if (string_to_ip(msg.data.config.mask, &pa, &pb, &pc, &pd) == 0)

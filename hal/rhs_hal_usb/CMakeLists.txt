@@ -25,13 +25,10 @@ add_library(tinyusb STATIC
         tinyusb/src/common/tusb_fifo.c
         tinyusb/src/device/usbd.c
         tinyusb/src/device/usbd_control.c
-        tinyusb/src/class/net/ecm_rndis_device.c
-        tinyusb/src/class/net/ncm_device.c
         tinyusb/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c # For stm32f1 etc. which has no USB FS peripheral
         tinyusb/src/portable/st/stm32_fsdev/fsdev_common.c # For stm32f1 etc. which has no USB FS peripheral
         tinyusb/src/portable/synopsys/dwc2/dcd_dwc2.c # For stm32f4 etc. which has USB FS/HS peripheral with DWC IP
         tinyusb/src/portable/synopsys/dwc2/dwc2_common.c # For stm32f4 etc. which has USB FS/HS peripheral with DWC IP
-        tinyusb/lib/networking/rndis_reports.c
 
         tinyusb/src/class/cdc/cdc_device.c
         rhs/hal/rhs_hal_usb/usb_descriptors.c
@@ -41,8 +38,20 @@ target_include_directories(tinyusb
         PUBLIC
         \$\{CMAKE_CURRENT_SOURCE_DIR\}/tinyusb/src
         \$\{CMAKE_CURRENT_SOURCE_DIR\}/tinyusb/src/portable/synopsys/dwc2 # For stm32f4 etc. which has USB FS/HS peripheral with DWC IP
-        \$\{CMAKE_CURRENT_SOURCE_DIR\}/tinyusb/lib/networking
 )
+
+################################## FOR CDC NET ADD ##################################
+target_compile_definitions(tinyusb PUBLIC CFG_TUD_NCM)
+        target_include_directories(tinyusb PUBLIC
+                ${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/lib/networking
+        )
+        target_sources(tinyusb
+                PUBLIC
+                tinyusb/lib/networking/rndis_reports.c
+                tinyusb/src/class/net/ecm_rndis_device.c
+                tinyusb/src/class/net/ncm_device.c
+        )
+################################## FOR CDC NET ADD ##################################
 
 target_compile_options(tinyusb PRIVATE -Wno-conversion -Wno-sign-conversion)
 target_link_libraries(tinyusb PRIVATE freertos_kernel)"

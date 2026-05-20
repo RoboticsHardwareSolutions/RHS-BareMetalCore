@@ -1,12 +1,6 @@
 #pragma once
-#include "assert.h"
 #include "stdint.h"
-
-typedef struct
-{
-    const char* file;
-    int         line;
-} CallContext;
+#include "assert.h"
 
 /**
  * @brief Custom logging function for critical errors and assertions
@@ -40,22 +34,20 @@ __attribute__((weak)) void rhs_crash_action(void);
  */
 void rhs_set_fault_frame(uint32_t* frame);
 
-_Noreturn void __rhs_crash_implementation(CallContext context, char* m);
+_Noreturn void __rhs_crash_implementation(const char* file, int line, char* m);
 
-#define rhs_assert(x)                                  \
-    do                                                 \
-    {                                                  \
-        CallContext ctx = {__FILE__, __LINE__};        \
-        if ((x) == 0)                                  \
-        {                                              \
-            __rhs_crash_implementation(ctx, "Assert"); \
-        }                                              \
+#define rhs_assert(x)                                                 \
+    do                                                                \
+    {                                                                 \
+        if ((x) == 0)                                                 \
+        {                                                             \
+            __rhs_crash_implementation(__FILE__, __LINE__, "Assert"); \
+        }                                                             \
     } while (0)
 
 /** Crash system with message. Show message after reboot. */
-#define rhs_crash(m)                            \
-    do                                          \
-    {                                           \
-        CallContext ctx = {__FILE__, __LINE__}; \
-        __rhs_crash_implementation(ctx, (m));   \
+#define rhs_crash(m)                                         \
+    do                                                       \
+    {                                                        \
+        __rhs_crash_implementation(__FILE__, __LINE__, (m)); \
     } while (0)

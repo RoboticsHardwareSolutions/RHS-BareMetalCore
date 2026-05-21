@@ -155,38 +155,44 @@ void HAL_QSPI_MspDeInit(QSPI_HandleTypeDef* qspiHandle)
  */
 static void flash_force_abort(void)
 {
-    if ((hqspi.Instance->SR & QUADSPI_SR_BUSY) == 0U)
+    if ((hqspi.Instance->SR & QUADSPI_SR_BUSY) != 0U)
     {
-        return; /* Already idle, nothing to do */
-    }
+        /* Trigger hardware abort directly, bypassing HAL state check */
+        SET_BIT(hqspi.Instance->CR, QUADSPI_CR_ABORT);
 
-    /* Trigger hardware abort directly, bypassing HAL state check */
-    SET_BIT(hqspi.Instance->CR, QUADSPI_CR_ABORT);
-
-    /* Wait for Transfer Complete flag (abort completion) */
-    uint32_t tickstart = HAL_GetTick();
-    while ((hqspi.Instance->SR & QUADSPI_SR_TCF) == 0U)
-    {
-        if ((HAL_GetTick() - tickstart) > 100U)
+        /* Wait for Transfer Complete flag (abort completion) */
+        uint32_t tickstart = HAL_GetTick();
+        while ((hqspi.Instance->SR & QUADSPI_SR_TCF) == 0U)
         {
-            break;
+            if ((HAL_GetTick() - tickstart) > 100U)
+            {
+                break;
+            }
         }
-    }
 
-    /* Wait for BUSY to deassert */
-    tickstart = HAL_GetTick();
-    while ((hqspi.Instance->SR & QUADSPI_SR_BUSY) != 0U)
-    {
-        if ((HAL_GetTick() - tickstart) > 100U)
+        /* Wait for BUSY to deassert */
+        tickstart = HAL_GetTick();
+        while ((hqspi.Instance->SR & QUADSPI_SR_BUSY) != 0U)
         {
-            break; /* Peripheral unrecoverable without full re-init */
+            if ((HAL_GetTick() - tickstart) > 100U)
+            {
+                break; /* Peripheral unrecoverable without full re-init */
+            }
         }
+
+        /* Clear all status flags */
+        WRITE_REG(hqspi.Instance->FCR, QSPI_FLAG_TC | QSPI_FLAG_TE | QSPI_FLAG_SM | QSPI_FLAG_TO);
     }
 
-    /* Clear all status flags */
-    WRITE_REG(hqspi.Instance->FCR, QSPI_FLAG_TC | QSPI_FLAG_TE | QSPI_FLAG_SM | QSPI_FLAG_TO);
-
-    /* Reset FMODE to indirect-write so next command starts clean */
+    /* Always reset FMODE to indirect-write, even after a successful receive.
+     *
+     * STM32F765 errata 2.4.4 – "Memory-mapped access in indirect mode
+     * clearing QUADSPI_AR register": a CPU/DMA bus access to the QSPI bank
+     * (0x90000000) while the peripheral is in indirect mode spuriously clears
+     * AR to 0x00.  HAL_QSPI_Receive() leaves CCR with FMODE=INDIRECT_READ;
+     * the errata-triggered AR write then immediately re-starts an indirect
+     * read at address 0, filling the 32-byte FIFO (SR=0x2024, BUSY=1).
+     * Clearing FMODE to INDIRECT_WRITE makes the spurious AR=0 harmless. */
     CLEAR_BIT(hqspi.Instance->CCR, QUADSPI_CCR_FMODE);
 
     /* Sync HAL software state */
@@ -232,9 +238,14 @@ int rhs_hal_flash_ex_read(uint32_t addr, uint8_t* p_data, uint32_t size)
     }
     else if (mt25ql128aba_read(&hqspi, MT25QL128ABA_QPI_MODE, p_data, addr, size) != 0)
     {
-        flash_force_abort();
         error = RHS_FLASH_EX_ERROR;
     }
+
+    /* Always clean up: abort hardware if still busy, and unconditionally
+     * clear CCR.FMODE so the stale INDIRECT_READ left by HAL_QSPI_Receive()
+     * cannot re-arm a transfer on the next AR write. */
+    flash_force_abort();
+
     rhs_mutex_release(flash_mutex);
 
     return error;

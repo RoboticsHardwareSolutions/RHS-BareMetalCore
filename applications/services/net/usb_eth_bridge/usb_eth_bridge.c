@@ -213,6 +213,7 @@ struct UsbEthBridge
     struct mg_tcpip_driver_stm32f_data eth_drv_data;
     RHSHalUsbInterface*                prev_usb_intf;
     RHSThread*                         thread;
+    bool                               finish;
 };
 
 static TudNetOps bridge_ops = {0};
@@ -320,6 +321,9 @@ static int32_t bridge_worker(void* ctx)
 
         tud_task();
 
+        if (b->finish)
+            break;
+
         rhs_delay_tick(0);
     }
 
@@ -335,13 +339,10 @@ UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config)
     UsbEthBridge* b = malloc(sizeof(UsbEthBridge));
     rhs_assert(b != NULL);
     memset(b, 0, sizeof(*b));
+    b->finish = false;
 
     /* --- Ethernet hardware + driver init ---------------------------------- */
     bridge_eth_hw_init();
-
-    /* Bridge device MAC: use UID-derived locally administered address */
-    // uint8_t mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
-    // memcpy(b->eth_ifp.mac, mac, sizeof(mac));
 
     b->eth_drv_data.mdc_cr   = phy_config ? phy_config->mdc_cr : MG_DRIVER_MDC_CR;
     b->eth_drv_data.phy_addr = phy_config ? phy_config->phy_addr : MG_TCPIP_PHY_ADDR;
@@ -375,9 +376,6 @@ UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config)
     b->thread = rhs_thread_alloc("usb_eth_bridge", 2 * 1024, bridge_worker, b);
     rhs_thread_start(b->thread);
 
-    // MG_INFO(("USB-ETH bridge started, MAC: %02X:%02X:%02X:%02X:%02X:%02X",
-    //  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]));
-
     return b;
 }
 
@@ -385,22 +383,18 @@ void usb_eth_bridge_stop(UsbEthBridge* bridge)
 {
     rhs_assert(bridge != NULL);
     tud_net_dispatch_clear();
-    rhs_crash("Not implemented yet");
+    bridge->finish = true;
+    rhs_thread_join(bridge->thread);
+    rhs_thread_free(bridge->thread);
 
-    /* Sketch of teardown (fill in when implementing stop):
-     *
-     *   rhs_thread_join(bridge->thread);
-     *   rhs_thread_free(bridge->thread);
-     *
-     *   tusb_deinit(0);
-     *   rhs_hal_usb_set_interface(bridge->prev_usb_intf);
-     *
-     *   mg_tcpip_free(&bridge->eth_ifp);
-     *   mg_mgr_free(&bridge->eth_mgr);
-     *
-     *   ethernet_deinit();   // disable IRQ, clocks, reset GPIO
-     *
-     *   g_bridge = NULL;
-     *   free(bridge);
-     */
+    tusb_deinit(0);
+    rhs_hal_usb_set_interface(bridge->prev_usb_intf);
+
+    mg_tcpip_free(&bridge->eth_ifp);
+    mg_mgr_free(&bridge->eth_mgr);
+
+    ethernet_deinit();  // disable IRQ, clocks, reset GPIO
+
+    free(bridge);
+    rhs_crash("Not implemented yet");
 }

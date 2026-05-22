@@ -191,10 +191,11 @@ void eth_net_stop(Net* net)
 {
     rhs_assert(net != NULL);
     EthNet* app = (EthNet*) net;
-    rhs_crash("Not implemented yet");
+    net_stop(net);
     rhs_thread_join(app->net.thread);
     rhs_thread_free(app->net.thread);
     free(app->net.config);
     free(app->net.mgr);
     free(app);
+    rhs_crash("Not implemented yet");
 }

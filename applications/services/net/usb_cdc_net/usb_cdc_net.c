@@ -571,11 +571,12 @@ void usb_cdc_net_stop(Net* net)
     rhs_assert(net != NULL);
     CdcNet* app = (CdcNet*) net;
     tud_net_dispatch_clear();
-    rhs_crash("Not implemented yet");
-    tusb_deinit(0);
+    net_stop(net);
     rhs_thread_join(app->net.thread);
     rhs_thread_free(app->net.thread);
+    tusb_deinit(0);
     free(app->net.config);
     free(app->net.mgr);
     free(app);
+    rhs_crash("Not implemented yet");
 }

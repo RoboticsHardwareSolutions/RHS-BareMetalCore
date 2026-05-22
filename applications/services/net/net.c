@@ -2,6 +2,8 @@
 #include "net_i.h"
 #include "net_listeners.h"
 
+#define TAG "Net"
+
 static void net_cli_command(char* args, void* context)
 {
     Net* net = (Net*) context;
@@ -85,7 +87,7 @@ static void net_mdns_start(Net* net)
     {
         uint32_t response_ip = net->mgr->ifp->ip;
         memcpy(c->data, &response_ip, sizeof(response_ip));
-        MG_INFO(("mDNS on http://%s.local started", name));
+        RHS_LOG_I(TAG, "mDNS on http://%s.local started", name);
     }
 }
 
@@ -174,6 +176,13 @@ void net_get_config(Net* net, NetConfig* config)
     ip_to_string(gw_b[0], gw_b[1], gw_b[2], gw_b[3], config->gateway);
 }
 
+void net_stop(Net* net)
+{
+    rhs_assert(net);
+    NetApiEventMessage msg = {.type = NetApiEventTypeStop};
+    rhs_message_queue_put(net->queue, &msg, RHSWaitForever);
+}
+
 int32_t net_worker(void* context)
 {
     Net* net = (Net*) context;
@@ -182,7 +191,7 @@ int32_t net_worker(void* context)
     net_mdns_start(net);
 
     NetApiEventMessage msg;
-    MG_INFO(("Starting event loop"));
+    RHS_LOG_I(TAG, "Starting event loop");
 
     for (;;)
     {
@@ -193,7 +202,7 @@ int32_t net_worker(void* context)
             if (msg.type == NetApiEventTypeSetHttp)
             {
                 mg_http_listen(net->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
-                MG_INFO(("HTTP server started on %s", msg.data.interface.uri));
+                RHS_LOG_I(TAG, "HTTP server started on %s", msg.data.interface.uri);
 
                 // Add listener to the buffer for later restoration
                 net_listeners_add(&net->listeners,
@@ -205,7 +214,7 @@ int32_t net_worker(void* context)
             else if (msg.type == NetApiEventTypeSetTcp)
             {
                 mg_listen(net->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
-                MG_INFO(("TCP server started on %s", msg.data.interface.uri));
+                RHS_LOG_I(TAG, "TCP server started on %s", msg.data.interface.uri);
 
                 // Add listener to the buffer for later restoration
                 net_listeners_add(&net->listeners,
@@ -230,7 +239,7 @@ int32_t net_worker(void* context)
                         // Check if this is a listening connection with matching address
                         if (c->is_listening && c->loc.port == mg_htons(port))
                         {
-                            MG_INFO(("ip %s, port %d", c->loc.addr.ip, mg_htons(c->loc.port)));
+                            RHS_LOG_I(TAG, "ip %s, port %d", c->loc.addr.ip, mg_htons(c->loc.port));
                             c->is_closing = 1;
                         }
                     }
@@ -241,12 +250,12 @@ int32_t net_worker(void* context)
                     // Remove listener from the stored list
                     if (net_listeners_remove(&net->listeners, msg.data.interface.uri) != true)
                     {
-                        MG_ERROR(("Listener not found in stored list: %s", msg.data.interface.uri));
+                        RHS_LOG_E(TAG, "Listener not found in stored list: %s", msg.data.interface.uri);
                     }
                 }
                 else
                 {
-                    MG_ERROR(("invalid listening URL: %s", msg.data.interface.uri));
+                    RHS_LOG_E(TAG, "invalid listening URL: %s", msg.data.interface.uri);
                 }
             }
             else if (msg.type == NetApiEventTypeRestart)
@@ -266,20 +275,25 @@ int32_t net_worker(void* context)
                 mg_mgr_poll(net->mgr, 0);
 
                 // Restore all registered listeners
-                MG_INFO(("Restoring listeners..."));
+                RHS_LOG_I(TAG, "Restoring listeners...");
                 for (NetListener* listener = net->listeners; listener != NULL; listener = listener->next)
                 {
                     if (listener->type == NetListenerTypeHttp)
                     {
                         mg_http_listen(net->mgr, listener->uri, listener->fn, listener->context);
-                        MG_INFO(("Restored HTTP server on %s", listener->uri));
+                        RHS_LOG_I(TAG, "Restored HTTP server on %s", listener->uri);
                     }
                     else if (listener->type == NetListenerTypeTcp)
                     {
                         mg_listen(net->mgr, listener->uri, listener->fn, listener->context);
-                        MG_INFO(("Restored TCP server on %s", listener->uri));
+                        RHS_LOG_I(TAG, "Restored TCP server on %s", listener->uri);
                     }
                 }
+            }
+            else if (msg.type == NetApiEventTypeStop)
+            {
+                RHS_LOG_W(TAG, "%s Stopping network manager...", rhs_thread_get_name(rhs_thread_get_id(net->thread)));
+                break;
             }
 
             if (msg.lock)

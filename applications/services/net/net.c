@@ -10,30 +10,14 @@ static void net_cli_command(char* args, void* context)
     if (args == NULL)
     {
         struct mg_tcpip_if* ifp = net->mgr->ifp;
+        // clang-format off
         printf("Status:\n");
         printf("  Link:    %s\n", (ifp->state >= MG_TCPIP_STATE_UP) ? "UP" : "DOWN");
-        printf("  IP:      %u.%u.%u.%u\n",
-               ifp->ip & 0xFF,
-               (ifp->ip >> 8) & 0xFF,
-               (ifp->ip >> 16) & 0xFF,
-               (ifp->ip >> 24) & 0xFF);
-        printf("  Mask:    %u.%u.%u.%u\n",
-               ifp->mask & 0xFF,
-               (ifp->mask >> 8) & 0xFF,
-               (ifp->mask >> 16) & 0xFF,
-               (ifp->mask >> 24) & 0xFF);
-        printf("  Gateway: %u.%u.%u.%u\n",
-               ifp->gw & 0xFF,
-               (ifp->gw >> 8) & 0xFF,
-               (ifp->gw >> 16) & 0xFF,
-               (ifp->gw >> 24) & 0xFF);
-        printf("  MAC:     %02X:%02X:%02X:%02X:%02X:%02X\n",
-               ifp->mac[0],
-               ifp->mac[1],
-               ifp->mac[2],
-               ifp->mac[3],
-               ifp->mac[4],
-               ifp->mac[5]);
+        printf("  IP:      %u.%u.%u.%u\n", ifp->ip & 0xFF, (ifp->ip >> 8) & 0xFF, (ifp->ip >> 16) & 0xFF, (ifp->ip >> 24) & 0xFF);
+        printf("  Mask:    %u.%u.%u.%u\n", ifp->mask & 0xFF, (ifp->mask >> 8) & 0xFF, (ifp->mask >> 16) & 0xFF, (ifp->mask >> 24) & 0xFF);
+        printf("  Gateway: %u.%u.%u.%u\n", ifp->gw & 0xFF, (ifp->gw >> 8) & 0xFF, (ifp->gw >> 16) & 0xFF, (ifp->gw >> 24) & 0xFF);
+        printf("  MAC:     %02X:%02X:%02X:%02X:%02X:%02X\n", ifp->mac[0], ifp->mac[1], ifp->mac[2], ifp->mac[3], ifp->mac[4], ifp->mac[5]);
+        // clang-format on
         return;
     }
     else
@@ -93,6 +77,7 @@ static void net_mdns_start(Net* net)
 
 void net_start_http(Net* net, const char* uri, mg_event_handler_t fn, void* context)
 {
+    rhs_assert(net);
     NetApiEventMessage msg = {.lock = api_lock_alloc_locked(),
                               .type = NetApiEventTypeSetHttp,
                               .data = {.interface = {.uri = (char*) uri, .fn = fn, .context = context}}};
@@ -102,6 +87,7 @@ void net_start_http(Net* net, const char* uri, mg_event_handler_t fn, void* cont
 
 void net_start_listener(Net* net, const char* uri, mg_event_handler_t fn, void* context)
 {
+    rhs_assert(net);
     RHSThread* thread = rhs_thread_get_current();
     RHSApiLock lock   = NULL;
 
@@ -124,6 +110,7 @@ void net_start_listener(Net* net, const char* uri, mg_event_handler_t fn, void* 
 
 void net_stop_listener(Net* net, const char* uri)
 {
+    rhs_assert(net);
     RHSThread* thread = rhs_thread_get_current();
     RHSApiLock lock   = NULL;
 
@@ -144,6 +131,7 @@ void net_stop_listener(Net* net, const char* uri)
 
 void net_set_config(Net* net, const NetConfig* config)
 {
+    rhs_assert(net);
     RHSThread* thread = rhs_thread_get_current();
     RHSApiLock lock   = NULL;
 
@@ -164,8 +152,7 @@ void net_set_config(Net* net, const NetConfig* config)
 
 void net_get_config(Net* net, NetConfig* config)
 {
-    if (net == NULL || config == NULL)
-        return;
+    rhs_assert(net && config);
 
     // Copy current configuration to the provided config structure
     uint8_t* ip_b = (uint8_t*) &net->mgr->ifp->ip;

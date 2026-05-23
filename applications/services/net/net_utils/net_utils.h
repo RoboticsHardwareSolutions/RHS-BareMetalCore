@@ -24,3 +24,10 @@ int string_to_ip(const char* ip_str, unsigned int* a, unsigned int* b, unsigned 
  * @return 0 on success, -1 on error
  */
 int ip_to_string(unsigned int a, unsigned int b, unsigned int c, unsigned int d, char* str_buf);
+
+/**
+ * @brief Check if string is a valid IPv4 address
+ * @param ip_str Input string to validate
+ * @return 1 if valid, 0 if invalid
+ */
+int ip_string_is_valid(const char* ip_str);

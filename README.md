@@ -137,6 +137,65 @@ add_subdirectory(thirdparty)
 add_subdirectory(rlibs)
 ```
 
+# Module index
+
+## Core (`core/`)
+
+| Module | Description | README |
+|---|---|---|
+| `thread` | FreeRTOS thread wrapper | [core/README.md](core/README.md) |
+| `message_queue` | Thread-safe message queue | [core/README.md](core/README.md) |
+| `event_flag` | Event flags (FreeRTOS event groups) | [core/README.md](core/README.md) |
+| `mutex` | Recursive mutex wrapper | [core/README.md](core/README.md) |
+| `semaphore` | Counting / binary semaphore | [core/README.md](core/README.md) |
+| `timer` | Software timer wrapper | [core/README.md](core/README.md) |
+| `stream_buf` | Stream buffer wrapper | [core/README.md](core/README.md) |
+| `record` | Named object registry (publish/subscribe) | [core/README.md](core/README.md) |
+| `api_lock` | Synchronous cross-thread API call helper | [core/README.md](core/README.md) |
+| `log` | RTT-backed logging (`RHS_LOG_I/W/E`) | [core/README.md](core/README.md) |
+| `check` | `rhs_assert` / `rhs_crash` with weak log hook | [core/README.md](core/README.md) |
+| `memmgr` | Heap allocator wrappers | [core/README.md](core/README.md) |
+
+## HAL (`hal/`)
+
+| Module | CMake option / target | Description | README |
+|---|---|---|---|
+| `rhs_hal_can` | always on | CAN bus HAL | [hal/rhs_hal_can/README.md](hal/rhs_hal_can/README.md) |
+| `rhs_hal_cortex` | always on | SysTick, NVIC helpers | [hal/rhs_hal_cortex/README.md](hal/rhs_hal_cortex/README.md) |
+| `rhs_hal_flash_ex` | always on | External flash (mt25ql128aba) | [hal/rhs_hal_flash_ex/README.md](hal/rhs_hal_flash_ex/README.md) |
+| `rhs_hal_gpio` | always on | GPIO abstraction | [hal/rhs_hal_gpio/README.md](hal/rhs_hal_gpio/README.md) |
+| `rhs_hal_i2c` | always on | I2C HAL | [hal/rhs_hal_i2c/README.md](hal/rhs_hal_i2c/README.md) |
+| `rhs_hal_interrupt` | always on | IRQ registration table | [hal/rhs_hal_interrupt/README.md](hal/rhs_hal_interrupt/README.md) |
+| `rhs_hal_io` | always on | Digital I/O abstraction | [hal/rhs_hal_io/README.md](hal/rhs_hal_io/README.md) |
+| `rhs_hal_power` | always on | Reset / power control | [hal/rhs_hal_power/README.md](hal/rhs_hal_power/README.md) |
+| `rhs_hal_random` | always on | Hardware RNG | [hal/rhs_hal_random/README.md](hal/rhs_hal_random/README.md) |
+| `rhs_hal_rtc` | always on | RTC + Unix time conversion | [hal/rhs_hal_rtc/README.md](hal/rhs_hal_rtc/README.md) |
+| `rhs_hal_serial` | always on | UART HAL | [hal/rhs_hal_serial/README.md](hal/rhs_hal_serial/README.md) |
+| `rhs_hal_speaker` | always on | PWM buzzer | [hal/rhs_hal_speaker/README.md](hal/rhs_hal_speaker/README.md) |
+| `rhs_hal_usb` | always on | TinyUSB device stack + `tud_net_dispatch` | [hal/rhs_hal_usb/README.md](hal/rhs_hal_usb/README.md) |
+| `rhs_hal_version` | always on | Device UID / version string | [hal/rhs_hal_version/README.md](hal/rhs_hal_version/README.md) |
+
+## Drivers (`drivers/`)
+
+| Module | CMake option / target | Description | README |
+|---|---|---|---|
+| `eeprom` | always on | I2C EEPROM read/write | [drivers/eeprom/README.md](drivers/eeprom/README.md) |
+
+## Services (`applications/services/`)
+
+| Module | CMake option | Description | README |
+|---|---|---|---|
+| `cli` | always on | Interactive command-line interface over RTT/UART | [applications/services/cli/README.md](applications/services/cli/README.md) |
+| `loader` | always on | Dynamic application loader | [applications/services/loader/README.md](applications/services/loader/README.md) |
+| `notification` | always on | LED / buzzer notification service | [applications/services/notification/README.md](applications/services/notification/README.md) |
+| `can_open` | `RHS_APPLICATION_CAN_OPEN` | CANopen stack integration | [applications/services/can_open/README.md](applications/services/can_open/README.md) |
+| `net` | `RHS_APPLICATION_ETH_NET` / `USB_CDC_NET` / `USB_ETH_BRIDGE` | Unified networking layer (Mongoose) | [applications/services/net/README.md](applications/services/net/README.md) |
+| `net / eth_net` | `RHS_APPLICATION_ETH_NET` | Physical Ethernet via STM32F RMII MAC | [applications/services/net/eth_net/README.md](applications/services/net/eth_net/README.md) |
+| `net / usb_cdc_net` | `RHS_APPLICATION_USB_CDC_NET` | USB device network (RNDIS/ECM/NCM) | [applications/services/net/usb_cdc_net/README.md](applications/services/net/usb_cdc_net/README.md) |
+| `net / usb_eth_bridge` | `RHS_APPLICATION_USB_ETH_BRIDGE` | Layer-2 USB-to-Ethernet bridge | [applications/services/net/usb_eth_bridge/README.md](applications/services/net/usb_eth_bridge/README.md) |
+| `net / modbus_tcp` | included with `net` | Modbus TCP server on top of a `Net` instance | [applications/services/net/README.md](applications/services/net/README.md) |
+| `usb_serial_bridge` | `RHS_APPLICATION_USB_SERIAL_BRIDGE` | USB CDC serial bridge | [applications/services/usb_serial_bridge/README.md](applications/services/usb_serial_bridge/README.md) |
+
 # RHS Core Library
 
 ## Custom Logging

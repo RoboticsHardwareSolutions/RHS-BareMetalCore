@@ -24,6 +24,7 @@ typedef enum
     NetApiEventTypeSetTcp  = 1,
     NetApiEventTypeRstTcp  = 2,
     NetApiEventTypeRestart = 7,
+    NetApiEventTypeStop    = 8,
 } NetApiEventType;
 
 typedef struct
@@ -42,3 +43,5 @@ struct Net
     RHSMessageQueue* queue;
     Cli*             cli;
 };
+
+void net_stop(Net* net);

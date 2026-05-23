@@ -2,36 +2,22 @@
 #include "net_i.h"
 #include "net_listeners.h"
 
+#define TAG "Net"
+
 static void net_cli_command(char* args, void* context)
 {
     Net* net = (Net*) context;
     if (args == NULL)
     {
         struct mg_tcpip_if* ifp = net->mgr->ifp;
+        // clang-format off
         printf("Status:\n");
         printf("  Link:    %s\n", (ifp->state >= MG_TCPIP_STATE_UP) ? "UP" : "DOWN");
-        printf("  IP:      %u.%u.%u.%u\n",
-               ifp->ip & 0xFF,
-               (ifp->ip >> 8) & 0xFF,
-               (ifp->ip >> 16) & 0xFF,
-               (ifp->ip >> 24) & 0xFF);
-        printf("  Mask:    %u.%u.%u.%u\n",
-               ifp->mask & 0xFF,
-               (ifp->mask >> 8) & 0xFF,
-               (ifp->mask >> 16) & 0xFF,
-               (ifp->mask >> 24) & 0xFF);
-        printf("  Gateway: %u.%u.%u.%u\n",
-               ifp->gw & 0xFF,
-               (ifp->gw >> 8) & 0xFF,
-               (ifp->gw >> 16) & 0xFF,
-               (ifp->gw >> 24) & 0xFF);
-        printf("  MAC:     %02X:%02X:%02X:%02X:%02X:%02X\n",
-               ifp->mac[0],
-               ifp->mac[1],
-               ifp->mac[2],
-               ifp->mac[3],
-               ifp->mac[4],
-               ifp->mac[5]);
+        printf("  IP:      %u.%u.%u.%u\n", ifp->ip & 0xFF, (ifp->ip >> 8) & 0xFF, (ifp->ip >> 16) & 0xFF, (ifp->ip >> 24) & 0xFF);
+        printf("  Mask:    %u.%u.%u.%u\n", ifp->mask & 0xFF, (ifp->mask >> 8) & 0xFF, (ifp->mask >> 16) & 0xFF, (ifp->mask >> 24) & 0xFF);
+        printf("  Gateway: %u.%u.%u.%u\n", ifp->gw & 0xFF, (ifp->gw >> 8) & 0xFF, (ifp->gw >> 16) & 0xFF, (ifp->gw >> 24) & 0xFF);
+        printf("  MAC:     %02X:%02X:%02X:%02X:%02X:%02X\n", ifp->mac[0], ifp->mac[1], ifp->mac[2], ifp->mac[3], ifp->mac[4], ifp->mac[5]);
+        // clang-format on
         return;
     }
     else
@@ -85,12 +71,13 @@ static void net_mdns_start(Net* net)
     {
         uint32_t response_ip = net->mgr->ifp->ip;
         memcpy(c->data, &response_ip, sizeof(response_ip));
-        MG_INFO(("mDNS on http://%s.local started", name));
+        RHS_LOG_I(TAG, "mDNS on http://%s.local started", name);
     }
 }
 
 void net_start_http(Net* net, const char* uri, mg_event_handler_t fn, void* context)
 {
+    rhs_assert(net);
     NetApiEventMessage msg = {.lock = api_lock_alloc_locked(),
                               .type = NetApiEventTypeSetHttp,
                               .data = {.interface = {.uri = (char*) uri, .fn = fn, .context = context}}};
@@ -100,6 +87,7 @@ void net_start_http(Net* net, const char* uri, mg_event_handler_t fn, void* cont
 
 void net_start_listener(Net* net, const char* uri, mg_event_handler_t fn, void* context)
 {
+    rhs_assert(net);
     RHSThread* thread = rhs_thread_get_current();
     RHSApiLock lock   = NULL;
 
@@ -122,6 +110,7 @@ void net_start_listener(Net* net, const char* uri, mg_event_handler_t fn, void* 
 
 void net_stop_listener(Net* net, const char* uri)
 {
+    rhs_assert(net);
     RHSThread* thread = rhs_thread_get_current();
     RHSApiLock lock   = NULL;
 
@@ -140,8 +129,9 @@ void net_stop_listener(Net* net, const char* uri)
     }
 }
 
-void net_set_config(Net* net, NetConfig* config)
+void net_set_config(Net* net, const NetConfig* config)
 {
+    rhs_assert(net);
     RHSThread* thread = rhs_thread_get_current();
     RHSApiLock lock   = NULL;
 
@@ -150,7 +140,8 @@ void net_set_config(Net* net, NetConfig* config)
         lock = api_lock_alloc_locked();
     }
 
-    NetApiEventMessage msg = {.lock = lock, .type = NetApiEventTypeRestart, .data = {.config = *config}};
+    NetApiEventMessage msg = {.lock = lock, .type = NetApiEventTypeRestart};
+    memcpy(&msg.data.config, config, sizeof(NetConfig));
     rhs_message_queue_put(net->queue, &msg, RHSWaitForever);
 
     if (thread != net->thread)
@@ -161,27 +152,33 @@ void net_set_config(Net* net, NetConfig* config)
 
 void net_get_config(Net* net, NetConfig* config)
 {
-    if (net == NULL || config == NULL)
-        return;
+    rhs_assert(net && config);
 
     // Copy current configuration to the provided config structure
-    uint8_t* ip_b = (uint8_t*)&net->mgr->ifp->ip;
-    uint8_t* mk_b = (uint8_t*)&net->mgr->ifp->mask;
-    uint8_t* gw_b = (uint8_t*)&net->mgr->ifp->gw;
+    uint8_t* ip_b = (uint8_t*) &net->mgr->ifp->ip;
+    uint8_t* mk_b = (uint8_t*) &net->mgr->ifp->mask;
+    uint8_t* gw_b = (uint8_t*) &net->mgr->ifp->gw;
     ip_to_string(ip_b[0], ip_b[1], ip_b[2], ip_b[3], config->ip);
     ip_to_string(mk_b[0], mk_b[1], mk_b[2], mk_b[3], config->mask);
     ip_to_string(gw_b[0], gw_b[1], gw_b[2], gw_b[3], config->gateway);
 }
 
+void net_stop(Net* net)
+{
+    rhs_assert(net);
+    NetApiEventMessage msg = {.type = NetApiEventTypeStop};
+    rhs_message_queue_put(net->queue, &msg, RHSWaitForever);
+}
+
 int32_t net_worker(void* context)
 {
-    Net* net       = (Net*) context;
-    net->cli       = rhs_record_open(RECORD_CLI);
+    Net* net = (Net*) context;
+    net->cli = rhs_record_open(RECORD_CLI);
 
     net_mdns_start(net);
 
     NetApiEventMessage msg;
-    MG_INFO(("Starting event loop"));
+    RHS_LOG_I(TAG, "Starting event loop");
 
     for (;;)
     {
@@ -192,7 +189,7 @@ int32_t net_worker(void* context)
             if (msg.type == NetApiEventTypeSetHttp)
             {
                 mg_http_listen(net->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
-                MG_INFO(("HTTP server started on %s", msg.data.interface.uri));
+                RHS_LOG_I(TAG, "HTTP server started on %s", msg.data.interface.uri);
 
                 // Add listener to the buffer for later restoration
                 net_listeners_add(&net->listeners,
@@ -204,7 +201,7 @@ int32_t net_worker(void* context)
             else if (msg.type == NetApiEventTypeSetTcp)
             {
                 mg_listen(net->mgr, msg.data.interface.uri, msg.data.interface.fn, msg.data.interface.context);
-                MG_INFO(("TCP server started on %s", msg.data.interface.uri));
+                RHS_LOG_I(TAG, "TCP server started on %s", msg.data.interface.uri);
 
                 // Add listener to the buffer for later restoration
                 net_listeners_add(&net->listeners,
@@ -229,7 +226,7 @@ int32_t net_worker(void* context)
                         // Check if this is a listening connection with matching address
                         if (c->is_listening && c->loc.port == mg_htons(port))
                         {
-                            MG_INFO(("ip %s, port %d", c->loc.addr.ip, mg_htons(c->loc.port)));
+                            RHS_LOG_I(TAG, "ip %s, port %d", c->loc.addr.ip, mg_htons(c->loc.port));
                             c->is_closing = 1;
                         }
                     }
@@ -240,18 +237,18 @@ int32_t net_worker(void* context)
                     // Remove listener from the stored list
                     if (net_listeners_remove(&net->listeners, msg.data.interface.uri) != true)
                     {
-                        MG_ERROR(("Listener not found in stored list: %s", msg.data.interface.uri));
+                        RHS_LOG_E(TAG, "Listener not found in stored list: %s", msg.data.interface.uri);
                     }
                 }
                 else
                 {
-                    MG_ERROR(("invalid listening URL: %s", msg.data.interface.uri));
+                    RHS_LOG_E(TAG, "invalid listening URL: %s", msg.data.interface.uri);
                 }
             }
             else if (msg.type == NetApiEventTypeRestart)
             {
                 struct mg_connection* c;
-                unsigned int pa, pb, pc, pd;
+                unsigned int          pa, pb, pc, pd;
                 if (string_to_ip(msg.data.config.ip, &pa, &pb, &pc, &pd) == 0)
                     net->mgr->ifp->ip = MG_IPV4(pa, pb, pc, pd);
                 if (string_to_ip(msg.data.config.mask, &pa, &pb, &pc, &pd) == 0)
@@ -265,20 +262,25 @@ int32_t net_worker(void* context)
                 mg_mgr_poll(net->mgr, 0);
 
                 // Restore all registered listeners
-                MG_INFO(("Restoring listeners..."));
+                RHS_LOG_I(TAG, "Restoring listeners...");
                 for (NetListener* listener = net->listeners; listener != NULL; listener = listener->next)
                 {
                     if (listener->type == NetListenerTypeHttp)
                     {
                         mg_http_listen(net->mgr, listener->uri, listener->fn, listener->context);
-                        MG_INFO(("Restored HTTP server on %s", listener->uri));
+                        RHS_LOG_I(TAG, "Restored HTTP server on %s", listener->uri);
                     }
                     else if (listener->type == NetListenerTypeTcp)
                     {
                         mg_listen(net->mgr, listener->uri, listener->fn, listener->context);
-                        MG_INFO(("Restored TCP server on %s", listener->uri));
+                        RHS_LOG_I(TAG, "Restored TCP server on %s", listener->uri);
                     }
                 }
+            }
+            else if (msg.type == NetApiEventTypeStop)
+            {
+                RHS_LOG_W(TAG, "%s Stopping network manager...", rhs_thread_get_name(rhs_thread_get_id(net->thread)));
+                break;
             }
 
             if (msg.lock)
@@ -286,10 +288,4 @@ int32_t net_worker(void* context)
         }
     }
     rhs_record_close(RECORD_CLI);
-}
-
-__attribute__((weak)) bool mg_random(void* buf, size_t len)
-{  // Use on-board RNG
-    rhs_hal_random_fill_buf(buf, len);
-    return true;
 }

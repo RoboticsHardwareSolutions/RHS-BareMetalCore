@@ -37,7 +37,6 @@ target_compile_definitions(
         PUBLIC
         -DMG_ENABLE_TCPIP=1
         -DMG_ENABLE_CUSTOM_MILLIS=0
-        -DMG_ENABLE_CUSTOM_RANDOM=1
         -DMG_ENABLE_PACKED_FS=1
         -DMG_IO_SIZE=512
         # -DMG_ENABLE_LINES=1
@@ -51,5 +50,4 @@ target_link_libraries(
         PRIVATE
         rhs
         rhs_hal
-        tinyusb
 )

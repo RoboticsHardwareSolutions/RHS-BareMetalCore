@@ -1,10 +1,9 @@
 #include "rhs.h"
 #include "rhs_hal.h"
 #include "usb_cdc_net.h"
-#include "mongoose.h"
 #include "net_i.h"
 #include "tusb.h"
-#include "cli.h"
+#include "tud_net_dispatch.h"
 
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
  * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
@@ -45,13 +44,10 @@ enum
 typedef struct
 {
     Net                 net;
-    Cli*                cli;
     RHSHalUsbInterface* prev_intf;
 } CdcNet;
 
 static_assert(offsetof(CdcNet, net) == 0, "CdcNet must be compatible with Net for safe casting");
-
-static Net* usb_cdc_active_net;
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -294,6 +290,7 @@ Per MS requirements https://msdn.microsoft.com/en-us/library/windows/hardware/hh
 device should create DeviceInterfaceGUIDs. It can be done by driver and
 in case of real PnP solution device should expose MS "Microsoft OS 2.0
 registry property descriptor". Such descriptor can insert any record
+registry property descriptor". Such descriptor can insert any record
 into Windows registry per device/configuration/interface. In our case it
 will insert "DeviceInterfaceGUIDs" multistring property.
 
@@ -408,30 +405,35 @@ static char const* string_desc_cdc_net_arr[] = {
 };
 
 static RHSHalUsbInterface usb_cdc_net_desc = {
-    .device_desc            = &desc_cdc_net,
-    .configuration_arr      = configuration_fs_arr,  // TODO - support high speed configurations
-    .string_desc_arr        = (char const* const*) string_desc_cdc_net_arr,
-    .string_desc_arr_count  = TU_ARRAY_SIZE(string_desc_cdc_net_arr),
+    .device_desc           = &desc_cdc_net,
+    .configuration_arr     = configuration_fs_arr,  // TODO - support high speed configurations
+    .string_desc_arr       = (char const* const*) string_desc_cdc_net_arr,
+    .string_desc_arr_count = TU_ARRAY_SIZE(string_desc_cdc_net_arr),
 };
 
 #define TAG "cdc_net"
-uint8_t tud_network_mac_address[6] = {2, 2, 0x84, 0x6A, 0x96, 0};
 
-bool tud_network_recv_cb(const uint8_t* buf, uint16_t len)
+static TudNetOps cdc_net_ops = {0};
+
+static bool cdc_net_recv_cb(const uint8_t* buf, uint16_t len, void* context)
 {
-    rhs_assert(usb_cdc_active_net != NULL);
-    mg_tcpip_qwrite((void*) buf, len, usb_cdc_active_net->mgr->ifp);
-    // MG_INFO(("RECV %hu", len));
+    rhs_assert(context);
+    mg_tcpip_qwrite((void*) buf, len, ((Net*) context)->mgr->ifp);
+    // RHS_LOG_I(TAG, "RECV %hu", len);
     // mg_hexdump(buf, len);
     tud_network_recv_renew();
     return true;
 }
 
-void tud_network_init_cb(void) {}
-
-uint16_t tud_network_xmit_cb(uint8_t* dst, void* ref, uint16_t arg)
+static void cdc_net_init_cb(void* context)
 {
-    // MG_INFO(("SEND %hu", arg));
+    (void) context;
+}
+
+static uint16_t cdc_net_xmit_cb(uint8_t* dst, void* ref, uint16_t arg, void* context)
+{
+    (void) context;
+    // RHS_LOG_I(TAG, "SEND %hu", arg);
     memcpy(dst, ref, arg);
     return arg;
 }
@@ -459,15 +461,20 @@ static void cdc_net_init_tcpip(Net* net)
     struct mg_tcpip_if*     ifp    = malloc(sizeof(struct mg_tcpip_if));
     struct mg_tcpip_driver* driver = malloc(sizeof(struct mg_tcpip_driver));
     rhs_assert(net && ifp && driver);
+    uint8_t* mac = net->config->mac;
 
     // Clear interface and driver data structures
     memset(ifp, 0, sizeof(struct mg_tcpip_if));
     memset(driver, 0, sizeof(struct mg_tcpip_driver));
 
     // Apply configuration
-    driver->tx   = usb_tx;
-    driver->poll = usb_poll;
+    driver->tx              = usb_tx;
+    driver->poll            = usb_poll;
+    ifp->enable_dhcp_server = true;
+    ifp->driver             = driver;
+    ifp->recv_queue.size    = 4096;
 
+    // If config fields are empty, fill in with default values from compile-time macros
     if (net->config->ip[0] == '\0')
     {
         strcpy(net->config->ip, CDC_NET_IP_STRING);
@@ -480,13 +487,13 @@ static void cdc_net_init_tcpip(Net* net)
     {
         strcpy(net->config->gateway, CDC_NET_GW_STRING);
     }
-    if (net->config->mac[0] == 0 && net->config->mac[1] == 0 && net->config->mac[2] == 0 && net->config->mac[3] == 0 &&
-        net->config->mac[4] == 0 && net->config->mac[5] == 0)
+    if (mac[0] == 0 && mac[1] == 0 && mac[2] == 0 && mac[3] == 0 && mac[4] == 0 && mac[5] == 0)
     {
-        uint8_t mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
-        memcpy(net->config->mac, mac, sizeof(mac));
+        uint8_t tmp[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
+        memcpy(mac, tmp, sizeof(tmp));
     }
-    // Initialize config with default values from compile-time macros
+    
+    // Initialize config
     unsigned int a, b, c, d;
     rhs_assert(string_to_ip(net->config->ip, &a, &b, &c, &d) == 0);
     ifp->ip = MG_IPV4(a, b, c, d);
@@ -494,17 +501,11 @@ static void cdc_net_init_tcpip(Net* net)
     ifp->mask = MG_IPV4(a, b, c, d);
     rhs_assert(string_to_ip(net->config->gateway, &a, &b, &c, &d) == 0);
     ifp->gw = MG_IPV4(a, b, c, d);
-    rhs_assert(net->config->mac[0] != 0 || net->config->mac[1] != 0 || net->config->mac[2] != 0 ||
-               net->config->mac[3] != 0 || net->config->mac[4] != 0 || net->config->mac[5] != 0);
-    memcpy(ifp->mac, net->config->mac, sizeof(net->config->mac));
-
-    ifp->enable_dhcp_server = true;
-    ifp->driver             = driver;
-    ifp->recv_queue.size    = 4096;
+    memcpy(ifp->mac, mac, sizeof(mac));
 
     // Initialize TCP/IP interface
     mg_tcpip_init(net->mgr, ifp);
-    MG_INFO(("Driver: CDC TCPIP, MAC: %M", mg_print_mac, ifp->mac));
+    RHS_LOG_I(TAG, "CDC NET, MAC: %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
 static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
@@ -543,18 +544,18 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
     rhs_hal_usb_reinit();
     tusb_init();
 
-    usb_cdc_active_net = &app->net;
+    cdc_net_ops.recv    = cdc_net_recv_cb;
+    cdc_net_ops.init    = cdc_net_init_cb;
+    cdc_net_ops.xmit    = cdc_net_xmit_cb;
+    cdc_net_ops.context = &app->net;
+
+    tud_net_dispatch_set(&cdc_net_ops);
 
     return app;
 }
 
 Net* usb_cdc_net_start(const NetConfig* config)
 {
-    if (usb_cdc_active_net != NULL)
-    {
-        MG_ERROR(("USB CDC network interface is already active"));
-        return usb_cdc_active_net;
-    }
     CdcNet* app = usb_cdc_net_alloc(config);
 
     int32_t net_worker(void* context);
@@ -568,15 +569,13 @@ void usb_cdc_net_stop(Net* net)
 {
     rhs_assert(net != NULL);
     CdcNet* app = (CdcNet*) net;
-    rhs_crash("Not implemented yet");
-    tusb_deinit(0);
+    tud_net_dispatch_clear();
+    net_stop(net);
     rhs_thread_join(app->net.thread);
     rhs_thread_free(app->net.thread);
+    tusb_deinit(0);
     free(app->net.config);
     free(app->net.mgr);
-    if (usb_cdc_active_net == &app->net)
-    {
-        usb_cdc_active_net = NULL;
-    }
     free(app);
+    rhs_crash("Not implemented yet");
 }

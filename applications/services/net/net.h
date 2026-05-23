@@ -31,6 +31,6 @@ void net_start_listener(Net* net, const char* uri, mg_event_handler_t fn, void* 
 
 void net_stop_listener(Net* net, const char* uri);
 
-void net_set_config(Net* net, NetConfig* config);
+void net_set_config(Net* net, const NetConfig* config);
 
 void net_get_config(Net* net, NetConfig* config);

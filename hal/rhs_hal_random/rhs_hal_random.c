@@ -95,11 +95,6 @@ void rhs_hal_random_fill_buf(uint8_t* buf, uint32_t len)
     // LL_HSEM_ReleaseLock(HSEM, CFG_HW_RNG_SEMID, 0);
 }
 
-int __wrap_rand(void)
-{
-    return rhs_hal_random_get() & RAND_MAX;
-}
-
 #elif defined(STM32F103xE) || defined(STM32G0B1xx)
 
 static uint32_t rng_state = 1;
@@ -133,8 +128,9 @@ void rhs_hal_random_fill_buf(uint8_t* buf, uint32_t len)
     }
 }
 
+#endif
+
 int __wrap_rand(void)
 {
     return rhs_hal_random_get() & RAND_MAX;
 }
-#endif

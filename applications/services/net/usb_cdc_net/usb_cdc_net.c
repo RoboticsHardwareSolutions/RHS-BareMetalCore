@@ -419,7 +419,7 @@ static bool cdc_net_recv_cb(const uint8_t* buf, uint16_t len, void* context)
 {
     rhs_assert(context);
     mg_tcpip_qwrite((void*) buf, len, ((Net*) context)->mgr->ifp);
-    // MG_INFO(("RECV %hu", len));
+    // RHS_LOG_I(TAG, "RECV %hu", len);
     // mg_hexdump(buf, len);
     tud_network_recv_renew();
     return true;
@@ -433,7 +433,7 @@ static void cdc_net_init_cb(void* context)
 static uint16_t cdc_net_xmit_cb(uint8_t* dst, void* ref, uint16_t arg, void* context)
 {
     (void) context;
-    // MG_INFO(("SEND %hu", arg));
+    // RHS_LOG_I(TAG, "SEND %hu", arg);
     memcpy(dst, ref, arg);
     return arg;
 }
@@ -461,15 +461,20 @@ static void cdc_net_init_tcpip(Net* net)
     struct mg_tcpip_if*     ifp    = malloc(sizeof(struct mg_tcpip_if));
     struct mg_tcpip_driver* driver = malloc(sizeof(struct mg_tcpip_driver));
     rhs_assert(net && ifp && driver);
+    uint8_t* mac = net->config->mac;
 
     // Clear interface and driver data structures
     memset(ifp, 0, sizeof(struct mg_tcpip_if));
     memset(driver, 0, sizeof(struct mg_tcpip_driver));
 
     // Apply configuration
-    driver->tx   = usb_tx;
-    driver->poll = usb_poll;
+    driver->tx              = usb_tx;
+    driver->poll            = usb_poll;
+    ifp->enable_dhcp_server = true;
+    ifp->driver             = driver;
+    ifp->recv_queue.size    = 4096;
 
+    // If config fields are empty, fill in with default values from compile-time macros
     if (net->config->ip[0] == '\0')
     {
         strcpy(net->config->ip, CDC_NET_IP_STRING);
@@ -482,13 +487,13 @@ static void cdc_net_init_tcpip(Net* net)
     {
         strcpy(net->config->gateway, CDC_NET_GW_STRING);
     }
-    if (net->config->mac[0] == 0 && net->config->mac[1] == 0 && net->config->mac[2] == 0 && net->config->mac[3] == 0 &&
-        net->config->mac[4] == 0 && net->config->mac[5] == 0)
+    if (mac[0] == 0 && mac[1] == 0 && mac[2] == 0 && mac[3] == 0 && mac[4] == 0 && mac[5] == 0)
     {
-        uint8_t mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
-        memcpy(net->config->mac, mac, sizeof(mac));
+        uint8_t tmp[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
+        memcpy(mac, tmp, sizeof(tmp));
     }
-    // Initialize config with default values from compile-time macros
+    
+    // Initialize config
     unsigned int a, b, c, d;
     rhs_assert(string_to_ip(net->config->ip, &a, &b, &c, &d) == 0);
     ifp->ip = MG_IPV4(a, b, c, d);
@@ -496,17 +501,11 @@ static void cdc_net_init_tcpip(Net* net)
     ifp->mask = MG_IPV4(a, b, c, d);
     rhs_assert(string_to_ip(net->config->gateway, &a, &b, &c, &d) == 0);
     ifp->gw = MG_IPV4(a, b, c, d);
-    rhs_assert(net->config->mac[0] != 0 || net->config->mac[1] != 0 || net->config->mac[2] != 0 ||
-               net->config->mac[3] != 0 || net->config->mac[4] != 0 || net->config->mac[5] != 0);
-    memcpy(ifp->mac, net->config->mac, sizeof(net->config->mac));
-
-    ifp->enable_dhcp_server = true;
-    ifp->driver             = driver;
-    ifp->recv_queue.size    = 4096;
+    memcpy(ifp->mac, mac, sizeof(mac));
 
     // Initialize TCP/IP interface
     mg_tcpip_init(net->mgr, ifp);
-    MG_INFO(("Driver: CDC TCPIP, MAC: %M", mg_print_mac, ifp->mac));
+    RHS_LOG_I(TAG, "CDC NET, MAC: %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
 static CdcNet* usb_cdc_net_alloc(const NetConfig* config)

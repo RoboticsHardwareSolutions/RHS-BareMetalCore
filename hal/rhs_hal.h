@@ -33,5 +33,8 @@
 #    include "rhs_hal_usb.h"
 #    include "rhs_hal_usb_cdc.h"
 #endif
+#if RHS_HAL_ETH
+#    include "rhs_hal_eth.h"
+#endif
 
 void rhs_hal_init(void);

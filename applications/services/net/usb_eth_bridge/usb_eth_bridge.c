@@ -243,40 +243,6 @@ static uint16_t bridge_xmit_cb(uint8_t* dst, void* ref, uint16_t arg, void* cont
     return arg;
 }
 
-static void bridge_eth_hw_init(void)
-{
-#if defined(STM32F407xx) || defined(STM32F765xx)
-    uint16_t pins[] = {
-        PIN('A', 1),  /* ETH_RMII_REF_CLK  */
-        PIN('A', 2),  /* ETH_RMII_MDIO     */
-        PIN('A', 7),  /* ETH_RMII_CRS_DV   */
-        PIN('B', 11), /* ETH_RMII_TX_EN    */
-        PIN('B', 12), /* ETH_RMII_TXD0     */
-        PIN('B', 13), /* ETH_RMII_TXD1     */
-        PIN('C', 1),  /* ETH_RMII_MDC      */
-        PIN('C', 4),  /* ETH_RMII_RXD0     */
-        PIN('C', 5),  /* ETH_RMII_RXD1     */
-    };
-    for (size_t i = 0; i < sizeof(pins) / sizeof(pins[0]); i++)
-    {
-        gpio_init(pins[i], MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 11);
-    }
-    NVIC_EnableIRQ(ETH_IRQn);
-    SYSCFG->PMC |= SYSCFG_PMC_MII_RMII_SEL;
-    RCC->AHB1ENR |= RCC_AHB1ENR_ETHMACEN | RCC_AHB1ENR_ETHMACTXEN | RCC_AHB1ENR_ETHMACRXEN;
-    RCC->AHB1RSTR |= RCC_AHB1RSTR_ETHMACRST;
-    while ((RCC->AHB1RSTR & RCC_AHB1RSTR_ETHMACRST) == 0)
-    {
-    }
-    RCC->AHB1RSTR &= ~RCC_AHB1RSTR_ETHMACRST;
-    while ((RCC->AHB1RSTR & RCC_AHB1RSTR_ETHMACRST) != 0 || (ETH->MACCR & 0x00008000) == 0)
-    {
-    }
-#else
-#    error "usb_eth_bridge: define Ethernet GPIO pins for your STM32 model"
-#endif
-}
-
 /* =========================================================================
  * Bridge worker thread
  * ETH -> USB direction + link maintenance
@@ -342,7 +308,7 @@ UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config)
     b->finish = false;
 
     /* --- Ethernet hardware + driver init ---------------------------------- */
-    bridge_eth_hw_init();
+    rhs_hal_eth_init();
 
     b->eth_drv_data.mdc_cr   = phy_config ? phy_config->mdc_cr : MG_DRIVER_MDC_CR;
     b->eth_drv_data.phy_addr = phy_config ? phy_config->phy_addr : MG_TCPIP_PHY_ADDR;
@@ -400,5 +366,5 @@ void usb_eth_bridge_stop(UsbEthBridge* bridge)
     usb_eth_bridge_free(bridge);
     tusb_deinit(0);
     rhs_hal_usb_set_interface(bridge->prev_usb_intf);
-    ethernet_deinit();  // disable IRQ, clocks, reset GPIO
+    rhs_hal_eth_deinit();  // disable IRQ, clocks, reset GPIO
 }

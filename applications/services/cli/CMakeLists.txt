@@ -14,7 +14,7 @@ target_link_libraries(
         PRIVATE
         rhs
         rhs_hal
-        RTT
+        mlib
 )
 
 service(cli_service "cli" 4096)

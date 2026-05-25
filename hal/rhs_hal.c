@@ -29,4 +29,7 @@ void rhs_hal_init(void)
 #if RHS_HAL_USB
     rhs_hal_usb_init();
 #endif
+#if RHS_HAL_ETH
+    rhs_hal_eth_init();
+#endif
 }

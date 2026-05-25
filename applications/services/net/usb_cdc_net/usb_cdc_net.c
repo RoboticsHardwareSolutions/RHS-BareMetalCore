@@ -492,7 +492,7 @@ static void cdc_net_init_tcpip(Net* net)
         uint8_t tmp[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
         memcpy(mac, tmp, sizeof(tmp));
     }
-    
+
     // Initialize config
     unsigned int a, b, c, d;
     rhs_assert(string_to_ip(net->config->ip, &a, &b, &c, &d) == 0);
@@ -506,6 +506,18 @@ static void cdc_net_init_tcpip(Net* net)
     // Initialize TCP/IP interface
     mg_tcpip_init(net->mgr, ifp);
     RHS_LOG_I(TAG, "CDC NET, MAC: %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
+static void usb_cdc_net_free(CdcNet* app)
+{
+    rhs_thread_free(app->net.thread);
+    rhs_message_queue_free(app->net.queue);
+    mg_mgr_free(app->net.mgr);
+    free(app->net.mgr->ifp->driver);
+    free(app->net.mgr->ifp);
+    free(app->net.config);
+    free(app->net.mgr);
+    free(app);
 }
 
 static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
@@ -535,8 +547,11 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
 
     mg_mgr_init(app->net.mgr);  // Mongoose event manager
 
-    app->prev_intf = rhs_hal_usb_get_interface();
+    // It is necessary that the mac for usb_cdc_net and usb_eth_bridge be different, 
+    // otherwise the system may incorrectly name the interface.
+    tud_network_mac_address[5] = 0;
 
+    app->prev_intf = rhs_hal_usb_get_interface();
     rhs_hal_usb_set_interface(&usb_cdc_net_desc);
 
     cdc_net_init_tcpip(&app->net);
@@ -572,10 +587,7 @@ void usb_cdc_net_stop(Net* net)
     tud_net_dispatch_clear();
     net_stop(net);
     rhs_thread_join(app->net.thread);
-    rhs_thread_free(app->net.thread);
+    usb_cdc_net_free(app);
     tusb_deinit(0);
-    free(app->net.config);
-    free(app->net.mgr);
-    free(app);
-    rhs_crash("Not implemented yet");
+    rhs_hal_usb_set_interface(app->prev_intf);
 }

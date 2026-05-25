@@ -8,6 +8,7 @@ extern void can_open_cli(char* args, void* context);
 static CanOpenApp* can_open_app_alloc(void)
 {
     CanOpenApp* app = malloc(sizeof(CanOpenApp));
+    memset(app, 0, sizeof(CanOpenApp));
     app->srv_event  = rhs_event_flag_alloc();
     app->sdo_event  = rhs_event_flag_alloc();
     app->sdo_mutex  = rhs_mutex_alloc(RHSMutexTypeNormal);

@@ -23,3 +23,5 @@ typedef struct Cli Cli;
 typedef void (*CliCallback)(char* args, void* context);
 
 void cli_add_command(Cli* app, const char* name, CliCallback callback, void* context);
+
+void cli_remove_command(Cli* app, const char* name);

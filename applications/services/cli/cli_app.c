@@ -4,45 +4,51 @@
 #include "rhs_hal.h"
 #include <stddef.h>
 #include "rhs_version.h"
+#include <m-dict.h>
+#include "core/m_cstr_dup.h"
 
 #define TAG "cli"
 
 #define MAX_LINE_LENGTH 64
 
+DICT_DEF2(CliCommandDict, const char*, M_CSTR_DUP_OPLIST, CliCommand, M_POD_OPLIST);
+
+struct Cli
+{
+    RHSMutex*        mutex;
+    uint8_t          cursor_position;
+    char             line[MAX_LINE_LENGTH];
+    CliCommandDict_t commands;
+};
+
 Cli* cli_alloc(void)
 {
-    Cli* app   = malloc(sizeof(Cli));
-    app->line  = calloc(1, MAX_LINE_LENGTH);
-    app->mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
+    Cli* app             = malloc(sizeof(Cli));
+    app->mutex           = rhs_mutex_alloc(RHSMutexTypeNormal);
+    app->cursor_position = 0;
+    memset(app->line, 0, sizeof(app->line));
+    CliCommandDict_init(app->commands);
     return app;
 }
 
 void cli_add_command(Cli* app, const char* name, CliCallback callback, void* context)
 {
-    CliCommand* command;
+    rhs_assert(strcmp(name, " ") != 0);
+
+    CliCommand command = {
+        .context  = context,
+        .callback = callback,
+    };
+
     rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
-    for (int i = 0; i < COUNT_OF(app->commands); i++)
-    {
-        if (i == COUNT_OF(app->commands))
-        {
-            rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
-            return;
-        }
-        command = &app->commands[i];
-        if (command->name == NULL)
-        {
-            break;
-        }
-        if (strcmp(command->name, name) == 0)
-        {
-            RHS_LOG_E(TAG, "Cammand already exists");
-            rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
-            return;
-        }
-    }
-    command->name     = name;
-    command->callback = callback;
-    command->context  = context;
+    CliCommandDict_set_at(app->commands, name, command);
+    rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
+}
+
+void cli_remove_command(Cli* app, const char* name)
+{
+    rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
+    CliCommandDict_erase(app->commands, name);
     rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
 }
 
@@ -74,25 +80,20 @@ void cli_reset(Cli* app)
 
 void cli_handle_enter(Cli* app)
 {
-    for (int i = 0; i < COUNT_OF(app->commands); i++)
+    char* end;
+    if (end = strchr(app->line, ' '))
     {
-        if (app->commands[i].name == NULL)
-        {
-            break;
-        }
-        char*  separator      = strchr(app->line, ' ');
-        size_t command_length = separator ? (size_t) (separator - app->line) : strlen(app->line);
-        if (strncmp(app->line, app->commands[i].name, command_length) == 0 &&
-            strlen(app->commands[i].name) == command_length)
-        {
-            app->commands[i].callback(separator ? separator + 1 : NULL, app->commands[i].context);
-            cli_reset(app);
-            return;
-        }
+        *end = 0;
     }
-    if (*app->line != 0)
+
+    CliCommand* command = CliCommandDict_get(app->commands, app->line);
+    if (command)
     {
-        RHS_LOG_I(TAG, "Unknown command");
+        command->callback(end ? end + 1 : NULL, command->context);
+    }
+    else
+    {
+        RHS_LOG_W(TAG, "Unknown command. Type '?' for list of commands.");
     }
     cli_reset(app);
 }
@@ -157,14 +158,24 @@ void cli_commands(char* args, void* context)
 {
     Cli* app = (Cli*) context;
     printf("Available commands:\r\n");
-    for (int i = 0; i < COUNT_OF(app->commands); i++)
+
+    const size_t columns = 3;
+
+    size_t commands_count = CliCommandDict_size(app->commands);
+
+    CliCommandDict_it_t iterator;
+    CliCommandDict_it(iterator, app->commands);
+    for (size_t i = 0; i < commands_count; i++)
     {
-        if (app->commands[i].name == NULL)
-        {
-            break;
-        }
-        printf("%s\r\n", app->commands[i].name);
+        const CliCommandDict_itref_t* item = CliCommandDict_cref(iterator);
+        printf("%-30s", item->key);
+        CliCommandDict_next(iterator);
+
+        if (i % columns == columns - 1)
+            printf("\r\n");
     }
+    if (commands_count % columns != 0)
+        printf("\r\n");
 }
 
 void cli_command_log(char* args, void* context)

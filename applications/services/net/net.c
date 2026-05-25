@@ -73,6 +73,16 @@ static void net_mdns_start(Net* net)
         memcpy(c->data, &response_ip, sizeof(response_ip));
         RHS_LOG_I(TAG, "mDNS on http://%s.local started", name);
     }
+    else
+    {
+        RHS_LOG_E(TAG, "Failed to start mDNS");
+    }
+}
+
+static void net_mdns_stop(Net* net)
+{
+    const char* name = rhs_thread_get_name(rhs_thread_get_id(net->thread));
+    cli_remove_command(net->cli, name);
 }
 
 void net_start_http(Net* net, const char* uri, mg_event_handler_t fn, void* context)
@@ -287,5 +297,11 @@ int32_t net_worker(void* context)
                 api_lock_unlock(msg.lock);
         }
     }
+
+    for (NetListener* listener = net->listeners; listener != NULL; listener = listener->next)
+    {
+        net_listeners_remove(&net->listeners, listener->uri);
+    }
+    net_mdns_stop(net);
     rhs_record_close(RECORD_CLI);
 }

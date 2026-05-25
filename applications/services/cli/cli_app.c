@@ -85,7 +85,6 @@ void cli_handle_enter(Cli* app)
     {
         *end = 0;
     }
-    rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
 
     CliCommand* command = CliCommandDict_get(app->commands, app->line);
     if (command)
@@ -97,8 +96,6 @@ void cli_handle_enter(Cli* app)
         RHS_LOG_W(TAG, "Unknown command. Type '?' for list of commands.");
     }
     cli_reset(app);
-
-    rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
 }
 
 void cli_process_input(Cli* app)

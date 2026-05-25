@@ -176,6 +176,18 @@ static EthNet* eth_net_alloc(const NetConfig* config, const EthPhyConfig* phy_co
     return app;
 }
 
+static void eth_net_free(EthNet* app)
+{
+    rhs_thread_free(app->net.thread);
+    rhs_message_queue_free(app->net.queue);
+    mg_mgr_free(app->net.mgr);
+    free(app->net.mgr->ifp->driver_data);
+    free(app->net.mgr->ifp);
+    free(app->net.config);
+    free(app->net.mgr);
+    free(app);
+}
+
 Net* eth_net_start(const NetConfig* net_config, const EthPhyConfig* phy_config)
 {
     EthNet* app = eth_net_alloc(net_config, phy_config);
@@ -196,9 +208,5 @@ void eth_net_stop(Net* net)
     EthNet* app = (EthNet*) net;
     net_stop(net);
     rhs_thread_join(app->net.thread);
-    rhs_thread_free(app->net.thread);
-    free(app->net.config);
-    free(app->net.mgr);
-    free(app);
-    rhs_crash("Not implemented yet");
+    eth_net_free(app);
 }

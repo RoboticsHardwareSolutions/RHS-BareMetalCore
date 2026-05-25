@@ -361,6 +361,10 @@ UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config)
     ETH->MACFFR = MG_BIT(0); /* PM = promiscuous mode */
 
     /* --- USB init --------------------------------------------------------- */
+    // It is necessary that the mac for usb_cdc_net and usb_eth_bridge be different, 
+    // otherwise the system may incorrectly name the interface.
+    tud_network_mac_address[5] = 0;
+
     b->prev_usb_intf = rhs_hal_usb_get_interface();
     rhs_hal_usb_set_interface(&bridge_usb_desc);
     rhs_hal_usb_reinit();
@@ -379,22 +383,22 @@ UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config)
     return b;
 }
 
+static void usb_eth_bridge_free(UsbEthBridge* bridge)
+{
+    rhs_thread_free(bridge->thread);
+    mg_tcpip_free(&bridge->eth_ifp);
+    mg_mgr_free(&bridge->eth_mgr);
+    free(bridge);
+}
+
 void usb_eth_bridge_stop(UsbEthBridge* bridge)
 {
     rhs_assert(bridge != NULL);
     tud_net_dispatch_clear();
     bridge->finish = true;
     rhs_thread_join(bridge->thread);
-    rhs_thread_free(bridge->thread);
-
+    usb_eth_bridge_free(bridge);
     tusb_deinit(0);
     rhs_hal_usb_set_interface(bridge->prev_usb_intf);
-
-    mg_tcpip_free(&bridge->eth_ifp);
-    mg_mgr_free(&bridge->eth_mgr);
-
     ethernet_deinit();  // disable IRQ, clocks, reset GPIO
-
-    free(bridge);
-    rhs_crash("Not implemented yet");
 }

@@ -81,7 +81,7 @@ void cli_reset(Cli* app)
 void cli_handle_enter(Cli* app)
 {
     char* end;
-    if (end = strchr(app->line, ' '))
+    if (end == strchr(app->line, ' '))
     {
         *end = 0;
     }

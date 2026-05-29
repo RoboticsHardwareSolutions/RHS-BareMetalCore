@@ -107,6 +107,9 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdCAN1Tx]  = CAN1_TX_IRQn,
     /* UART */
     [RHSHalInterruptIdUsart3] = USART3_IRQn,
+#    elif defined(STM32G0B1xx)
+    [RHSHalInterruptIdEXTI4_15] = EXTI4_15_IRQn,
+
 #    endif
 #endif
 };
@@ -299,7 +302,7 @@ void CAN2_TX_IRQHandler(void)
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN2Tx);
 }
 
-#elif STM32F103xE
+#elif defined(STM32F103xE)
 
 extern void HW_IPCC_Tx_Handler(void);
 extern void HW_IPCC_Rx_Handler(void);
@@ -351,6 +354,11 @@ void UART5_IRQHandler(void)
     rhs_hal_interrupt_call(RHSHalInterruptIdUart5);
 }
 
+#elif defined(STM32G0B1xx)
+void EXTI4_15_IRQHandler(void)
+{
+    rhs_hal_interrupt_call(RHSHalInterruptIdEXTI4_15);
+}
 #endif
 
 /* ---------------------------------------------------------------------------
@@ -436,7 +444,8 @@ void NMI_Handler(void)
 }
 
 #if !defined(STM32G0B1xx)
-/* MemManage (MPU fault) does not exist on Cortex-M0+; all faults escalate to HardFault */
+/* MemManage (MPU fault) does not exist on Cortex-M0+; all faults escalate to
+ * HardFault */
 __attribute__((used)) static void memmanage_handler_c(uint32_t* frame)
 {
     rhs_set_fault_frame(frame);

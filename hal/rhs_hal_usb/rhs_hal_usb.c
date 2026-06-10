@@ -32,6 +32,48 @@ void rhs_hal_usb_init(void)
     gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);  // D+
     NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
     NVIC_EnableIRQ(OTG_FS_IRQn);
+
+#elif defined(STM32G0B1xx)
+    // Enable HSI48 for USB
+    RCC->CR |= RCC_CR_HSI48ON;
+    while (!(RCC->CR & RCC_CR_HSI48RDY))
+        ;  // Wait for HSI48 ready
+
+    // Select HSI48 as USB clock source (CCIPR2.USBSEL = 00b)
+    RCC->CCIPR2 &= ~RCC_CCIPR2_USBSEL;
+
+    // Enable VDDUSB (USB voltage detector)
+    RCC->APBENR1 |= RCC_APBENR1_PWREN;  // Enable PWR clock if not already
+    PWR->CR2 |= PWR_CR2_USV;            // USB supply valid
+
+    // Disable internal pull-up in dead battery pins (UCPD strobe)
+    RCC->APBENR2 |= RCC_APBENR2_SYSCFGEN;  // Enable SYSCFG clock
+    SYSCFG->CFGR1 |= SYSCFG_CFGR1_UCPD1_STROBE;
+
+    // Reset and disable USB peripheral
+    RCC->APBRSTR1 |= RCC_APBRSTR1_USBRST;
+    RCC->APBENR1 &= ~RCC_APBENR1_USBEN;
+
+    // Configure USB pins (D-/D+) as output and pull low for USB reset
+    gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);  // D-
+    gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);  // D+
+
+    gpio_write(PIN('A', 11), 0);
+    gpio_write(PIN('A', 12), 0);
+
+    rhs_delay_ms(40);
+
+    // Enable and release USB reset
+    RCC->APBENR1 |= RCC_APBENR1_USBEN;
+    RCC->APBRSTR1 &= ~RCC_APBRSTR1_USBRST;
+
+    // Configure as floating input - USB peripheral will control these pins
+    gpio_init(PIN('A', 11), MG_GPIO_MODE_INPUT, 0, 0, MG_GPIO_PULL_NONE, 0);  // D-
+    gpio_init(PIN('A', 12), MG_GPIO_MODE_INPUT, 0, 0, MG_GPIO_PULL_NONE, 0);  // D+
+
+    NVIC_SetPriority(USB_UCPD1_2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+    NVIC_EnableIRQ(USB_UCPD1_2_IRQn);
+
 #else
 #    error "Unknown platform"
 #endif
@@ -62,6 +104,27 @@ void rhs_hal_usb_reinit(void)
     gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);  // D+
     NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
     NVIC_EnableIRQ(OTG_FS_IRQn);
+
+#elif defined(STM32G0B1xx)
+    RCC->APBRSTR1 |= RCC_APBRSTR1_USBRST;
+    RCC->APBENR1 &= ~RCC_APBENR1_USBEN;
+    gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);  // D-
+    gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);  // D+
+
+    gpio_write(PIN('A', 11), 0);
+    gpio_write(PIN('A', 12), 0);
+
+    rhs_delay_ms(40);
+    RCC->APBENR1 |= RCC_APBENR1_USBEN;
+    RCC->APBRSTR1 &= ~RCC_APBRSTR1_USBRST;
+
+    // Configure as floating input - USB peripheral will control these pins
+    gpio_init(PIN('A', 11), MG_GPIO_MODE_INPUT, 0, 0, MG_GPIO_PULL_NONE, 0);  // D-
+    gpio_init(PIN('A', 12), MG_GPIO_MODE_INPUT, 0, 0, MG_GPIO_PULL_NONE, 0);  // D+
+
+    NVIC_SetPriority(USB_UCPD1_2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+    NVIC_EnableIRQ(USB_UCPD1_2_IRQn);
+
 #else
 #    error "Unknown platform"
 #endif
@@ -86,6 +149,18 @@ void rhs_hal_usb_disable(void)
     gpio_write(PIN('A', 11), 0);
     gpio_write(PIN('A', 12), 0);
     NVIC_DisableIRQ(OTG_FS_IRQn);
+
+#elif defined(STM32G0B1xx)
+    RCC->APBRSTR1 |= RCC_APBRSTR1_USBRST;
+    RCC->APBENR1 &= ~RCC_APBENR1_USBEN;
+    gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);  // D-
+    gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);  // D+
+
+    gpio_write(PIN('A', 11), 0);
+    gpio_write(PIN('A', 12), 0);
+
+    NVIC_DisableIRQ(USB_UCPD1_2_IRQn);
+
 #else
 #    error "Unknown platform"
 #endif

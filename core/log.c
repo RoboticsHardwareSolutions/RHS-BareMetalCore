@@ -120,7 +120,10 @@ void rhs_log_print_format(RHSLogLevel level, const char* tag, const char* format
     vprintf(format, ParamList);
     va_end(ParamList);
     printf("%s\n", _RHS_LOG_CLR_RESET);
-    rhs_mutex_release(mutex);
+    if (!RHS_IS_ISR())
+    {
+        rhs_mutex_release(mutex);
+    }
 }
 
 void rhs_log_exclude_tag(char* tag)

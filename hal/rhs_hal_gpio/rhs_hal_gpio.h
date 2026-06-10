@@ -42,8 +42,8 @@ static inline GPIO_TypeDef* gpio_bank(uint16_t pin)
 static inline void gpio_toggle(uint16_t pin)
 {
     GPIO_TypeDef* gpio = gpio_bank(pin);
-    uint32_t mask = BIT(PINNO(pin));
-    gpio->BSRR = mask << (gpio->ODR & mask ? 16 : 0);
+    uint32_t      mask = BIT(PINNO(pin));
+    gpio->BSRR         = mask << (gpio->ODR & mask ? 16 : 0);
 }
 
 static inline int gpio_read(uint16_t pin)
@@ -54,7 +54,7 @@ static inline int gpio_read(uint16_t pin)
 static inline void gpio_write(uint16_t pin, bool val)
 {
     GPIO_TypeDef* gpio = gpio_bank(pin);
-    gpio->BSRR = BIT(PINNO(pin)) << (val ? 0 : 16);
+    gpio->BSRR         = BIT(PINNO(pin)) << (val ? 0 : 16);
 }
 
 // ─── STM32F4 / STM32F7 ───────────────────────────────────────────────────────
@@ -89,8 +89,59 @@ enum
 static inline void gpio_init(uint16_t pin, uint8_t mode, uint8_t type, uint8_t speed, uint8_t pull, uint8_t af)
 {
     GPIO_TypeDef* gpio = gpio_bank(pin);
-    uint8_t n = (uint8_t)(PINNO(pin));
-    RCC->AHB1ENR |= BIT(PINBANK(pin)); // Enable GPIO clock
+    uint8_t       n    = (uint8_t) (PINNO(pin));
+    RCC->AHB1ENR |= BIT(PINBANK(pin));  // Enable GPIO clock
+    SETBITS(gpio->OTYPER, 1UL << n, ((uint32_t) type) << n);
+    SETBITS(gpio->OSPEEDR, 3UL << (n * 2), ((uint32_t) speed) << (n * 2));
+    SETBITS(gpio->PUPDR, 3UL << (n * 2), ((uint32_t) pull) << (n * 2));
+    SETBITS(gpio->AFR[n >> 3], 15UL << ((n & 7) * 4), ((uint32_t) af) << ((n & 7) * 4));
+    SETBITS(gpio->MODER, 3UL << (n * 2), ((uint32_t) mode) << (n * 2));
+}
+
+static inline void gpio_input(uint16_t pin)
+{
+    gpio_init(pin, MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
+}
+
+static inline void gpio_output(uint16_t pin)
+{
+    gpio_init(pin, MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
+}
+
+// ─── STM32G0 ─────────────────────────────────────────────────────────────────
+#elif defined(STM32G0B1xx)
+
+enum
+{
+    MG_GPIO_MODE_INPUT,
+    MG_GPIO_MODE_OUTPUT,
+    MG_GPIO_MODE_AF,
+    MG_GPIO_MODE_ANALOG
+};
+enum
+{
+    MG_GPIO_OTYPE_PUSH_PULL,
+    MG_GPIO_OTYPE_OPEN_DRAIN
+};
+enum
+{
+    MG_GPIO_SPEED_LOW,
+    MG_GPIO_SPEED_MEDIUM,
+    MG_GPIO_SPEED_HIGH,
+    MG_GPIO_SPEED_INSANE
+};
+enum
+{
+    MG_GPIO_PULL_NONE,
+    MG_GPIO_PULL_UP,
+    MG_GPIO_PULL_DOWN
+};
+
+static inline void gpio_init(uint16_t pin, uint8_t mode, uint8_t type, uint8_t speed, uint8_t pull, uint8_t af)
+{
+    GPIO_TypeDef* gpio = gpio_bank(pin);
+    uint8_t       n    = (uint8_t) (PINNO(pin));
+    RCC->IOPENR |= BIT(PINBANK(pin));  // Enable GPIO clock (GPIOA=bit0, GPIOB=bit1, etc.)
     SETBITS(gpio->OTYPER, 1UL << n, ((uint32_t) type) << n);
     SETBITS(gpio->OSPEEDR, 3UL << (n * 2), ((uint32_t) speed) << (n * 2));
     SETBITS(gpio->PUPDR, 3UL << (n * 2), ((uint32_t) pull) << (n * 2));
@@ -123,7 +174,7 @@ enum
 {
     PLL_HSE = 8,
     PLL_MUL = 9
-}; // 8 MHz * 9 = 72 MHz
+};  // 8 MHz * 9 = 72 MHz
 #    define FLASH_LATENCY 2
 #    define SYS_FREQUENCY (PLL_HSE * PLL_MUL * 1000000)  // Core 72 MHz
 #    define APB2_FREQUENCY (SYS_FREQUENCY / (1 << APB2_PRE))
@@ -132,15 +183,15 @@ enum
 static inline void spin(volatile uint32_t count)
 {
     while (count--)
-        (void)0;
+        (void) 0;
 }
 
 // GPIO modes for STM32F1 (CNF + MODE fields packed into 4 bits per pin)
 enum
 {
-    GPIO_MODE_INPUT_ANALOG = 0x0,
+    GPIO_MODE_INPUT_ANALOG   = 0x0,
     GPIO_MODE_INPUT_FLOATING = 0x4,
-    GPIO_MODE_INPUT_PULLUP = 0x8
+    GPIO_MODE_INPUT_PULLUP   = 0x8
 };
 enum
 {
@@ -176,8 +227,8 @@ enum
 static inline void gpio_init(uint16_t pin, uint8_t mode)
 {
     GPIO_TypeDef* gpio = gpio_bank(pin);
-    uint8_t n = (uint8_t)(PINNO(pin));
-    RCC->APB2ENR |= BIT(PINBANK(pin) + 2); // GPIOA = bit 2, GPIOB = bit 3, ...
+    uint8_t       n    = (uint8_t) (PINNO(pin));
+    RCC->APB2ENR |= BIT(PINBANK(pin) + 2);  // GPIOA = bit 2, GPIOB = bit 3, ...
 
     if (n < 8)
     {
@@ -190,7 +241,7 @@ static inline void gpio_init(uint16_t pin, uint8_t mode)
 
     if (mode == GPIO_MODE_INPUT_PULLUP)
     {
-        gpio->BSRR = BIT(n); // Activate internal pull-up
+        gpio->BSRR = BIT(n);  // Activate internal pull-up
     }
 }
 
@@ -206,10 +257,10 @@ static inline void gpio_output(uint16_t pin)
 
 static inline void irq_exti_attach(uint16_t pin)
 {
-    uint8_t bank = (uint8_t)(PINBANK(pin)), n = (uint8_t)(PINNO(pin));
-    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN; // Enable AFIO clock
+    uint8_t bank = (uint8_t) (PINBANK(pin)), n = (uint8_t) (PINNO(pin));
+    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;  // Enable AFIO clock
     AFIO->EXTICR[n / 4] &= ~(15UL << ((n % 4) * 4));
-    AFIO->EXTICR[n / 4] |= (uint32_t)(bank << ((n % 4) * 4));
+    AFIO->EXTICR[n / 4] |= (uint32_t) (bank << ((n % 4) * 4));
     EXTI->IMR |= BIT(n);
     EXTI->RTSR |= BIT(n);
     EXTI->FTSR |= BIT(n);

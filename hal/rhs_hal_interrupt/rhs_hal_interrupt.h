@@ -81,6 +81,7 @@ typedef enum
     RHSHalInterruptIdDMA1Channel3,
 #    elif defined(STM32G0B1xx)
     RHSHalInterruptIdEXTI4_15,
+    RHSHalInterruptIdUSB_UCPD1_2,
 #    endif
 #endif
     // Service value

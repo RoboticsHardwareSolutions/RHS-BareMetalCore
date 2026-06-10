@@ -53,7 +53,8 @@ char* strdup(const char* s)
     rhs_assert(s != NULL);
 
     size_t siz = strlen(s) + 1;
-    char*  y   = malloc(siz);
+    char*  y   = calloc(1, siz);
+    rhs_assert(y != NULL);
     memcpy(y, s, siz);
 
     return y;

@@ -144,6 +144,7 @@ const char* rhs_thread_get_name(RHSThreadId thread_id)
 RHSThread* rhs_thread_alloc(const char* name, uint32_t stack_size, RHSThreadCallback callback, void* context)
 {
     RHSThread* thread    = calloc(1, sizeof(RHSThread));
+    rhs_assert(thread);
     thread->stack_buffer = malloc(stack_size);
     thread->stack_size   = stack_size;
     thread->callback     = callback;
@@ -151,6 +152,7 @@ RHSThread* rhs_thread_alloc(const char* name, uint32_t stack_size, RHSThreadCall
     thread->priority     = RHSThreadPriorityNormal;
     thread->is_service   = false;
     rhs_thread_set_name(thread, name);
+    rhs_assert(thread->stack_buffer);
     return thread;
 }
 

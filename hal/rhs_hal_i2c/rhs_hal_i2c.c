@@ -1,4 +1,4 @@
-#include <rhs_hal_i2c.h>
+#include "rhs_hal_i2c.h"
 #include "rhs.h"
 #include "rhs_hal_cortex.h"
 
@@ -162,7 +162,7 @@ static uint32_t rhs_hal_i2c_get_end_signal(RHSHalI2cEnd end)
 static bool rhs_hal_i2c_transfer_is_aborted(I2C_TypeDef* i2c)
 {
 #if defined(STM32F765xx) || defined(STM32G0B1xx)
-    return LL_I2C_IsActiveFlag_STOP(i2c);
+    return LL_I2C_IsActiveFlag_STOP(i2c) || LL_I2C_IsActiveFlag_NACK(i2c);
 #else
     // STM32F1/F4: Check for STOP and ensure no successful completion flags
     return LL_I2C_IsActiveFlag_STOP(i2c) && !LL_I2C_IsActiveFlag_BTF(i2c);
@@ -209,8 +209,8 @@ static bool rhs_hal_i2c_transfer(I2C_TypeDef*      i2c,
             }
             if (size == 0)
             {
-                // All data sent, ensure BTF is set before ending
-                while (!LL_I2C_IsActiveFlag_TC(i2c))
+                // All data sent, wait for transfer complete (TC for AUTOEND/SOFTEND, TCR for RELOAD)
+                while (!(LL_I2C_IsActiveFlag_TC(i2c) || LL_I2C_IsActiveFlag_TCR(i2c)))
                 {
                     if (rhs_hal_cortex_timer_is_expired(timer) || rhs_hal_i2c_transfer_is_aborted(i2c))
                     {
@@ -228,18 +228,23 @@ static bool rhs_hal_i2c_transfer(I2C_TypeDef*      i2c,
         }
     }
 
-    // Generate STOP condition if needed
-    if (end == RHSHalI2cEndStop)
-    {
-        LL_I2C_GenerateStopCondition(i2c);
-    }
+    // In AUTOEND/SOFTEND mode, STOP is generated automatically by hardware.
+    // Do NOT call LL_I2C_GenerateStopCondition() here — it causes a double STOP,
+    // a protocol violation that can lock up I2C devices (e.g. EEPROMs).
 
     if (ret)
     {
         ret = rhs_hal_i2c_wait_for_end(i2c, end, timer);
     }
 
-    LL_I2C_ClearFlag_STOP(i2c);
+    // Always clear NACK flag so subsequent transfers don't see a stale abort state
+    LL_I2C_ClearFlag_NACK(i2c);
+
+    // Only clear STOP flag when we actually used AUTOEND (STOP was generated)
+    if (end == RHSHalI2cEndStop)
+    {
+        LL_I2C_ClearFlag_STOP(i2c);
+    }
     return ret;
 
 #else
@@ -292,7 +297,7 @@ static bool rhs_hal_i2c_transfer(I2C_TypeDef*      i2c,
         }
     }
 
-    // Generate STOP condition if needed
+    // Generate STOP condition if needed (F1/F4 has no AUTOEND mode)
     if (end == RHSHalI2cEndStop)
     {
         LL_I2C_GenerateStopCondition(i2c);
@@ -303,7 +308,14 @@ static bool rhs_hal_i2c_transfer(I2C_TypeDef*      i2c,
         ret = rhs_hal_i2c_wait_for_end(i2c, end, timer);
     }
 
-    LL_I2C_ClearFlag_STOP(i2c);
+    // Always clear AF (acknowledge failure / NACK) flag
+    LL_I2C_ClearFlag_AF(i2c);
+
+    // Only clear STOP flag when we actually generated a STOP
+    if (end == RHSHalI2cEndStop)
+    {
+        LL_I2C_ClearFlag_STOP(i2c);
+    }
     return ret;
 #endif
 }
@@ -320,15 +332,15 @@ static bool rhs_hal_i2c_transaction(I2C_TypeDef*      i2c,
 {
 #if defined(STM32F765xx) || defined(STM32G0B1xx)
 
-    //    uint32_t start_signal = rhs_hal_i2c_get_start_signal(begin, ten_bit, read);
-
     if (!rhs_hal_i2c_wait_for_idle(i2c, begin, timer))
     {
         return false;
     }
 
-    uint32_t request = read ? I2C_GENERATE_START_READ : I2C_GENERATE_START_WRITE;
-    LL_I2C_HandleTransfer(i2c, address << 1, LL_I2C_ADDRSLAVE_7BIT, size, I2C_AUTOEND_MODE, request);
+    uint32_t request = rhs_hal_i2c_get_start_signal(begin, ten_bit, read);
+    uint32_t mode    = rhs_hal_i2c_get_end_signal(end);
+
+    LL_I2C_HandleTransfer(i2c, address << 1, LL_I2C_ADDRSLAVE_7BIT, size, mode, request);
 
     return rhs_hal_i2c_transfer(i2c, data, size, end, read, timer);
 
@@ -484,7 +496,7 @@ bool rhs_hal_i2c_is_device_ready(const RHSHalI2cBusHandle* handle, uint8_t i2c_a
                           LL_I2C_ADDRSLAVE_7BIT,
                           0,
                           LL_I2C_MODE_AUTOEND,
-                          LL_I2C_GENERATE_START_READ);
+                          LL_I2C_GENERATE_START_WRITE);
 
     tmp1 = LL_I2C_IsActiveFlag_STOP(handle->bus->i2c);
     tmp2 = LL_I2C_IsActiveFlag_NACK(handle->bus->i2c);
@@ -524,7 +536,8 @@ bool rhs_hal_i2c_is_device_ready(const RHSHalI2cBusHandle* handle, uint8_t i2c_a
         }
 
         LL_I2C_ClearFlag_STOP(handle->bus->i2c);
-        LL_I2C_IsActiveFlag_NACK(handle->bus->i2c);
+        LL_I2C_ClearFlag_NACK(handle->bus->i2c);
+        ret = false;
     }
     return ret;
 #else

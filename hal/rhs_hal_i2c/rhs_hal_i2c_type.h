@@ -12,6 +12,8 @@
 #    error "Unsupported platform"
 #endif
 
+typedef struct RHSMutex RHSMutex;
+
 typedef struct RHSHalI2cBus       RHSHalI2cBus;
 typedef struct RHSHalI2cBusHandle RHSHalI2cBusHandle;
 
@@ -35,6 +37,7 @@ struct RHSHalI2cBus
     I2C_TypeDef*              i2c;
     const RHSHalI2cBusHandle* current_handle;
     RHSHalI2cBusEventCallback callback;
+    RHSMutex*                 mutex;
 };
 
 /** RHSHal i2c handle states */

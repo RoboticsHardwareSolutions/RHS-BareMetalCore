@@ -17,26 +17,26 @@
 #    error "Unsupported platform"
 #endif
 
-RHSMutex* rhs_hal_i2c_bus_external_mutex = NULL;
-
 static void rhs_hal_i2c_bus_external_event(RHSHalI2cBus* bus, RHSHalI2cBusEvent event)
 {
     if (event == RHSHalI2cBusEventInit)
     {
-        rhs_hal_i2c_bus_external_mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
-        bus->current_handle            = NULL;
+        if (bus->mutex)
+            rhs_mutex_free(bus->mutex);
+        bus->mutex          = rhs_mutex_alloc(RHSMutexTypeNormal);
+        bus->current_handle = NULL;
     }
     else if (event == RHSHalI2cBusEventDeinit)
     {
-        rhs_mutex_free(rhs_hal_i2c_bus_external_mutex);
+        rhs_mutex_free(bus->mutex);
     }
     else if (event == RHSHalI2cBusEventLock)
     {
-        rhs_assert(rhs_mutex_acquire(rhs_hal_i2c_bus_external_mutex, RHSWaitForever) == RHSStatusOk);
+        rhs_assert(rhs_mutex_acquire(bus->mutex, RHSWaitForever) == RHSStatusOk);
     }
     else if (event == RHSHalI2cBusEventUnlock)
     {
-        rhs_assert(rhs_mutex_release(rhs_hal_i2c_bus_external_mutex) == RHSStatusOk);
+        rhs_assert(rhs_mutex_release(bus->mutex) == RHSStatusOk);
     }
     else if (event == RHSHalI2cBusEventActivate)
     {
@@ -92,17 +92,20 @@ static void rhs_hal_i2c_bus_external_event(RHSHalI2cBus* bus, RHSHalI2cBusEvent 
 static RHSHalI2cBus rhs_hal_i2c1_bus = {
     .i2c      = I2C1,
     .callback = rhs_hal_i2c_bus_external_event,
+    .mutex    = NULL,
 };
 
 #if defined(STM32G0B1xx)
 static RHSHalI2cBus rhs_hal_i2c2_bus = {
     .i2c      = I2C2,
     .callback = rhs_hal_i2c_bus_external_event,
+    .mutex    = NULL,
 };
 
 static RHSHalI2cBus rhs_hal_i2c3_bus = {
     .i2c      = I2C3,
     .callback = rhs_hal_i2c_bus_external_event,
+    .mutex    = NULL,
 };
 #endif
 

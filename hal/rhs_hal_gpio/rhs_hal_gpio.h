@@ -28,7 +28,7 @@
 
 #if defined(STM32F407xx) || defined(STM32F765xx)
 #    define GPIO(N) ((GPIO_TypeDef*) (0x40020000 + 0x400 * (N)))
-#else /* STM32F1 */
+#else /* STM32F1 STM32G0 */
 #    define GPIO(N) ((GPIO_TypeDef*) (GPIOA_BASE + 0x400 * (N)))
 #endif
 
@@ -62,28 +62,28 @@ static inline void gpio_write(uint16_t pin, bool val)
 
 enum
 {
-    MG_GPIO_MODE_INPUT,
-    MG_GPIO_MODE_OUTPUT,
-    MG_GPIO_MODE_AF,
-    MG_GPIO_MODE_ANALOG
+    RHS_GPIO_MODE_INPUT,
+    RHS_GPIO_MODE_OUTPUT,
+    RHS_GPIO_MODE_AF,
+    RHS_GPIO_MODE_ANALOG
 };
 enum
 {
-    MG_GPIO_OTYPE_PUSH_PULL,
-    MG_GPIO_OTYPE_OPEN_DRAIN
+    RHS_GPIO_OTYPE_PUSH_PULL,
+    RHS_GPIO_OTYPE_OPEN_DRAIN
 };
 enum
 {
-    MG_GPIO_SPEED_LOW,
-    MG_GPIO_SPEED_MEDIUM,
-    MG_GPIO_SPEED_HIGH,
-    MG_GPIO_SPEED_INSANE
+    RHS_GPIO_SPEED_LOW,
+    RHS_GPIO_SPEED_MEDIUM,
+    RHS_GPIO_SPEED_HIGH,
+    RHS_GPIO_SPEED_INSANE
 };
 enum
 {
-    MG_GPIO_PULL_NONE,
-    MG_GPIO_PULL_UP,
-    MG_GPIO_PULL_DOWN
+    RHS_GPIO_PULL_NONE,
+    RHS_GPIO_PULL_UP,
+    RHS_GPIO_PULL_DOWN
 };
 
 static inline void gpio_init(uint16_t pin, uint8_t mode, uint8_t type, uint8_t speed, uint8_t pull, uint8_t af)
@@ -100,12 +100,12 @@ static inline void gpio_init(uint16_t pin, uint8_t mode, uint8_t type, uint8_t s
 
 static inline void gpio_input(uint16_t pin)
 {
-    gpio_init(pin, MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
+    gpio_init(pin, RHS_GPIO_MODE_INPUT, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_HIGH, RHS_GPIO_PULL_NONE, 0);
 }
 
 static inline void gpio_output(uint16_t pin)
 {
-    gpio_init(pin, MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
+    gpio_init(pin, RHS_GPIO_MODE_OUTPUT, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_HIGH, RHS_GPIO_PULL_NONE, 0);
 }
 
 // ─── STM32G0 ─────────────────────────────────────────────────────────────────
@@ -113,28 +113,28 @@ static inline void gpio_output(uint16_t pin)
 
 enum
 {
-    MG_GPIO_MODE_INPUT,
-    MG_GPIO_MODE_OUTPUT,
-    MG_GPIO_MODE_AF,
-    MG_GPIO_MODE_ANALOG
+    RHS_GPIO_MODE_INPUT,
+    RHS_GPIO_MODE_OUTPUT,
+    RHS_GPIO_MODE_AF,
+    RHS_GPIO_MODE_ANALOG
 };
 enum
 {
-    MG_GPIO_OTYPE_PUSH_PULL,
-    MG_GPIO_OTYPE_OPEN_DRAIN
+    RHS_GPIO_OTYPE_PUSH_PULL,
+    RHS_GPIO_OTYPE_OPEN_DRAIN
 };
 enum
 {
-    MG_GPIO_SPEED_LOW,
-    MG_GPIO_SPEED_MEDIUM,
-    MG_GPIO_SPEED_HIGH,
-    MG_GPIO_SPEED_INSANE
+    RHS_GPIO_SPEED_LOW,
+    RHS_GPIO_SPEED_MEDIUM,
+    RHS_GPIO_SPEED_HIGH,
+    RHS_GPIO_SPEED_INSANE
 };
 enum
 {
-    MG_GPIO_PULL_NONE,
-    MG_GPIO_PULL_UP,
-    MG_GPIO_PULL_DOWN
+    RHS_GPIO_PULL_NONE,
+    RHS_GPIO_PULL_UP,
+    RHS_GPIO_PULL_DOWN
 };
 
 static inline void gpio_init(uint16_t pin, uint8_t mode, uint8_t type, uint8_t speed, uint8_t pull, uint8_t af)
@@ -151,12 +151,30 @@ static inline void gpio_init(uint16_t pin, uint8_t mode, uint8_t type, uint8_t s
 
 static inline void gpio_input(uint16_t pin)
 {
-    gpio_init(pin, MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
+    gpio_init(pin, RHS_GPIO_MODE_INPUT, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_HIGH, RHS_GPIO_PULL_NONE, 0);
 }
 
 static inline void gpio_output(uint16_t pin)
 {
-    gpio_init(pin, MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
+    gpio_init(pin, RHS_GPIO_MODE_OUTPUT, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_HIGH, RHS_GPIO_PULL_NONE, 0);
+}
+
+static inline void irq_exti_attach(uint16_t pin)
+{
+    GPIO_TypeDef* gpio = gpio_bank(pin);
+    uint8_t       n    = (uint8_t) (PINNO(pin));
+    RCC->IOPENR |= BIT(PINBANK(pin));  // Enable GPIO clock (GPIOA=bit0, GPIOB=bit1, etc.)
+    SETBITS(gpio->OTYPER, 1UL << n, ((uint32_t) RHS_GPIO_OTYPE_PUSH_PULL) << n);
+    SETBITS(gpio->OSPEEDR, 3UL << (n * 2), ((uint32_t) RHS_GPIO_SPEED_HIGH) << (n * 2));
+    SETBITS(gpio->PUPDR, 3UL << (n * 2), ((uint32_t) RHS_GPIO_PULL_NONE) << (n * 2));
+    SETBITS(gpio->AFR[n >> 3], 15UL << ((n & 7) * 4), ((uint32_t) 0) << ((n & 7) * 4));
+    SETBITS(gpio->MODER, 3UL << (n * 2), ((uint32_t) RHS_GPIO_MODE_INPUT) << (n * 2));
+    EXTI->IMR1 |= BIT(n);
+    EXTI->RTSR1 |= BIT(n);
+    EXTI->FTSR1 |= BIT(n);
+    int irqvec = n < 2 ? 5 : n < 4 ? 6 : 7;
+    NVIC_SetPriority(irqvec, 3);
+    NVIC_EnableIRQ(irqvec);
 }
 
 // ─── STM32F1 ─────────────────────────────────────────────────────────────────
@@ -189,39 +207,39 @@ static inline void spin(volatile uint32_t count)
 // GPIO modes for STM32F1 (CNF + MODE fields packed into 4 bits per pin)
 enum
 {
-    GPIO_MODE_INPUT_ANALOG   = 0x0,
-    GPIO_MODE_INPUT_FLOATING = 0x4,
-    GPIO_MODE_INPUT_PULLUP   = 0x8
+    RHS_GPIO_MODE_INPUT_ANALOG   = 0x0,
+    RHS_GPIO_MODE_INPUT_FLOATING = 0x4,
+    RHS_GPIO_MODE_INPUT_PULLUP   = 0x8
 };
 enum
 {
-    GPIO_MODE_OUTPUT_PP_10MHZ = 0x1,
-    GPIO_MODE_OUTPUT_OD_10MHZ = 0x5
+    RHS_GPIO_MODE_OUTPUT_PP_10MHZ = 0x1,
+    RHS_GPIO_MODE_OUTPUT_OD_10MHZ = 0x5
 };
 enum
 {
-    GPIO_MODE_OUTPUT_PP_2MHZ = 0x2,
-    GPIO_MODE_OUTPUT_OD_2MHZ = 0x6
+    RHS_GPIO_MODE_OUTPUT_PP_2MHZ = 0x2,
+    RHS_GPIO_MODE_OUTPUT_OD_2MHZ = 0x6
 };
 enum
 {
-    GPIO_MODE_OUTPUT_PP_50MHZ = 0x3,
-    GPIO_MODE_OUTPUT_OD_50MHZ = 0x7
+    RHS_GPIO_MODE_OUTPUT_PP_50MHZ = 0x3,
+    RHS_GPIO_MODE_OUTPUT_OD_50MHZ = 0x7
 };
 enum
 {
-    GPIO_MODE_AF_PP_10MHZ = 0x9,
-    GPIO_MODE_AF_OD_10MHZ = 0xD
+    RHS_GPIO_MODE_AF_PP_10MHZ = 0x9,
+    RHS_GPIO_MODE_AF_OD_10MHZ = 0xD
 };
 enum
 {
-    GPIO_MODE_AF_PP_2MHZ = 0xA,
-    GPIO_MODE_AF_OD_2MHZ = 0xE
+    RHS_GPIO_MODE_AF_PP_2MHZ = 0xA,
+    RHS_GPIO_MODE_AF_OD_2MHZ = 0xE
 };
 enum
 {
-    GPIO_MODE_AF_PP_50MHZ = 0xB,
-    GPIO_MODE_AF_OD_50MHZ = 0xF
+    RHS_GPIO_MODE_AF_PP_50MHZ = 0xB,
+    RHS_GPIO_MODE_AF_OD_50MHZ = 0xF
 };
 
 static inline void gpio_init(uint16_t pin, uint8_t mode)
@@ -239,7 +257,7 @@ static inline void gpio_init(uint16_t pin, uint8_t mode)
         SETBITS(gpio->CRH, 15UL << ((n - 8) * 4), ((uint32_t) mode) << ((n - 8) * 4));
     }
 
-    if (mode == GPIO_MODE_INPUT_PULLUP)
+    if (mode == RHS_GPIO_MODE_INPUT_PULLUP)
     {
         gpio->BSRR = BIT(n);  // Activate internal pull-up
     }
@@ -247,12 +265,12 @@ static inline void gpio_init(uint16_t pin, uint8_t mode)
 
 static inline void gpio_input(uint16_t pin)
 {
-    gpio_init(pin, GPIO_MODE_INPUT_FLOATING);
+    gpio_init(pin, RHS_GPIO_MODE_INPUT_FLOATING);
 }
 
 static inline void gpio_output(uint16_t pin)
 {
-    gpio_init(pin, GPIO_MODE_OUTPUT_PP_50MHZ);
+    gpio_init(pin, RHS_GPIO_MODE_OUTPUT_PP_50MHZ);
 }
 
 static inline void irq_exti_attach(uint16_t pin)

@@ -108,7 +108,9 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     /* UART */
     [RHSHalInterruptIdUsart3] = USART3_IRQn,
 #    elif defined(STM32G0B1xx)
-    [RHSHalInterruptIdEXTI4_15] = EXTI4_15_IRQn,
+    [RHSHalInterruptIdEXTI0_1]     = EXTI0_1_IRQn,
+    [RHSHalInterruptIdEXTI2_3]     = EXTI2_3_IRQn,
+    [RHSHalInterruptIdEXTI4_15]    = EXTI4_15_IRQn,
     [RHSHalInterruptIdUSB_UCPD1_2] = USB_UCPD1_2_IRQn,
 
 #    endif
@@ -356,6 +358,15 @@ void UART5_IRQHandler(void)
 }
 
 #elif defined(STM32G0B1xx)
+
+void EXTI0_1_IRQHandler(void)
+{
+    rhs_hal_interrupt_call(RHSHalInterruptIdEXTI0_1);
+}
+void EXTI2_3_IRQHandler(void)
+{
+    rhs_hal_interrupt_call(RHSHalInterruptIdEXTI2_3);
+}
 void EXTI4_15_IRQHandler(void)
 {
     rhs_hal_interrupt_call(RHSHalInterruptIdEXTI4_15);

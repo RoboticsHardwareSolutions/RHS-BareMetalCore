@@ -340,7 +340,7 @@ static void usb_bridge_cb(char* args, void* context)
                 .serial_ch      = RHSHalSerialIdRS232,
                 .flow_pins      = 0,
                 .baudrate_mode  = 0,
-                .baudrate       = 115200,
+                .baudrate       = 9600,
                 .software_de_re = 0,
             };
             usb_rs232 = usb_serial_enable(&cfg);

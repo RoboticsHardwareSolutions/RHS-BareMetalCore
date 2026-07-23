@@ -57,14 +57,14 @@ static void vcp_on_cdc_tx_complete(void* context);
 static void vcp_on_cdc_rx(void* context);
 static void vcp_state_callback(void* context, uint8_t state);
 static void vcp_on_cdc_control_line(void* context, uint8_t state);
-// static void vcp_on_line_config(void* context, struct usb_cdc_line_coding* config);
+static void vcp_on_line_config(void* context, cdc_line_coding_t const* config);
 
 static const CdcCallbacks cdc_cb = {
     vcp_on_cdc_tx_complete,
     vcp_on_cdc_rx,
     vcp_state_callback,
     vcp_on_cdc_control_line,
-    // vcp_on_line_config,
+    vcp_on_line_config,
 };
 
 static void serial_rx_cb(RHSHalSerial* handle, RHSHalSerialRxEvent event, void* context)
@@ -97,7 +97,7 @@ static void usb_serial_vcp_deinit(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
 
 static void usb_uart_serial_init(UsbSerialBridge* usb_uart, uint32_t ch)
 {
-    usb_uart->serial_handle = rhs_hal_serial_init(ch, 115200);
+    usb_uart->serial_handle = rhs_hal_serial_init(ch, usb_uart->cfg.baudrate);
     rhs_hal_serial_async_rx_start(usb_uart->serial_handle, serial_rx_cb, usb_uart);
 }
 
@@ -156,6 +156,7 @@ static int32_t usb_serial_worker(void* context)
 
     usb_serial->serial_handle = rhs_hal_serial_init(usb_serial->cfg.serial_ch, usb_serial->cfg.baudrate);
     rhs_hal_serial_async_rx_start(usb_serial->serial_handle, serial_rx_cb, usb_serial);
+    usb_serial->st.baudrate_cur = usb_serial->cfg.baudrate;
 
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->tx_thread), WorkerEvtCdcRx);
 
@@ -215,9 +216,18 @@ static int32_t usb_serial_worker(void* context)
             }
             if (usb_serial->cfg.baudrate != usb_serial->cfg_new.baudrate)
             {
-                rhs_crash("Baudrate change not implemented");
-                // usb_serial_set_baudrate(usb_serial, usb_serial->cfg_new.baudrate);
-                usb_serial->cfg.baudrate = usb_serial->cfg_new.baudrate;
+                rhs_thread_flags_set(rhs_thread_get_id(usb_serial->tx_thread), WorkerEvtTxStop);
+                rhs_thread_join(usb_serial->tx_thread);
+
+                usb_uart_serial_deinit(usb_serial);
+                usb_serial->serial_handle =
+                    rhs_hal_serial_init(usb_serial->cfg.serial_ch, usb_serial->cfg_new.baudrate);
+                rhs_hal_serial_async_rx_start(usb_serial->serial_handle, serial_rx_cb, usb_serial);
+
+                usb_serial->cfg.baudrate    = usb_serial->cfg_new.baudrate;
+                usb_serial->st.baudrate_cur = usb_serial->cfg_new.baudrate;
+
+                rhs_thread_start(usb_serial->tx_thread);
             }
             if (usb_serial->cfg.flow_pins != usb_serial->cfg_new.flow_pins)
             {
@@ -234,14 +244,23 @@ static int32_t usb_serial_worker(void* context)
         }
         if (events & WorkerEvtLineCfgSet)
         {
-            if (usb_serial->cfg.baudrate == 0)
+            cdc_line_coding_t* coding = rhs_hal_cdc_get_port_settings(usb_serial->cfg.vcp_ch);
+            uint32_t           new_baudrate = coding->bit_rate;
+            if (new_baudrate != 0 && new_baudrate != usb_serial->st.baudrate_cur)
             {
-                // usb_serial_set_baudrate(usb_serial, usb_serial->cfg.baudrate);
+                usb_uart_serial_deinit(usb_serial);
+                usb_serial->serial_handle =
+                    rhs_hal_serial_init(usb_serial->cfg.serial_ch, new_baudrate);
+                rhs_hal_serial_async_rx_start(usb_serial->serial_handle, serial_rx_cb, usb_serial);
+
+                usb_serial->cfg.baudrate    = new_baudrate;
+                usb_serial->st.baudrate_cur = new_baudrate;
+                RHS_LOG_I(TAG, "Baudrate changed to %lu", (unsigned long) new_baudrate);
             }
-            if (events & WorkerEvtCtrlLineSet)
-            {
-                // usb_serial_update_ctrl_lines(usb_serial);
-            }
+        }
+        if (events & WorkerEvtCtrlLineSet)
+        {
+            /* Control line state changed — no action needed */
         }
     }
 
@@ -279,20 +298,20 @@ static void vcp_on_cdc_rx(void* context)
 
 static void vcp_state_callback(void* context, uint8_t state)
 {
-    // UNUSED(context);
-    // UNUSED(state);
+    UNUSED(context);
+    UNUSED(state);
 }
 
 static void vcp_on_cdc_control_line(void* context, uint8_t state)
 {
-    // UNUSED(state);
+    UNUSED(state);
     UsbSerialBridge* usb_serial = (UsbSerialBridge*) context;
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtCtrlLineSet);
 }
 
-static void vcp_on_line_config(void* context, struct usb_cdc_line_coding* config)
+static void vcp_on_line_config(void* context, cdc_line_coding_t const* config)
 {
-    // UNUSED(config);
+    UNUSED(config);
     UsbSerialBridge* usb_serial = (UsbSerialBridge*) context;
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtLineCfgSet);
 }
@@ -344,7 +363,7 @@ static void usb_bridge_cb(char* args, void* context)
                 .serial_ch      = RHSHalSerialIdRS485,
                 .flow_pins      = 0,
                 .baudrate_mode  = 0,
-                .baudrate       = 115200,
+                .baudrate       = 9600,
                 .software_de_re = 0,
             };
             usb_rs485 = usb_serial_enable(&cfg);

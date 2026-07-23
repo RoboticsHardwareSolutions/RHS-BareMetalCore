@@ -96,6 +96,7 @@ static volatile bool          connected             = false;
 static volatile CdcCallbacks* callbacks[IF_NUM_MAX] = {NULL};
 static void*                  cb_ctx[IF_NUM_MAX];
 static uint8_t                cdc_ctrl_line_state[IF_NUM_MAX];
+static cdc_line_coding_t      line_coding[IF_NUM_MAX];
 
 void tud_cdc_rx_cb(uint8_t itf)
 {
@@ -129,6 +130,19 @@ void tud_cdc_notify_complete_cb(uint8_t itf)
 void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 {
     RHS_LOG_D(TAG, "Terminal %d DTR %d RTS %d", itf, dtr, rts);
+
+    cdc_ctrl_line_state[itf] = (dtr ? CdcCtrlLineDTR : 0) | (rts ? CdcCtrlLineRTS : 0);
+    connected                = (dtr || rts);
+
+    if (callbacks[itf] != NULL)
+    {
+        if (callbacks[itf]->state_callback != NULL)
+            callbacks[itf]->state_callback(
+                cb_ctx[itf], connected ? CdcStateConnected : CdcStateDisconnected);
+        if (callbacks[itf]->ctrl_line_callback != NULL)
+            callbacks[itf]->ctrl_line_callback(cb_ctx[itf],
+                                               (CdcCtrlLine) cdc_ctrl_line_state[itf]);
+    }
 }
 
 void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* p_line_coding)
@@ -140,6 +154,11 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* p_line_coding)
               p_line_coding->data_bits,
               p_line_coding->parity,
               p_line_coding->stop_bits);
+
+    line_coding[itf] = *p_line_coding;
+
+    if (callbacks[itf] != NULL && callbacks[itf]->line_config_callback != NULL)
+        callbacks[itf]->line_config_callback(cb_ctx[itf], &line_coding[itf]);
 }
 
 void tud_cdc_send_break_cb(uint8_t itf, uint16_t duration_ms)
@@ -222,9 +241,17 @@ void rhs_hal_cdc_set_callbacks(uint8_t if_num, CdcCallbacks* cb, void* context)
     }
 }
 
-struct usb_cdc_line_coding* rhs_hal_cdc_get_port_settings(uint8_t if_num) {}
+cdc_line_coding_t* rhs_hal_cdc_get_port_settings(uint8_t if_num)
+{
+    rhs_assert(if_num < IF_NUM_MAX);
+    return &line_coding[if_num];
+}
 
-uint8_t rhs_hal_cdc_get_ctrl_line_state(uint8_t if_num) {}
+uint8_t rhs_hal_cdc_get_ctrl_line_state(uint8_t if_num)
+{
+    rhs_assert(if_num < IF_NUM_MAX);
+    return cdc_ctrl_line_state[if_num];
+}
 
 void rhs_hal_cdc_send(uint8_t if_num, uint8_t* buf, uint16_t len)
 {

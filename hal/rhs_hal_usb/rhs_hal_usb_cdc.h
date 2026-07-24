@@ -25,7 +25,8 @@ typedef struct
     void (*line_config_callback)(void* context, cdc_line_coding_t const* config);
 } CdcCallbacks;
 
-extern RHSHalUsbInterface usb_cdc_desc;
+extern RHSHalUsbInterface usb_dual_cdc_desc;
+extern RHSHalUsbInterface usb_single_cdc_desc;
 
 void rhs_hal_cdc_set_callbacks(uint8_t if_num, CdcCallbacks* cb, void* context);
 

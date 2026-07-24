@@ -7,14 +7,20 @@
 
 #define IF_NUM_MAX 2
 
-// Dual CDC configuration enums
 enum
 {
-    ITF_NUM_CDC_0 = 0,
-    ITF_NUM_CDC_0_DATA,
-    ITF_NUM_CDC_1,
-    ITF_NUM_CDC_1_DATA,
-    ITF_NUM_TOTAL_DUAL_CDC
+    ITF_SINGLE_CDC_NUM_CDC_0 = 0,
+    ITF_SINGLE_CDC_NUM_CDC_0_DATA,
+    ITF_SINGLE_CDC_NUM_TOTAL
+};
+
+enum
+{
+    ITF_DUAL_CDC_NUM_CDC_0 = 0,
+    ITF_DUAL_CDC_NUM_CDC_0_DATA,
+    ITF_DUAL_CDC_NUM_CDC_1,
+    ITF_DUAL_CDC_NUM_CDC_1_DATA,
+    ITF_DUAL_CDC_NUM_TOTAL
 };
 
 static tusb_desc_device_t const desc_device_cdc = {
@@ -44,6 +50,7 @@ static tusb_desc_device_t const desc_device_cdc = {
 // Configuration Descriptor
 //--------------------------------------------------------------------+
 #define DUAL_CDC_CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN)
+#define SINGLE_CDC_CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN)
 
 #define EPNUM_CDC_0_NOTIF 0x81
 #define EPNUM_CDC_0_OUT 0x02
@@ -53,13 +60,27 @@ static tusb_desc_device_t const desc_device_cdc = {
 #define EPNUM_CDC_1_OUT 0x04
 #define EPNUM_CDC_1_IN 0x84
 
+static uint8_t const single_cdc_configuration[] = {
+    // Config number, interface count, string index, total length, attribute, power in mA
+    TUD_CONFIG_DESCRIPTOR(1, ITF_SINGLE_CDC_NUM_TOTAL, 0, SINGLE_CDC_CONFIG_TOTAL_LEN, 0, 100),
+
+    // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
+    TUD_CDC_DESCRIPTOR(ITF_SINGLE_CDC_NUM_CDC_0,
+                       4,
+                       EPNUM_CDC_0_NOTIF,
+                       16,
+                       EPNUM_CDC_0_OUT,
+                       EPNUM_CDC_0_IN,
+                       CFG_TUD_CDC_EP_BUFSIZE),
+};
+
 // Dual CDC configuration
 static uint8_t const dual_cdc_configuration[] = {
     // Config number, interface count, string index, total length, attribute, power in mA
-    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL_DUAL_CDC, 0, DUAL_CDC_CONFIG_TOTAL_LEN, 0, 100),
+    TUD_CONFIG_DESCRIPTOR(1, ITF_DUAL_CDC_NUM_TOTAL, 0, DUAL_CDC_CONFIG_TOTAL_LEN, 0, 100),
 
     // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0,
+    TUD_CDC_DESCRIPTOR(ITF_DUAL_CDC_NUM_CDC_0,
                        4,
                        EPNUM_CDC_0_NOTIF,
                        16,
@@ -68,7 +89,7 @@ static uint8_t const dual_cdc_configuration[] = {
                        CFG_TUD_CDC_EP_BUFSIZE),
 
     // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1,
+    TUD_CDC_DESCRIPTOR(ITF_DUAL_CDC_NUM_CDC_1,
                        4,
                        EPNUM_CDC_1_NOTIF,
                        16,
@@ -82,14 +103,20 @@ static uint8_t const dual_cdc_configuration[] = {
 //--------------------------------------------------------------------+
 
 // array of pointer to string descriptors
+static char const* string_desc_single_cdc_arr[] = {
+    [STRID_LANGID]       = (const char[]) {0x09, 0x04},  // supported language is English (0x0409)
+    [STRID_MANUFACTURER] = "RHS",                        // Manufacturer
+    [STRID_PRODUCT]      = "RHS Device",                 // Product
+    [STRID_SERIAL]       = "123456",                     // Serial
+    [STRID_INTERFACE]    = "RHS Single CDC Interface"    // Interface Description
+};
+
 static char const* string_desc_dual_cdc_arr[] = {
     [STRID_LANGID]       = (const char[]) {0x09, 0x04},  // supported language is English (0x0409)
-    [STRID_MANUFACTURER] = "TinyUSB",                    // Manufacturer
-    [STRID_PRODUCT]      = "TinyUSB Device",             // Product
+    [STRID_MANUFACTURER] = "RHS",                        // Manufacturer
+    [STRID_PRODUCT]      = "RHS Device",                 // Product
     [STRID_SERIAL]       = "123456",                     // Serial
-    [STRID_INTERFACE]    = "TinyUSB CDC Interface"       // Interface Description
-
-    // STRID_MAC index is handled separately
+    [STRID_INTERFACE]    = "RHS Dual CDC Interface"      // Interface Description
 };
 
 static volatile bool          connected             = false;
@@ -137,11 +164,9 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
     if (callbacks[itf] != NULL)
     {
         if (callbacks[itf]->state_callback != NULL)
-            callbacks[itf]->state_callback(
-                cb_ctx[itf], connected ? CdcStateConnected : CdcStateDisconnected);
+            callbacks[itf]->state_callback(cb_ctx[itf], connected ? CdcStateConnected : CdcStateDisconnected);
         if (callbacks[itf]->ctrl_line_callback != NULL)
-            callbacks[itf]->ctrl_line_callback(cb_ctx[itf],
-                                               (CdcCtrlLine) cdc_ctrl_line_state[itf]);
+            callbacks[itf]->ctrl_line_callback(cb_ctx[itf], (CdcCtrlLine) cdc_ctrl_line_state[itf]);
     }
 }
 
@@ -187,7 +212,16 @@ static void cdc_deinit(void)
     RHS_LOG_D(TAG, "USB CDC application finished");
 }
 
-RHSHalUsbInterface usb_cdc_desc = {
+RHSHalUsbInterface usb_single_cdc_desc = {
+    .init                  = cdc_init,
+    .deinit                = cdc_deinit,
+    .device_desc           = &desc_device_cdc,
+    .configuration_arr     = (uint8_t const* const[]) {single_cdc_configuration},
+    .string_desc_arr       = (char const* const*) string_desc_single_cdc_arr,
+    .string_desc_arr_count = TU_ARRAY_SIZE(string_desc_single_cdc_arr),
+};
+
+RHSHalUsbInterface usb_dual_cdc_desc = {
     .init                  = cdc_init,
     .deinit                = cdc_deinit,
     .device_desc           = &desc_device_cdc,

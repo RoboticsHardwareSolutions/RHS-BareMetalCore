@@ -82,8 +82,14 @@ static void serial_rx_cb(RHSHalSerial* handle, RHSHalSerialRxEvent event, void* 
 
 static void usb_serial_vcp_init(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
 {
-    // rhs_hal_usb_unlock();
-    rhs_hal_usb_set_interface(&usb_cdc_desc);
+    if (vcp_ch == 0)
+    {
+        rhs_hal_usb_set_interface(&usb_single_cdc_desc);
+    }
+    else
+    {
+        rhs_hal_usb_set_interface(&usb_dual_cdc_desc);
+    }
     rhs_hal_cdc_set_callbacks(vcp_ch, (CdcCallbacks*) &cdc_cb, usb_serial);
 }
 
@@ -244,13 +250,12 @@ static int32_t usb_serial_worker(void* context)
         }
         if (events & WorkerEvtLineCfgSet)
         {
-            cdc_line_coding_t* coding = rhs_hal_cdc_get_port_settings(usb_serial->cfg.vcp_ch);
+            cdc_line_coding_t* coding       = rhs_hal_cdc_get_port_settings(usb_serial->cfg.vcp_ch);
             uint32_t           new_baudrate = coding->bit_rate;
             if (new_baudrate != 0 && new_baudrate != usb_serial->st.baudrate_cur)
             {
                 usb_uart_serial_deinit(usb_serial);
-                usb_serial->serial_handle =
-                    rhs_hal_serial_init(usb_serial->cfg.serial_ch, new_baudrate);
+                usb_serial->serial_handle = rhs_hal_serial_init(usb_serial->cfg.serial_ch, new_baudrate);
                 rhs_hal_serial_async_rx_start(usb_serial->serial_handle, serial_rx_cb, usb_serial);
 
                 usb_serial->cfg.baudrate    = new_baudrate;
@@ -326,12 +331,16 @@ static void usb_bridge_cb(char* args, void* context)
         return;
     }
 
-    char* separator = strchr(args, ' ');
-    if (separator != NULL && *(separator + 1) != 0)
+    bool want_rs232 = strstr(args, "-rs232") != NULL;
+    bool want_rs485 = strstr(args, "-rs485") != NULL;
+
+    if (!want_rs232 && !want_rs485)
     {
+        RHS_LOG_E(TAG, "Invalid argument");
+        return;
     }
 
-    if (strstr(args, "-rs232") == args)
+    if (want_rs232)
     {
         if (usb_rs232 == NULL)
         {
@@ -352,9 +361,9 @@ static void usb_bridge_cb(char* args, void* context)
             usb_rs232 = NULL;
             RHS_LOG_W(TAG, "RS232 disabled");
         }
-        return;
     }
-    else if (strstr(args, "-rs485") == args)
+
+    if (want_rs485)
     {
         if (usb_rs485 == NULL)
         {
@@ -375,11 +384,6 @@ static void usb_bridge_cb(char* args, void* context)
             usb_rs485 = NULL;
             RHS_LOG_W(TAG, "RS485 disabled");
         }
-        return;
-    }
-    else
-    {
-        RHS_LOG_E(TAG, "Invalid argument");
     }
 }
 

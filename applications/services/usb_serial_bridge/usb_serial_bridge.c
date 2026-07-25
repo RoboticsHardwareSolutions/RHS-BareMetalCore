@@ -103,6 +103,13 @@ static void usb_serial_vcp_deinit(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
             rhs_hal_usb_set_interface(&usb_single_cdc_desc);
         }
     }
+    if (iface == &usb_single_cdc_desc)
+    {
+        if (vcp_ch == 0)
+        {
+            rhs_hal_usb_set_interface(NULL);
+        }
+    }
     // If there is dual cdc interface and vcp_ch is 0, we can't switch to single cdc interface,
     // because it will break the second cdc interface.
     // So we just leave the dual cdc interface as is.

@@ -71,7 +71,6 @@ static void serial_rx_cb(RHSHalSerial* handle, RHSHalSerialRxEvent event, void* 
 {
     UsbSerialBridge* usb_serial = (UsbSerialBridge*) context;
 
-    rhs_hal_serial_async_rx(handle);
     if (event & (RHSHalSerialRxEventData))
     {
         uint8_t data = rhs_hal_serial_async_rx(handle);
@@ -183,7 +182,7 @@ static int32_t usb_serial_worker(void* context)
             break;
         if (events & (WorkerEvtRxDone | WorkerEvtCdcTxComplete))
         {
-            uint16_t len = rhs_stream_buffer_receive(usb_serial->rx_stream, usb_serial->rx_buf, USB_CDC_PKT_LEN, 0);
+            size_t len = rhs_stream_buffer_receive(usb_serial->rx_stream, usb_serial->rx_buf, USB_CDC_PKT_LEN, 0);
             if (len > 0)
             {
                 if (rhs_semaphore_acquire(usb_serial->tx_sem, 100) == RHSStatusOk)
@@ -235,7 +234,7 @@ static int32_t usb_serial_worker(void* context)
 
                 usb_serial->cfg.baudrate    = usb_serial->cfg_new.baudrate;
                 usb_serial->st.baudrate_cur = usb_serial->cfg_new.baudrate;
-                usb_uart_serial_init(usb_serial, usb_serial->cfg_new.serial_ch);
+                usb_uart_serial_init(usb_serial, usb_serial->cfg.serial_ch);
 
                 rhs_thread_start(usb_serial->tx_thread);
             }

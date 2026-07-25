@@ -209,7 +209,6 @@ static void cdc_deinit(void)
     rhs_hal_usb_disable();
     rhs_thread_join(thread);
     rhs_thread_free(thread);
-    RHS_LOG_D(TAG, "USB CDC application finished");
 }
 
 RHSHalUsbInterface usb_single_cdc_desc = {

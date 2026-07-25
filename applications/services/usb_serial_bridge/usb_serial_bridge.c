@@ -96,9 +96,17 @@ static void usb_serial_vcp_init(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
 static void usb_serial_vcp_deinit(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
 {
     rhs_hal_cdc_set_callbacks(vcp_ch, NULL, NULL);
-    if (vcp_ch != 0)
+    RHSHalUsbInterface* iface = rhs_hal_usb_get_interface();
+    if (iface == &usb_dual_cdc_desc)
     {
+        if (vcp_ch == 1)
+        {
+            rhs_hal_usb_set_interface(&usb_single_cdc_desc);
+        }
     }
+    // If there is dual cdc interface and vcp_ch is 0, we can't switch to single cdc interface,
+    // because it will break the second cdc interface.
+    // So we just leave the dual cdc interface as is.
 }
 
 static void usb_uart_serial_init(UsbSerialBridge* usb_uart, uint32_t ch)
@@ -160,8 +168,7 @@ static int32_t usb_serial_worker(void* context)
 
     usb_serial_vcp_init(usb_serial, usb_serial->cfg.vcp_ch);
 
-    usb_serial->serial_handle = rhs_hal_serial_init(usb_serial->cfg.serial_ch, usb_serial->cfg.baudrate);
-    rhs_hal_serial_async_rx_start(usb_serial->serial_handle, serial_rx_cb, usb_serial);
+    usb_uart_serial_init(usb_serial, usb_serial->cfg.serial_ch);
     usb_serial->st.baudrate_cur = usb_serial->cfg.baudrate;
 
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->tx_thread), WorkerEvtCdcRx);
@@ -214,9 +221,8 @@ static int32_t usb_serial_worker(void* context)
                 rhs_thread_join(usb_serial->tx_thread);
 
                 usb_uart_serial_deinit(usb_serial);
-                usb_uart_serial_init(usb_serial, usb_serial->cfg_new.serial_ch);
-
                 usb_serial->cfg.serial_ch = usb_serial->cfg_new.serial_ch;
+                usb_uart_serial_init(usb_serial, usb_serial->cfg.serial_ch);
 
                 rhs_thread_start(usb_serial->tx_thread);
             }
@@ -226,12 +232,10 @@ static int32_t usb_serial_worker(void* context)
                 rhs_thread_join(usb_serial->tx_thread);
 
                 usb_uart_serial_deinit(usb_serial);
-                usb_serial->serial_handle =
-                    rhs_hal_serial_init(usb_serial->cfg.serial_ch, usb_serial->cfg_new.baudrate);
-                rhs_hal_serial_async_rx_start(usb_serial->serial_handle, serial_rx_cb, usb_serial);
 
                 usb_serial->cfg.baudrate    = usb_serial->cfg_new.baudrate;
                 usb_serial->st.baudrate_cur = usb_serial->cfg_new.baudrate;
+                usb_uart_serial_init(usb_serial, usb_serial->cfg_new.serial_ch);
 
                 rhs_thread_start(usb_serial->tx_thread);
             }
@@ -345,7 +349,7 @@ static void usb_bridge_cb(char* args, void* context)
         if (usb_rs232 == NULL)
         {
             UsbSerialConfig cfg = {
-                .vcp_ch         = 0,
+                .vcp_ch         = usb_rs485 ? 1 : 0,
                 .serial_ch      = RHSHalSerialIdRS232,
                 .flow_pins      = 0,
                 .baudrate_mode  = 0,
@@ -368,7 +372,7 @@ static void usb_bridge_cb(char* args, void* context)
         if (usb_rs485 == NULL)
         {
             UsbSerialConfig cfg = {
-                .vcp_ch         = 1,
+                .vcp_ch         = usb_rs232 ? 1 : 0,
                 .serial_ch      = RHSHalSerialIdRS485,
                 .flow_pins      = 0,
                 .baudrate_mode  = 0,

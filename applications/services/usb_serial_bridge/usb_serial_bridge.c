@@ -418,6 +418,27 @@ void usb_serial_disable(UsbSerialBridge* usb_serial)
     free(usb_serial);
 }
 
+void usb_serial_set_config(UsbSerialBridge* usb_serial, UsbSerialConfig* cfg) {
+    rhs_assert(usb_serial);
+    rhs_assert(cfg);
+    usb_serial->cfg_lock = api_lock_alloc_locked();
+    memcpy(&(usb_serial->cfg_new), cfg, sizeof(UsbSerialConfig));
+    rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtCfgChange);
+    api_lock_wait_unlock_and_free(usb_serial->cfg_lock);
+}
+
+void usb_serial_get_config(UsbSerialBridge* usb_serial, UsbSerialConfig* cfg) {
+    rhs_assert(usb_serial);
+    rhs_assert(cfg);
+    memcpy(cfg, &(usb_serial->cfg_new), sizeof(UsbSerialConfig));
+}
+
+void usb_serial_get_state(UsbSerialBridge* usb_serial, UsbSerialState* st) {
+    rhs_assert(usb_serial);
+    rhs_assert(st);
+    memcpy(st, &(usb_serial->st), sizeof(UsbSerialState));
+}
+
 void cli_vcp_start_up(void)
 {
     Cli* cli = rhs_record_open(RECORD_CLI);

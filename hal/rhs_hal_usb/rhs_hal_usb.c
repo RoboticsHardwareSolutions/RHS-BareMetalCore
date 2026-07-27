@@ -172,11 +172,18 @@ extern void descriptor_switch_mode(tusb_desc_device_t* new_desc,
                                    size_t              new_string_desc_arr_count);
 
 static RHSHalUsbInterface* s_usb_desc = NULL;
+static RHSMutex* s_usb_mutex = NULL;
 
 void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface)
 {
+    if (s_usb_mutex == NULL)
+    {
+        s_usb_mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
+    }
     if (iface == s_usb_desc)
         return;
+    
+    rhs_mutex_acquire(s_usb_mutex, RHSWaitForever);
     if (s_usb_desc != NULL)
     {
         if (s_usb_desc->deinit)
@@ -195,6 +202,7 @@ void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface)
             iface->init();
     }
     s_usb_desc = iface;
+    rhs_mutex_release(s_usb_mutex);
 }
 
 RHSHalUsbInterface* rhs_hal_usb_get_interface(void)

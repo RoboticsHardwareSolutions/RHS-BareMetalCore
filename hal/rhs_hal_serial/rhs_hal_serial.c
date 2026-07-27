@@ -102,11 +102,13 @@ void rhs_hal_serial_deinit(RHSHalSerial* serial)
         rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS232, NULL, NULL);
         break;
     case RHSHalSerialIdRS485:
+#if !defined(STM32F103xE)
         rhs_hal_rs485_async_tx_dma_stop();
         rhs_hal_rs485_async_rx_dma_stop();
-        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS485, NULL, NULL);
         rhs_hal_interrupt_set_isr(RHS_DMA_RX_RS485, NULL, NULL);
         rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS485, NULL, NULL);
+#endif
+        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS485, NULL, NULL);
         break;
 #if !defined(BMPLC_XL)
     case RHSHalSerialIdRS422:
@@ -140,6 +142,8 @@ void rhs_hal_serial_tx(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buf
         buffer_size--;
     }
 #if defined(BMPLC_M)
+    while (!LL_USART_IsActiveFlag_TC(serial->rserial.uart.Instance))
+        ;
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
 #endif
 }

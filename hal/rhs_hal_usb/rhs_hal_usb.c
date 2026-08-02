@@ -3,9 +3,15 @@
 
 #define TAG "RHSHalUsb"
 
+static RHSMutex* s_usb_mutex = NULL;
+
 /* Low-level init */
 void rhs_hal_usb_init(void)
 {
+    if (s_usb_mutex == NULL)
+    {
+        s_usb_mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
+    }
 #if defined(STM32F1)
     RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
     RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
@@ -172,14 +178,9 @@ extern void descriptor_switch_mode(tusb_desc_device_t* new_desc,
                                    size_t              new_string_desc_arr_count);
 
 static RHSHalUsbInterface* s_usb_desc = NULL;
-static RHSMutex* s_usb_mutex = NULL;
 
 void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface)
 {
-    if (s_usb_mutex == NULL)
-    {
-        s_usb_mutex = rhs_mutex_alloc(RHSMutexTypeNormal);
-    }
     if (iface == s_usb_desc)
         return;
     

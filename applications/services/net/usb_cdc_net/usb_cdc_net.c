@@ -397,10 +397,10 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, const tusb_contro
 // array of pointer to string descriptors
 static char const* string_desc_cdc_net_arr[] = {
     [STRID_LANGID]       = (const char[]) {0x09, 0x04},  // supported language is English (0x0409)
-    [STRID_MANUFACTURER] = "TinyUSB",                    // Manufacturer
-    [STRID_PRODUCT]      = "TinyUSB Device",             // Product
+    [STRID_MANUFACTURER] = "RHS",                        // Manufacturer
+    [STRID_PRODUCT]      = "RHS Device",                 // Product
     [STRID_SERIAL]       = NULL,                         // Serials will use unique ID if possible
-    [STRID_INTERFACE]    = "TinyUSB Network Interface",  // Interface Description
+    [STRID_INTERFACE]    = "RHS Network Interface",      // Interface Description
     [STRID_MAC]          = NULL                          // STRID_MAC index is handled separately
 };
 
@@ -443,7 +443,7 @@ static size_t usb_tx(const void* buf, size_t len, struct mg_tcpip_if* ifp)
     if (!tud_ready())
         return 0;
     while (!tud_network_can_xmit(len))
-        tud_task();
+        tud_task_ext(0, false);
     tud_network_xmit((void*) buf, len);
     (void) ifp;
     return len;
@@ -452,7 +452,7 @@ static size_t usb_tx(const void* buf, size_t len, struct mg_tcpip_if* ifp)
 static bool usb_poll(struct mg_tcpip_if* ifp, bool s1)
 {
     (void) ifp;
-    tud_task();
+    tud_task_ext(0, false);
     return s1 ? tud_inited() && tud_ready() && tud_connected() : false;
 }
 
@@ -547,7 +547,7 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
 
     mg_mgr_init(app->net.mgr);  // Mongoose event manager
 
-    // It is necessary that the mac for usb_cdc_net and usb_eth_bridge be different, 
+    // It is necessary that the mac for usb_cdc_net and usb_eth_bridge be different,
     // otherwise the system may incorrectly name the interface.
     tud_network_mac_address[5] = 0;
 

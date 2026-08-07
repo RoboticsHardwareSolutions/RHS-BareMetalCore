@@ -126,11 +126,14 @@ void rhs_hal_serial_deinit(RHSHalSerial* serial)
 /*********************************** SERIAL TX ************************************/
 void rhs_hal_serial_tx(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buffer_size)
 {
+    rhs_assert(serial);
     rhs_assert(serial->enabled == true);
+    RHSHalSerialId id = rhs_hal_serial_get_id(serial);
     if (LL_USART_IsEnabled(serial->rserial.uart.Instance) == 0)
         return;
 #if defined(BMPLC_M)
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
+    if (id == RHSHalSerialIdRS485)
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
 #endif
     while (buffer_size > 0)
     {
@@ -142,9 +145,12 @@ void rhs_hal_serial_tx(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buf
         buffer_size--;
     }
 #if defined(BMPLC_M)
-    while (!LL_USART_IsActiveFlag_TC(serial->rserial.uart.Instance))
-        ;
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+    if (id == RHSHalSerialIdRS485)
+    {
+        while (!LL_USART_IsActiveFlag_TC(serial->rserial.uart.Instance))
+            ;
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+    }
 #endif
 }
 

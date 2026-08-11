@@ -14,7 +14,6 @@ target_link_libraries(${PROJECT_NAME}
         rhs
         rhs_hal
         runit
-        cli
 )
 
 test(rhs_records_test)

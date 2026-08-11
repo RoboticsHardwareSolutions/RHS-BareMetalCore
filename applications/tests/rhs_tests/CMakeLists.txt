@@ -47,7 +47,6 @@ if(TEST_SOURCES)
                 PRIVATE
                 rhs
                 rhs_hal
-                cli
                 runit
         )
 endif()

@@ -1,5 +1,6 @@
 #include "stdbool.h"
 #include "FreeRTOS.h"
+#include "task.h"
 #include "semphr.h"
 #include "rserial.h"
 #include "rhs.h"
@@ -135,6 +136,7 @@ void rhs_hal_serial_tx(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buf
     if (id == RHSHalSerialIdRS485)
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
 #endif
+    vTaskSuspendAll();
     while (buffer_size > 0)
     {
         while (!LL_USART_IsActiveFlag_TXE(serial->rserial.uart.Instance))
@@ -144,6 +146,7 @@ void rhs_hal_serial_tx(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buf
         buffer++;
         buffer_size--;
     }
+    xTaskResumeAll();
 #if defined(BMPLC_M)
     if (id == RHSHalSerialIdRS485)
     {

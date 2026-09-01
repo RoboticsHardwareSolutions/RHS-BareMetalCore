@@ -31,9 +31,63 @@ static RHSHalCAN rhs_hal_can[RHSHalCANIdMax] = {0};
 
 static uint32_t HAL_RCC_CAN1_CLK_ENABLED = 0;
 
+#if defined(BMPLC_XL)
+/* BMPLC_XL: CAN1 pins are selected at runtime by strap pin PG10:
+   PG10 == low  -> PA11 (RX) / PA12 (TX)
+   PG10 == high -> PD0  (RX) / PD1  (TX)
+   The selection is remembered here so MspDeInit deinits the right pins. */
+static GPIO_TypeDef* rhs_hal_can1_gpio_port = GPIOA;
+static uint16_t      rhs_hal_can1_gpio_pins = GPIO_PIN_11 | GPIO_PIN_12;
+#endif
+
 void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
 {
-#if defined(BMPLC_XL) || defined(BMPLC_L)
+#if defined(BMPLC_XL)
+    if (canHandle->Instance == CAN1)
+    {
+        __HAL_RCC_CAN1_CLK_ENABLE();
+
+        /* Check strap pin PG10 BEFORE configuring CAN1 pins:
+           low  -> PA11/PA12, high -> PD0/PD1 */
+        gpio_input(PIN('G', 10)); /* enables GPIOG clock via AHB1ENR */
+        if (gpio_read(PIN('G', 10)))
+        {
+            /* PG10 pulled to power -> CAN1 on PD0/PD1 */
+            gpio_init(PIN('D', 0),
+                      MG_GPIO_MODE_AF,
+                      MG_GPIO_OTYPE_PUSH_PULL,
+                      MG_GPIO_SPEED_INSANE,
+                      MG_GPIO_PULL_NONE,
+                      9); /* CAN1_RX */
+            gpio_init(PIN('D', 1),
+                      MG_GPIO_MODE_AF,
+                      MG_GPIO_OTYPE_PUSH_PULL,
+                      MG_GPIO_SPEED_INSANE,
+                      MG_GPIO_PULL_NONE,
+                      9); /* CAN1_TX */
+            rhs_hal_can1_gpio_port = GPIOD;
+            rhs_hal_can1_gpio_pins = GPIO_PIN_0 | GPIO_PIN_1;
+        }
+        else
+        {
+            /* PG10 not pulled -> CAN1 on PA11/PA12 */
+            gpio_init(PIN('A', 11),
+                      MG_GPIO_MODE_AF,
+                      MG_GPIO_OTYPE_PUSH_PULL,
+                      MG_GPIO_SPEED_INSANE,
+                      MG_GPIO_PULL_NONE,
+                      9); /* CAN1_RX */
+            gpio_init(PIN('A', 12),
+                      MG_GPIO_MODE_AF,
+                      MG_GPIO_OTYPE_PUSH_PULL,
+                      MG_GPIO_SPEED_INSANE,
+                      MG_GPIO_PULL_NONE,
+                      9); /* CAN1_TX */
+            rhs_hal_can1_gpio_port = GPIOA;
+            rhs_hal_can1_gpio_pins = GPIO_PIN_11 | GPIO_PIN_12;
+        }
+    }
+#elif defined(BMPLC_L)
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     if (canHandle->Instance == CAN1)
     {
@@ -117,7 +171,17 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
 
 void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
 {
-#if defined(BMPLC_XL) || defined(BMPLC_L)
+#if defined(BMPLC_XL)
+    if (canHandle->Instance == CAN1)
+    {
+        /* Peripheral clock disable */
+        __HAL_RCC_CAN1_CLK_DISABLE();
+
+        /* Deinit the pins selected in MspInit by strap pin PG10:
+           PD0/PD1 (PG10 high) or PA11/PA12 (PG10 low) */
+        HAL_GPIO_DeInit(rhs_hal_can1_gpio_port, rhs_hal_can1_gpio_pins);
+    }
+#elif defined(BMPLC_L)
     if (canHandle->Instance == CAN1)
     {
         /* Peripheral clock disable */

@@ -53,83 +53,42 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
         if (gpio_read(PIN('G', 10)))
         {
             /* PG10 pulled to power -> CAN1 on PD0/PD1 */
-            gpio_init(PIN('D', 0),
-                      MG_GPIO_MODE_AF,
-                      MG_GPIO_OTYPE_PP,
-                      MG_GPIO_SPEED_INSANE,
-                      MG_GPIO_PULL_NONE,
-                      9); /* CAN1_RX */
-            gpio_init(PIN('D', 1),
-                      MG_GPIO_MODE_AF,
-                      MG_GPIO_OTYPE_PP,
-                      MG_GPIO_SPEED_INSANE,
-                      MG_GPIO_PULL_NONE,
-                      9); /* CAN1_TX */
+            gpio_init(PIN('D', 0), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
+            gpio_init(PIN('D', 1), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
             rhs_hal_can1_gpio_port = GPIOD;
             rhs_hal_can1_gpio_pins = GPIO_PIN_0 | GPIO_PIN_1;
         }
         else
         {
             /* PG10 not pulled -> CAN1 on PA11/PA12 */
-            gpio_init(PIN('A', 11),
-                      MG_GPIO_MODE_AF,
-                      MG_GPIO_OTYPE_PP,
-                      MG_GPIO_SPEED_INSANE,
-                      MG_GPIO_PULL_NONE,
-                      9); /* CAN1_RX */
-            gpio_init(PIN('A', 12),
-                      MG_GPIO_MODE_AF,
-                      MG_GPIO_OTYPE_PP,
-                      MG_GPIO_SPEED_INSANE,
-                      MG_GPIO_PULL_NONE,
-                      9); /* CAN1_TX */
+            gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
+            gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
             rhs_hal_can1_gpio_port = GPIOA;
             rhs_hal_can1_gpio_pins = GPIO_PIN_11 | GPIO_PIN_12;
         }
     }
 #elif defined(BMPLC_L)
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
     if (canHandle->Instance == CAN1)
     {
         __HAL_RCC_CAN1_CLK_ENABLE();
-        __HAL_RCC_GPIOA_CLK_ENABLE();
-        /**CAN1 GPIO Configuration
-        PA11     ------> CAN1_RX
-        PA12     ------> CAN1_TX
-        */
-        GPIO_InitStruct.Pin       = GPIO_PIN_11 | GPIO_PIN_12;
-        GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull      = GPIO_NOPULL;
-        GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
-        GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
-        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+        /* CAN1 GPIO Configuration:
+           PA11 -> CAN1_RX, PA12 -> CAN1_TX (AF9) */
+        gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
+        gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
     }
 #elif defined(BMPLC_M)
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
     if (canHandle->Instance == CAN1)
     {
-        /* CAN1 clock enable */
         __HAL_RCC_CAN1_CLK_ENABLE();
-        __HAL_RCC_GPIOB_CLK_ENABLE();
-        /**CAN GPIO Configuration
-        PB8     ------> CAN_RX
-        PB9     ------> CAN_TX
-        */
-        GPIO_InitStruct.Pin  = GPIO_PIN_8;
-        GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-        GPIO_InitStruct.Pull = GPIO_NOPULL;
-        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-        GPIO_InitStruct.Pin   = GPIO_PIN_9;
-        GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+        /* CAN1 GPIO Configuration:
+           PB8 -> CAN1_RX, PB9 -> CAN1_TX (AF remap CAN1_2) */
+        gpio_init(PIN('B', 8), GPIO_MODE_INPUT_FLOATING);
+        gpio_init(PIN('B', 9), GPIO_MODE_AF_PP_50MHZ);
 
         __HAL_AFIO_REMAP_CAN1_2();
     }
 #else
 #    if defined(STM32F407xx) || defined(STM32F405xx)
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
     if (canHandle->Instance == CAN1)
     {
         HAL_RCC_CAN1_CLK_ENABLED++;
@@ -138,13 +97,10 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
             __HAL_RCC_CAN1_CLK_ENABLE();
         }
 
-        __HAL_RCC_GPIOD_CLK_ENABLE();
-        GPIO_InitStruct.Pin       = GPIO_PIN_0 | GPIO_PIN_1;
-        GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull      = GPIO_NOPULL;
-        GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
-        GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
-        HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+        /* CAN1 GPIO Configuration:
+           PD0 -> CAN1_RX, PD1 -> CAN1_TX (AF9) */
+        gpio_init(PIN('D', 0), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
+        gpio_init(PIN('D', 1), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
     }
     else if (canHandle->Instance == CAN2)
     {
@@ -155,13 +111,10 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
             __HAL_RCC_CAN1_CLK_ENABLE();
         }
 
-        __HAL_RCC_GPIOB_CLK_ENABLE();
-        GPIO_InitStruct.Pin       = GPIO_PIN_5 | GPIO_PIN_6;
-        GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull      = GPIO_NOPULL;
-        GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
-        GPIO_InitStruct.Alternate = GPIO_AF9_CAN2;
-        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+        /* CAN2 GPIO Configuration:
+           PB5 -> CAN2_RX, PB6 -> CAN2_TX (AF9) */
+        gpio_init(PIN('B', 5), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
+        gpio_init(PIN('B', 6), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
     }
 #    else
 #        error "No processor defined or not implemented"

@@ -27,7 +27,7 @@ target_include_directories(
 )
 
 # Check if tinyusb and mongoose targets are available
-if(NOT TARGET tinyusb OR NOT TARGET mongoose)
+if(NOT TARGET tinyusb)
         message(FATAL_ERROR "tinyusb and mongoose libraries must be available to build usb_cdc_net")
 endif()
 
@@ -35,11 +35,7 @@ endif()
 target_compile_definitions(
         mongoose
         PUBLIC
-        -DMG_ENABLE_TCPIP=1
-        -DMG_ENABLE_CUSTOM_MILLIS=0
-        -DMG_ENABLE_PACKED_FS=1
         -DMG_IO_SIZE=512
-        # -DMG_ENABLE_LINES=1
 )
 
 target_link_libraries(

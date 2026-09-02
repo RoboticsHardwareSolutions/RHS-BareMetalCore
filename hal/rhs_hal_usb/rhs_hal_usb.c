@@ -35,7 +35,7 @@ void rhs_hal_usb_init(void)
 #elif defined(STM32F4) || defined(STM32F765xx)
 
 #    if defined(BMPLC_XL)
-    gpio_input(PIN('G', 10));  // enables GPIOG clock via AHB1ENR
+    gpio_init(PIN('G', 10), MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_DOWN, 0);
     if (gpio_read(PIN('G', 10)) != 0)
     {
 #    endif
@@ -120,7 +120,7 @@ void rhs_hal_usb_reinit(void)
 #elif defined(STM32F4) || defined(STM32F765xx)
 
 #    if defined(BMPLC_XL)
-    gpio_input(PIN('G', 10));  // enables GPIOG clock via AHB1ENR
+    gpio_init(PIN('G', 10), MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_DOWN, 0);
     if (gpio_read(PIN('G', 10)) != 0)
     {
 #    endif

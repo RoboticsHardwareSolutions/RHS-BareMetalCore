@@ -49,7 +49,7 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
 
         /* Check strap pin PG10 BEFORE configuring CAN1 pins:
            low  -> PA11/PA12, high -> PD0/PD1 */
-        gpio_input(PIN('G', 10)); /* enables GPIOG clock via AHB1ENR */
+        gpio_init(PIN('G', 10), MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_DOWN, 0);
         if (gpio_read(PIN('G', 10)))
         {
             /* PG10 pulled to power -> CAN1 on PD0/PD1 */

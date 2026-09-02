@@ -4,11 +4,11 @@ set(CMAKE_C_STANDARD 11)
 
 # cdc_net configuration options
 if(NOT DEFINED RHS_CDC_NET_IP)
-    set(RHS_CDC_NET_IP "192.168.3.100" CACHE STRING "Static IP address for cdc_net service")
+    set(RHS_CDC_NET_IP "192.168.0.100" CACHE STRING "Static IP address for cdc_net service")
 endif()
 
 if(NOT DEFINED RHS_CDC_NET_GATEWAY)
-    set(RHS_CDC_NET_GATEWAY "192.168.3.1" CACHE STRING "Gateway address for cdc_net service")
+    set(RHS_CDC_NET_GATEWAY "192.168.0.1" CACHE STRING "Gateway address for cdc_net service")
 endif()
 
 if(NOT DEFINED RHS_CDC_NET_NETMASK)

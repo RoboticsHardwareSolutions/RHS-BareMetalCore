@@ -40,18 +40,8 @@ void rhs_hal_usb_init(void)
     {
 #    endif
         RCC->AHB2ENR |= RCC_AHB2ENR_OTGFSEN;
-        gpio_init(PIN('A', 11),
-                  MG_GPIO_MODE_AF,
-                  MG_GPIO_OTYPE_PUSH_PULL,
-                  MG_GPIO_SPEED_INSANE,
-                  MG_GPIO_PULL_NONE,
-                  10);  // D-
-        gpio_init(PIN('A', 12),
-                  MG_GPIO_MODE_AF,
-                  MG_GPIO_OTYPE_PUSH_PULL,
-                  MG_GPIO_SPEED_INSANE,
-                  MG_GPIO_PULL_NONE,
-                  10);  // D+
+        gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);
+        gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);
         NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
         NVIC_EnableIRQ(OTG_FS_IRQn);
 #    if defined(BMPLC_XL)
@@ -84,18 +74,8 @@ void rhs_hal_usb_init(void)
     RCC->APBENR1 &= ~RCC_APBENR1_USBEN;
 
     // Configure USB pins (D-/D+) as output and pull low for USB reset
-    gpio_init(PIN('A', 11),
-              MG_GPIO_MODE_OUTPUT,
-              MG_GPIO_OTYPE_PUSH_PULL,
-              MG_GPIO_SPEED_HIGH,
-              MG_GPIO_PULL_NONE,
-              0);  // D-
-    gpio_init(PIN('A', 12),
-              MG_GPIO_MODE_OUTPUT,
-              MG_GPIO_OTYPE_PUSH_PULL,
-              MG_GPIO_SPEED_HIGH,
-              MG_GPIO_PULL_NONE,
-              0);  // D+
+    gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
+    gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
 
     gpio_write(PIN('A', 11), 0);
     gpio_write(PIN('A', 12), 0);
@@ -145,18 +125,8 @@ void rhs_hal_usb_reinit(void)
     {
 #    endif
         RCC->AHB2ENR |= RCC_AHB2ENR_OTGFSEN;
-        gpio_init(PIN('A', 11),
-                  MG_GPIO_MODE_AF,
-                  MG_GPIO_OTYPE_PUSH_PULL,
-                  MG_GPIO_SPEED_INSANE,
-                  MG_GPIO_PULL_NONE,
-                  10);  // D-
-        gpio_init(PIN('A', 12),
-                  MG_GPIO_MODE_AF,
-                  MG_GPIO_OTYPE_PUSH_PULL,
-                  MG_GPIO_SPEED_INSANE,
-                  MG_GPIO_PULL_NONE,
-                  10);  // D+
+        gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);
+        gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);
         NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
         NVIC_EnableIRQ(OTG_FS_IRQn);
 #    if defined(BMPLC_XL)
@@ -170,18 +140,8 @@ void rhs_hal_usb_reinit(void)
 #elif defined(STM32G0B1xx)
     RCC->APBRSTR1 |= RCC_APBRSTR1_USBRST;
     RCC->APBENR1 &= ~RCC_APBENR1_USBEN;
-    gpio_init(PIN('A', 11),
-              MG_GPIO_MODE_OUTPUT,
-              MG_GPIO_OTYPE_PUSH_PULL,
-              MG_GPIO_SPEED_HIGH,
-              MG_GPIO_PULL_NONE,
-              0);  // D-
-    gpio_init(PIN('A', 12),
-              MG_GPIO_MODE_OUTPUT,
-              MG_GPIO_OTYPE_PUSH_PULL,
-              MG_GPIO_SPEED_HIGH,
-              MG_GPIO_PULL_NONE,
-              0);  // D+
+    gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
+    gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
 
     gpio_write(PIN('A', 11), 0);
     gpio_write(PIN('A', 12), 0);
@@ -222,18 +182,8 @@ void rhs_hal_usb_disable(void)
     {
 #    endif
         RCC->AHB2ENR &= ~RCC_AHB2ENR_OTGFSEN;
-        gpio_init(PIN('A', 11),
-                  MG_GPIO_MODE_OUTPUT,
-                  MG_GPIO_OTYPE_PUSH_PULL,
-                  MG_GPIO_SPEED_INSANE,
-                  MG_GPIO_PULL_NONE,
-                  0);  // D-
-        gpio_init(PIN('A', 12),
-                  MG_GPIO_MODE_OUTPUT,
-                  MG_GPIO_OTYPE_PUSH_PULL,
-                  MG_GPIO_SPEED_INSANE,
-                  MG_GPIO_PULL_NONE,
-                  0);  // D+
+        gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 0);
+        gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 0);
         gpio_write(PIN('A', 11), 0);
         gpio_write(PIN('A', 12), 0);
         NVIC_DisableIRQ(OTG_FS_IRQn);
@@ -248,18 +198,8 @@ void rhs_hal_usb_disable(void)
 #elif defined(STM32G0B1xx)
     RCC->APBRSTR1 |= RCC_APBRSTR1_USBRST;
     RCC->APBENR1 &= ~RCC_APBENR1_USBEN;
-    gpio_init(PIN('A', 11),
-              MG_GPIO_MODE_OUTPUT,
-              MG_GPIO_OTYPE_PUSH_PULL,
-              MG_GPIO_SPEED_HIGH,
-              MG_GPIO_PULL_NONE,
-              0);  // D-
-    gpio_init(PIN('A', 12),
-              MG_GPIO_MODE_OUTPUT,
-              MG_GPIO_OTYPE_PUSH_PULL,
-              MG_GPIO_SPEED_HIGH,
-              MG_GPIO_PULL_NONE,
-              0);  // D+
+    gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
+    gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
 
     gpio_write(PIN('A', 11), 0);
     gpio_write(PIN('A', 12), 0);

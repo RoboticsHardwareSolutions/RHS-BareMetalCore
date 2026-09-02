@@ -69,8 +69,8 @@ enum
 };
 enum
 {
-    MG_GPIO_OTYPE_PUSH_PULL,
-    MG_GPIO_OTYPE_OPEN_DRAIN
+    MG_GPIO_OTYPE_PP,
+    MG_GPIO_OTYPE_OD
 };
 enum
 {
@@ -100,12 +100,12 @@ static inline void gpio_init(uint16_t pin, uint8_t mode, uint8_t type, uint8_t s
 
 static inline void gpio_input(uint16_t pin)
 {
-    gpio_init(pin, MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
+    gpio_init(pin, MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
 }
 
 static inline void gpio_output(uint16_t pin)
 {
-    gpio_init(pin, MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
+    gpio_init(pin, MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
 }
 
 // ─── STM32G0 ─────────────────────────────────────────────────────────────────

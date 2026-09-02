@@ -55,13 +55,13 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
             /* PG10 pulled to power -> CAN1 on PD0/PD1 */
             gpio_init(PIN('D', 0),
                       MG_GPIO_MODE_AF,
-                      MG_GPIO_OTYPE_PUSH_PULL,
+                      MG_GPIO_OTYPE_PP,
                       MG_GPIO_SPEED_INSANE,
                       MG_GPIO_PULL_NONE,
                       9); /* CAN1_RX */
             gpio_init(PIN('D', 1),
                       MG_GPIO_MODE_AF,
-                      MG_GPIO_OTYPE_PUSH_PULL,
+                      MG_GPIO_OTYPE_PP,
                       MG_GPIO_SPEED_INSANE,
                       MG_GPIO_PULL_NONE,
                       9); /* CAN1_TX */
@@ -73,13 +73,13 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
             /* PG10 not pulled -> CAN1 on PA11/PA12 */
             gpio_init(PIN('A', 11),
                       MG_GPIO_MODE_AF,
-                      MG_GPIO_OTYPE_PUSH_PULL,
+                      MG_GPIO_OTYPE_PP,
                       MG_GPIO_SPEED_INSANE,
                       MG_GPIO_PULL_NONE,
                       9); /* CAN1_RX */
             gpio_init(PIN('A', 12),
                       MG_GPIO_MODE_AF,
-                      MG_GPIO_OTYPE_PUSH_PULL,
+                      MG_GPIO_OTYPE_PP,
                       MG_GPIO_SPEED_INSANE,
                       MG_GPIO_PULL_NONE,
                       9); /* CAN1_TX */

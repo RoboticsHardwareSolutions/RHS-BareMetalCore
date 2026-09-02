@@ -56,7 +56,7 @@ static void eth_net_init_tcpip(Net* net, const EthPhyConfig* phy_config)
     ifp->mask = MG_IPV4(a, b, c, d);
     rhs_assert(string_to_ip(net->config->gateway, &a, &b, &c, &d) == 0);
     ifp->gw = MG_IPV4(a, b, c, d);
-    memcpy(ifp->mac, mac, sizeof(mac));
+    memcpy(ifp->mac, mac, sizeof(ifp->mac));
 
     // Initialize TCP/IP interface
     mg_tcpip_init(net->mgr, ifp);

@@ -3,7 +3,7 @@
 ## [0.0.6] - 2026-06-21
 ### Added
 - New `usb_eth_bridge` service: transparent Layer-2 bridge between USB CDC-Net and physical Ethernet MAC — no IP stack on the device
-- New `tud_net_dispatch` module in `rhs_hal_usb`: virtual dispatch table that routes TinyUSB network callbacks (`tud_network_recv_cb`, `tud_network_xmit_cb`, `tud_network_init_cb`) to the currently active USB network backend at runtime, allowing `usb_cdc_net` and `usb_eth_bridge` to coexist in the same binary and be switched dynamically
+- New `rhs_hal_cdc_net` module in `rhs_hal_usb`: virtual dispatch table that routes TinyUSB network callbacks (`tud_network_recv_cb`, `tud_network_xmit_cb`, `tud_network_init_cb`) to the currently active USB network backend at runtime, allowing `usb_cdc_net` and `usb_eth_bridge` to coexist in the same binary and be switched dynamically
 - MS OS 2.0 BOS descriptor in `usb_cdc_net` for automatic NCM driver binding on Windows 10+
 
 ### Documentation

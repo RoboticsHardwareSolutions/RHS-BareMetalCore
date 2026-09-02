@@ -8,8 +8,8 @@
  * To receive all frames from the LAN (not just those addressed to our MAC)
  * the ETH MAC filter is switched to promiscuous mode after driver init.
  *
- * TinyUSB network callbacks are owned by tud_net_dispatch.c.  This module
- * registers its handlers via tud_net_dispatch_set() at start and clears them
+ * TinyUSB network callbacks are owned by rhs_hal_cdc_net.c.  This module
+ * registers its handlers via rhs_hal_cdc_net_set() at start and clears them
  * at stop, allowing runtime switching with usb_cdc_net.
  */
 
@@ -17,194 +17,8 @@
 #include "rhs.h"
 #include "rhs_hal.h"
 #include "mongoose.h"
-#include "tusb.h"
-#include "tud_net_dispatch.h"
-
-#define _PID_MAP(itf, n) ((CFG_TUD_##itf) << (n))
-#define USB_PID                                                                                                  \
-    (0x4000 | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 1) | _PID_MAP(HID, 2) | _PID_MAP(MIDI, 3) | _PID_MAP(VENDOR, 4) | \
-     _PID_MAP(ECM_RNDIS, 5) | _PID_MAP(NCM, 5))
-
-enum
-{
-    ITF_NUM_CDC = 0,
-    ITF_NUM_CDC_DATA,
-    ITF_NUM_TOTAL
-};
-
-#if CFG_TUD_NCM
-#    define USB_BCD 0x0201
-#else
-#    define USB_BCD 0x0200
-#endif
-
-enum
-{
-#if CFG_TUD_ECM_RNDIS
-    CONFIG_ID_ECM   = 0,
-    CONFIG_ID_RNDIS = 1,
-#else
-    CONFIG_ID_NCM = 0,
-#endif
-    CONFIG_ID_COUNT
-};
-
-static tusb_desc_device_t const desc_bridge = {
-    .bLength            = sizeof(tusb_desc_device_t),
-    .bDescriptorType    = TUSB_DESC_DEVICE,
-    .bcdUSB             = USB_BCD,
-    .bDeviceClass       = TUSB_CLASS_MISC,
-    .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
-    .bDeviceProtocol    = MISC_PROTOCOL_IAD,
-    .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
-    .idVendor           = 0xCafe,
-    .idProduct          = USB_PID,
-    .bcdDevice          = 0x0101,
-    .iManufacturer      = STRID_MANUFACTURER,
-    .iProduct           = STRID_PRODUCT,
-    .iSerialNumber      = STRID_SERIAL,
-    .bNumConfigurations = CONFIG_ID_COUNT,
-};
-
-#define EPNUM_NET_NOTIF 0x81
-#define EPNUM_NET_OUT 0x02
-#define EPNUM_NET_IN 0x82
-
-#if CFG_TUD_ECM_RNDIS
-
-#    define MAIN_CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_RNDIS_DESC_LEN)
-#    define ALT_CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_ECM_DESC_LEN)
-
-static uint8_t const rndis_fs_cfg[] = {
-    TUD_CONFIG_DESCRIPTOR(CONFIG_ID_RNDIS + 1, ITF_NUM_TOTAL, 0, MAIN_CONFIG_TOTAL_LEN, 0, 100),
-    TUD_RNDIS_DESCRIPTOR(ITF_NUM_CDC, STRID_INTERFACE, EPNUM_NET_NOTIF, 8, EPNUM_NET_OUT, EPNUM_NET_IN, 64),
-};
-
-static uint8_t const ecm_fs_cfg[] = {
-    TUD_CONFIG_DESCRIPTOR(CONFIG_ID_ECM + 1, ITF_NUM_TOTAL, 0, ALT_CONFIG_TOTAL_LEN, 0, 100),
-    TUD_CDC_ECM_DESCRIPTOR(ITF_NUM_CDC,
-                           STRID_INTERFACE,
-                           STRID_MAC,
-                           EPNUM_NET_NOTIF,
-                           64,
-                           EPNUM_NET_OUT,
-                           EPNUM_NET_IN,
-                           64,
-                           CFG_TUD_NET_MTU),
-};
-
-static uint8_t const* const bridge_cfg_arr[CONFIG_ID_COUNT] = {
-    [CONFIG_ID_RNDIS] = rndis_fs_cfg,
-    [CONFIG_ID_ECM]   = ecm_fs_cfg,
-};
-
-#else /* NCM */
-
-#    define NCM_CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_NCM_DESC_LEN)
-
-static uint8_t const ncm_fs_cfg[] = {
-    TUD_CONFIG_DESCRIPTOR(CONFIG_ID_NCM + 1, ITF_NUM_TOTAL, 0, NCM_CONFIG_TOTAL_LEN, 0, 100),
-    TUD_CDC_NCM_DESCRIPTOR(ITF_NUM_CDC,
-                           STRID_INTERFACE,
-                           STRID_MAC,
-                           EPNUM_NET_NOTIF,
-                           64,
-                           EPNUM_NET_OUT,
-                           EPNUM_NET_IN,
-                           64,
-                           CFG_TUD_NET_MTU,
-                           50,
-                           (uint8_t) ((uint8_t) NCM_NETWORK_CAPS_ETH_FILTER |
-                                      (uint8_t) NCM_NETWORK_CAPS_NTB_INPUT_SIZE)),
-};
-
-static uint8_t const* const bridge_cfg_arr[CONFIG_ID_COUNT] = {
-    [CONFIG_ID_NCM] = ncm_fs_cfg,
-};
-
-#endif /* CFG_TUD_ECM_RNDIS */
-
-#if CFG_TUD_NCM
-/* Used by Windows to auto-bind the NCM driver (WINNCM). */
-#    define BOS_TOTAL_LEN (TUD_BOS_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
-#    define MS_OS_20_DESC_LEN 0xB2
-
-const uint8_t desc_bos[] = {
-    TUD_BOS_DESCRIPTOR(BOS_TOTAL_LEN, 1),
-    TUD_BOS_MS_OS_20_DESCRIPTOR(MS_OS_20_DESC_LEN, 1),
-};
-
-const uint8_t* tud_descriptor_bos_cb(void)
-{
-    return desc_bos;
-}
-
-/* clang-format off */
-const uint8_t desc_ms_os_20[] = {
-  U16_TO_U8S_LE(0x000A), U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR), U32_TO_U8S_LE(0x06030000),
-  U16_TO_U8S_LE(MS_OS_20_DESC_LEN),
-  U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION), 0, 0,
-  U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A),
-  U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION), ITF_NUM_CDC, 0,
-  U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A - 0x08),
-  U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID), 'W', 'I', 'N', 'N', 'C', 'M', 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A - 0x08 - 0x08 - 0x14), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
-  U16_TO_U8S_LE(0x0007),
-  U16_TO_U8S_LE(0x002A),
-  'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00, 'r',
-  0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00, 0x00, 0x00,
-  U16_TO_U8S_LE(0x0050),
-  '{', 0x00, '1', 0x00, '2', 0x00, '3', 0x00, '4', 0x00, '5', 0x00, '6', 0x00, '7', 0x00, '8', 0x00, '-', 0x00, '0',
-  0x00, 'D', 0x00, '0', 0x00, '8', 0x00, '-', 0x00, '4', 0x00, '3', 0x00, 'F', 0x00, 'D', 0x00, '-', 0x00, '8', 0x00,
-  'B', 0x00, '3', 0x00, 'E', 0x00, '-', 0x00, '1', 0x00, '2', 0x00, '7', 0x00, 'C', 0x00, 'A', 0x00, '8', 0x00, 'A',
-  0x00, 'F', 0x00, 'F', 0x00, 'F', 0x00, '9', 0x00, 'D', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00,
-};
-/* clang-format on */
-
-TU_VERIFY_STATIC(sizeof(desc_ms_os_20) == MS_OS_20_DESC_LEN, "Incorrect size");
-
-bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, const tusb_control_request_t* request)
-{
-    if (stage != CONTROL_STAGE_SETUP)
-    {
-        return true;
-    }
-
-    switch (request->bmRequestType_bit.type)
-    {
-    case TUSB_REQ_TYPE_VENDOR:
-        if (request->bRequest == 1 && request->wIndex == 7)
-        {
-            uint16_t total_len;
-            memcpy(&total_len, desc_ms_os_20 + 8, 2);
-            return tud_control_xfer(rhport, request, (void*) (uintptr_t) desc_ms_os_20, total_len);
-        }
-        break;
-    default:
-        break;
-    }
-
-    return false;
-}
-#endif
-
-/* String descriptors - same order/indices as usb_cdc_net.c */
-static char const* bridge_string_arr[] = {
-    [STRID_LANGID]       = (const char[]) {0x09, 0x04},
-    [STRID_MANUFACTURER] = "TinyUSB",
-    [STRID_PRODUCT]      = "USB-ETH Bridge",
-    [STRID_SERIAL]       = NULL, /* filled from UID by usb_descriptors.c */
-    [STRID_INTERFACE]    = "USB-ETH Bridge Network Interface",
-    [STRID_MAC]          = NULL, /* handled separately by TinyUSB */
-};
-
-static RHSHalUsbInterface bridge_usb_desc = {
-    .device_desc           = &desc_bridge,
-    .configuration_arr     = bridge_cfg_arr,
-    .string_desc_arr       = (char const* const*) bridge_string_arr,
-    .string_desc_arr_count = TU_ARRAY_SIZE(bridge_string_arr),
-};
+#include "rhs_hal_cdc_net.h"
+#include "cli.h"
 
 struct UsbEthBridge
 {
@@ -327,12 +141,12 @@ UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config)
     ETH->MACFFR = MG_BIT(0); /* PM = promiscuous mode */
 
     /* --- USB init --------------------------------------------------------- */
-    // It is necessary that the mac for usb_cdc_net and usb_eth_bridge be different, 
+    // It is necessary that the mac for usb_cdc_net and usb_eth_bridge be different,
     // otherwise the system may incorrectly name the interface.
     tud_network_mac_address[5] = 0;
 
     b->prev_usb_intf = rhs_hal_usb_get_interface();
-    rhs_hal_usb_set_interface(&bridge_usb_desc);
+    rhs_hal_usb_set_interface(&usb_cdc_net_desc);
     rhs_hal_usb_reinit();
     tusb_init();
 
@@ -341,7 +155,7 @@ UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config)
     bridge_ops.init    = bridge_init_cb;
     bridge_ops.xmit    = bridge_xmit_cb;
     bridge_ops.context = b;
-    tud_net_dispatch_set(&bridge_ops);
+    rhs_hal_cdc_net_set(&bridge_ops);
 
     b->thread = rhs_thread_alloc("usb_eth_bridge", 2 * 1024, bridge_worker, b);
     rhs_thread_start(b->thread);
@@ -360,11 +174,38 @@ static void usb_eth_bridge_free(UsbEthBridge* bridge)
 void usb_eth_bridge_stop(UsbEthBridge* bridge)
 {
     rhs_assert(bridge != NULL);
-    tud_net_dispatch_clear();
+    rhs_hal_cdc_net_clear();
     bridge->finish = true;
     rhs_thread_join(bridge->thread);
     usb_eth_bridge_free(bridge);
     tusb_deinit(0);
     rhs_hal_usb_set_interface(bridge->prev_usb_intf);
     rhs_hal_eth_deinit();  // disable IRQ, clocks, reset GPIO
+}
+
+static void usb_eth_bridge_cli(char* args, void* context)
+{
+    if (args == NULL)
+    {
+        printf("usb_cdc_app command received. Usage:\r\n");
+        printf("  usb_eth_bridge_app start - Start USB CDC network interface\r\n");
+        printf("  usb_eth_bridge_app stop  - Stop USB CDC network interface\r\n");
+    }
+    else if (strstr(args, "start") == args)
+    {
+        usb_eth_bridge_start(NULL);
+        printf("usb_eth_bridge_app command received with args: %s\r\n", args);
+    }
+    else if (strstr(args, "stop") == args)
+    {
+        usb_eth_bridge_stop(NULL);
+        printf("USB CDC network interface stopped\r\n");
+    }
+}
+
+void usb_eth_bridge_start_up(void)
+{
+    Cli* cli = rhs_record_open(RECORD_CLI);
+    cli_add_command(cli, "usb_eth_bridge_app", usb_eth_bridge_cli, NULL);
+    rhs_record_close(RECORD_CLI);
 }

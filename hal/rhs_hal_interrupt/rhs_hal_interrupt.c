@@ -108,7 +108,7 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     /* UART */
     [RHSHalInterruptIdUsart3] = USART3_IRQn,
 #    elif defined(STM32G0B1xx)
-    [RHSHalInterruptIdEXTI4_15] = EXTI4_15_IRQn,
+    [RHSHalInterruptIdEXTI4_15]    = EXTI4_15_IRQn,
     [RHSHalInterruptIdUSB_UCPD1_2] = USB_UCPD1_2_IRQn,
 
 #    endif
@@ -202,7 +202,16 @@ void rhs_hal_interrupt_set_isr_ex(RHSHalInterruptId       index,
     }
 }
 
-#ifdef STM32F765xx
+#if defined(STM32F765xx) || defined(STM32F407xx) || defined(STM32F405xx)
+void OTG_FS_IRQHandler(void)
+{
+#    if defined(TINYUSB)
+    tud_int_handler(0);
+#    endif
+}
+#endif
+
+#if defined(STM32F765xx)
 /* CAN 1 RX0 */
 void CAN1_RX0_IRQHandler(void)
 {
@@ -263,13 +272,6 @@ void DMA2_Stream6_IRQHandler(void)
 }
 
 #elif defined(STM32F407xx) || defined(STM32F405xx)
-
-void OTG_FS_IRQHandler(void)
-{
-#    if defined(TINYUSB)
-    tud_int_handler(0);
-#    endif
-}
 
 /* CAN 1 RX0 */
 void CAN1_RX0_IRQHandler(void)

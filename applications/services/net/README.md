@@ -52,7 +52,7 @@ Enable any combination of transport back-ends in your CMake configuration:
 
 The `net` core library is built automatically when any of these options is ON. All three options may be enabled simultaneously in the same binary.
 
-The TinyUSB network callbacks (`tud_network_recv_cb`, `tud_network_xmit_cb`, `tud_network_init_cb`) are owned by `rhs_hal_usb` and dispatched via `tud_net_dispatch`. `usb_cdc_net` and `usb_eth_bridge` each register their handlers at runtime using `tud_net_dispatch_set()`. Only one of them may be active at a time; use the respective `_stop` / `_start` pair to switch.
+The TinyUSB network callbacks (`tud_network_recv_cb`, `tud_network_xmit_cb`, `tud_network_init_cb`) are owned by `rhs_hal_usb` and dispatched via `rhs_hal_cdc_net`. `usb_cdc_net` and `usb_eth_bridge` each register their handlers at runtime using `rhs_hal_cdc_net_set()`. Only one of them may be active at a time; use the respective `_stop` / `_start` pair to switch.
 
 ## Quick examples
 

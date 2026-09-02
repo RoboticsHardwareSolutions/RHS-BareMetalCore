@@ -38,3 +38,5 @@ target_link_libraries(
     rhs
     rhs_hal
 )
+
+start_up(usb_eth_bridge_start_up)

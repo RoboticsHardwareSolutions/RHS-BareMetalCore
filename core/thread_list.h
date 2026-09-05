@@ -13,7 +13,7 @@ typedef struct RHSThreadListItem
 
     uint32_t counter_previous; /**< Thread previous runtime counter */
     uint32_t counter_current;  /**< Thread current runtime counter */
-    uint32_t cpu;              /**< Thread CPU usage time in percents (including interrupts happened while running) */
+    float    cpu;              /**< Thread CPU usage time in percents (including interrupts happened while running) */
     uint32_t tick;             /**< Thread last seen tick */
 
     struct RHSThreadListItem* next;
@@ -27,7 +27,7 @@ void rhs_thread_list_destroy(RHSThreadList* list);
 
 RHSThreadListItem* rhs_thread_list_find(RHSThreadList* list, RHSThreadListItem* item);
 
-RHSThreadListItem* rhs_thread_list_add(RHSThreadList* list);
+RHSThreadListItem* rhs_thread_list_get_or_insert(RHSThreadList* list, RHSThread* thread);
 
 RHSThreadListItem* rhs_thread_list_at(RHSThreadList* list, uint16_t index);
 

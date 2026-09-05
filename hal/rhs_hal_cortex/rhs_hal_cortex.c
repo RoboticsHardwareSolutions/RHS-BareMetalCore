@@ -34,7 +34,7 @@ static void rhs_hal_cortex_configure_mpu(void)
      */
     mpu.Enable           = MPU_REGION_ENABLE;
     mpu.Number           = MPU_REGION_NUMBER7;
-    mpu.BaseAddress      = (uint32_t)&_sram2_start;
+    mpu.BaseAddress      = (uint32_t) &_sram2_start;
     mpu.Size             = MPU_REGION_SIZE_16KB;
     mpu.SubRegionDisable = 0x00;
     mpu.TypeExtField     = MPU_TEX_LEVEL1;
@@ -49,6 +49,27 @@ static void rhs_hal_cortex_configure_mpu(void)
 }
 #endif
 
+inline static void dwt_unlock(void)
+{
+#if __CORTEX_M == 7 || __CORTEX_M == 33
+    if ((DWT->LAR != 0xC5ACCE55U) && (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) == 0U)
+    {
+        CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+        DWT->LAR = 0xC5ACCE55U;
+    }
+#endif
+}
+
+inline uint32_t rhs_hal_cortex_get_ticks(void)
+{
+#if !defined(STM32G0B1xx)
+    dwt_unlock();
+    return DWT->CYCCNT;
+#else
+    return TIM2->CNT;
+#endif
+}
+
 void rhs_hal_cortex_init_early(void)
 {
 #ifdef STM32F765xx
@@ -59,8 +80,9 @@ void rhs_hal_cortex_init_early(void)
 
 #if !defined(STM32G0B1xx)
     CoreDebug->DEMCR |= (CoreDebug_DEMCR_TRCENA_Msk | CoreDebug_DEMCR_MON_EN_Msk);
-    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+    dwt_unlock();
     DWT->CYCCNT = 0U;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 #else
     /* Cortex-M0+ has no DWT CYCCNT; use TIM2 as a free-running 1 MHz counter */
     RCC->APBENR1 |= RCC_APBENR1_TIM2EN;
@@ -75,6 +97,7 @@ void rhs_hal_cortex_delay_us(uint32_t microseconds)
 {
     rhs_assert(microseconds < (UINT32_MAX / RHS_HAL_CORTEX_INSTRUCTIONS_PER_MICROSECOND));
 #if !defined(STM32G0B1xx)
+    dwt_unlock();
     uint32_t start      = DWT->CYCCNT;
     uint32_t time_ticks = RHS_HAL_CORTEX_INSTRUCTIONS_PER_MICROSECOND * microseconds;
 
@@ -95,6 +118,7 @@ __attribute__((warn_unused_result)) RHSHalCortexTimer rhs_hal_cortex_timer_get(u
 
     RHSHalCortexTimer cortex_timer = {0};
 #if !defined(STM32G0B1xx)
+    dwt_unlock();
     cortex_timer.start = DWT->CYCCNT;
     cortex_timer.value = RHS_HAL_CORTEX_INSTRUCTIONS_PER_MICROSECOND * timeout_us;
 #else
@@ -107,6 +131,7 @@ __attribute__((warn_unused_result)) RHSHalCortexTimer rhs_hal_cortex_timer_get(u
 bool rhs_hal_cortex_timer_is_expired(RHSHalCortexTimer cortex_timer)
 {
 #if !defined(STM32G0B1xx)
+    dwt_unlock();
     return !((DWT->CYCCNT - cortex_timer.start) < cortex_timer.value);
 #else
     return (TIM2->CNT - cortex_timer.start) >= cortex_timer.value;

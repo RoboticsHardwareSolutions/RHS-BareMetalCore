@@ -242,8 +242,10 @@ void cli_command_uid(char* args, void* context)
 
 void cli_command_top(char* args, void* context)
 {
-    RHSThreadList* thread_list = rhs_thread_list_create();
-    uint16_t       count;
+    static RHSThreadList* thread_list = NULL;
+    if (!thread_list) // FIXME: It must be separate thread
+        thread_list = rhs_thread_list_create();
+    uint16_t count;
 
     rhs_thread_enumerate(thread_list);
     count = rhs_thread_list_size(thread_list);
@@ -266,10 +268,10 @@ void cli_command_top(char* args, void* context)
                                        strcat(buffer, "%");
                                        buffer;
                                    }),
-               item->stack_min_free);
+               (long) item->stack_min_free);
     }
 
-    rhs_thread_list_destroy(thread_list);
+    // rhs_thread_list_destroy(thread_list);
 }
 
 void cli_command_crash(char* args, void* context)

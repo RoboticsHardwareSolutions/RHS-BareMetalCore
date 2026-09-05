@@ -54,7 +54,7 @@ static size_t usb_tx(const void* buf, size_t len, struct mg_tcpip_if* ifp)
 static bool usb_poll(struct mg_tcpip_if* ifp, bool s1)
 {
     (void) ifp;
-    tud_task_ext(0, false);
+    tud_task_ext(100, false);
     return s1 ? tud_inited() && tud_ready() && tud_connected() : false;
 }
 
@@ -176,7 +176,7 @@ Net* usb_cdc_net_start(const NetConfig* config)
     CdcNet* app = usb_cdc_net_alloc(config);
 
     int32_t net_worker(void* context);
-    app->net.thread = rhs_thread_alloc("cdc_net", 4 * 1024, net_worker, &app->net);
+    app->net.thread = rhs_thread_alloc("rhs_cdc_net", 4 * 1024, net_worker, &app->net);
     rhs_thread_start(app->net.thread);
 
     return &app->net;

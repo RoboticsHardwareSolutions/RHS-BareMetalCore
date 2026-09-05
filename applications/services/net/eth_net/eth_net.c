@@ -114,10 +114,8 @@ Net* eth_net_start(const NetConfig* net_config, const EthPhyConfig* phy_config)
     EthNet* app = eth_net_alloc(net_config, phy_config);
 
     int32_t                             net_worker(void* context);
-    char                                t_name[16];
     struct mg_tcpip_driver_stm32f_data* driver = (struct mg_tcpip_driver_stm32f_data*) app->net.mgr->ifp->driver_data;
-    snprintf(t_name, sizeof(t_name), "eth_net_%d", driver->phy_addr);
-    app->net.thread = rhs_thread_alloc(t_name, 4 * 1024, net_worker, &app->net);
+    app->net.thread = rhs_thread_alloc("rhs_eth_net", 4 * 1024, net_worker, &app->net);
     rhs_thread_start(app->net.thread);
 
     return &app->net;

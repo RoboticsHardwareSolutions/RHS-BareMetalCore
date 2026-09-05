@@ -61,9 +61,15 @@ RHSThreadListItem* rhs_thread_list_find(RHSThreadList* list, RHSThreadListItem* 
 }
 
 // Add a new item to the thread list
-RHSThreadListItem* rhs_thread_list_add(RHSThreadList* list)
+RHSThreadListItem* rhs_thread_list_get_or_insert(RHSThreadList* list, RHSThread* thread)
 {
     rhs_assert(list);
+    rhs_assert(thread);
+    for (RHSThreadListItem* item = list->item; item != NULL; item = item->next)
+    {
+        if (item->thread == thread)
+            return item;
+    }
     RHSThreadListItem* item = (RHSThreadListItem*) malloc(sizeof(RHSThreadListItem));
     if (item)
     {
@@ -89,6 +95,7 @@ int rhs_thread_list_remove(RHSThreadList* list, RHSThreadListItem* item)
             else
                 list->item = current->next;
             free(current);
+            current = NULL;
             return 1;
         }
         prev    = current;
@@ -138,9 +145,19 @@ void rhs_thread_list_process(RHSThreadList* instance, uint32_t runtime, uint32_t
     uint16_t count = rhs_thread_list_size(instance);
     for (uint32_t i = 0U; i < count; i++)
     {
-        RHSThreadListItem* item         = rhs_thread_list_at(instance, i);
-        uint32_t           item_counter = item->counter_current - item->counter_previous;
-        float              cpu;
+        RHSThreadListItem* item;
+        do
+        {
+            item = rhs_thread_list_at(instance, i);
+            if (item && item->tick != tick)
+            {
+                rhs_thread_list_remove(instance, item);
+                item = NULL;
+            }
+        } while (!item && i != count - 1U);
+
+        uint32_t item_counter = item->counter_current - item->counter_previous;
+        float    cpu;
         if (item_counter && item->counter_previous && item->counter_current)
         {
             cpu = (float) item_counter / (float) runtime_counter * 100.0f;
@@ -151,6 +168,6 @@ void rhs_thread_list_process(RHSThreadList* instance, uint32_t runtime, uint32_t
         {
             cpu = 0.0f;
         }
-        item->cpu = (uint32_t) cpu;
+        item->cpu = cpu;
     }
 }

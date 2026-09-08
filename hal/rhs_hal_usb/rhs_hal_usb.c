@@ -4,7 +4,6 @@
 #define TAG "RHSHalUsb"
 
 static RHSMutex* s_usb_mutex = NULL;
-
 /* Low-level init */
 void rhs_hal_usb_init(void)
 {

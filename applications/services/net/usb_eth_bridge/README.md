@@ -16,7 +16,7 @@ Ethernet frames arrive from the LAN via the STM32F MAC DMA and are forwarded to 
 | Device should be a transparent network bridge | `usb_eth_bridge` |
 | Host needs to access a physical LAN through the device | `usb_eth_bridge` |
 
-The TinyUSB network callbacks are owned by `rhs_hal_usb` and dispatched via `tud_net_dispatch`. Both `usb_eth_bridge` and `usb_cdc_net` may be compiled into the same binary, but only one may be active at a time. To switch:
+The TinyUSB network callbacks are owned by `rhs_hal_usb` and dispatched via `rhs_hal_cdc_net`. Both `usb_eth_bridge` and `usb_cdc_net` may be compiled into the same binary, but only one may be active at a time. To switch:
 
 ```c
 usb_eth_bridge_stop(bridge);
@@ -75,7 +75,7 @@ typedef struct {
 
 ### `UsbEthBridge *usb_eth_bridge_start(const UsbEthBridgePhyConfig *phy_config)`
 
-Initialises the Ethernet hardware, registers TinyUSB network callbacks via `tud_net_dispatch_set()`, and starts the bridge worker thread.
+Initialises the Ethernet hardware, registers TinyUSB network callbacks via `rhs_hal_cdc_net_set()`, and starts the bridge worker thread.
 
 - `phy_config`: pass `NULL` to use `MG_TCPIP_PHY_ADDR` / `MG_DRIVER_MDC_CR`.
 

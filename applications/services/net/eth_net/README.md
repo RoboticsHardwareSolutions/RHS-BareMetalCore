@@ -36,15 +36,15 @@ set(RHS_ETH_NET_NETMASK "255.255.0.0" CACHE STRING "" FORCE)
 
 `eth_net/CMakeLists.txt` applies the following definitions to the `mongoose` target:
 
-| Definition                    | Value              | Notes |
-|-------------------------------|--------------------|-------|
-| `MG_ENABLE_TCPIP`             | 1                  | Enable built-in TCP/IP stack |
-| `MG_ENABLE_DRIVER_STM32F`     | 1                  | STM32F Ethernet MAC driver |
-| `MG_ENABLE_TCPIP_DRIVER_INIT` | 0                  | Driver initialised manually (allows multiple interfaces) |
-| `MG_TCPIP_PHY_ADDR`           | 1                  | Default PHY address on the MII bus |
-| `MG_DRIVER_MDC_CR`            | 4                  | MDC clock divider (HCLK=168 MHz -> MDC ~2.1 MHz) |
-| `MG_ENABLE_PACKED_FS`         | 1                  | Use packed (ROM) filesystem |
-| `MG_ARCH`                     | `MG_ARCH_FREERTOS` | FreeRTOS integration |
+| Definition                    | Value            | Notes |
+|-------------------------------|------------------|-------|
+| `MG_ENABLE_TCPIP`             | 1                | Enable built-in TCP/IP stack |
+| `MG_ENABLE_DRIVER_STM32F`     | 1                | STM32F Ethernet MAC driver |
+| `MG_ENABLE_TCPIP_DRIVER_INIT` | 0                | Driver initialised manually (allows multiple interfaces) |
+| `MG_TCPIP_PHY_ADDR`           | 1                | Default PHY address on the MII bus |
+| `MG_DRIVER_MDC_CR`            | 4                | MDC clock divider (HCLK=168 MHz -> MDC ~2.1 MHz) |
+| `MG_ENABLE_PACKED_FS`         | 1                | Use packed (ROM) filesystem |
+| `MG_ARCH`                     | `MG_ARCH_ARMGCC` | FreeRTOS integration |
 
 If your hardware uses a different PHY address or HCLK frequency, pass an `EthPhyConfig` to `eth_net_start()` (see API below).
 

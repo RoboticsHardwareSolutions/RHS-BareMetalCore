@@ -60,12 +60,8 @@ static void net_cli_command(char* args, void* context)
     }
 }
 
-static void net_mdns_start(Net* net)
+static struct mg_connection* net_mdns_start(Net* net, const char* name)
 {
-    const char* name = rhs_thread_get_name(rhs_thread_get_id(net->thread));
-    cli_add_command(net->cli, name, net_cli_command, net);
-
-    // Example of mDNS
     struct mg_connection* c = mg_mdns_listen(net->mgr, NULL, (char*) name);
     if (c != NULL)
     {
@@ -77,6 +73,7 @@ static void net_mdns_start(Net* net)
     {
         RHS_LOG_E(TAG, "Failed to start mDNS");
     }
+    return c;
 }
 
 static void net_mdns_stop(Net* net)
@@ -185,10 +182,11 @@ int32_t net_worker(void* context)
     Net* net = (Net*) context;
     net->cli = rhs_record_open(RECORD_CLI);
 
-    net_mdns_start(net);
+    const char* name = rhs_thread_get_name(rhs_thread_get_id(net->thread));
+    cli_add_command(net->cli, name, net_cli_command, net);
+    net_mdns_start(net, name);
 
     NetApiEventMessage msg;
-    RHS_LOG_I(TAG, "Starting event loop");
 
     for (;;)
     {

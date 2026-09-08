@@ -4,11 +4,11 @@ set(CMAKE_C_STANDARD 11)
 
 # cdc_net configuration options
 if(NOT DEFINED RHS_CDC_NET_IP)
-    set(RHS_CDC_NET_IP "192.168.3.100" CACHE STRING "Static IP address for cdc_net service")
+    set(RHS_CDC_NET_IP "192.168.0.100" CACHE STRING "Static IP address for cdc_net service")
 endif()
 
 if(NOT DEFINED RHS_CDC_NET_GATEWAY)
-    set(RHS_CDC_NET_GATEWAY "192.168.3.1" CACHE STRING "Gateway address for cdc_net service")
+    set(RHS_CDC_NET_GATEWAY "192.168.0.1" CACHE STRING "Gateway address for cdc_net service")
 endif()
 
 if(NOT DEFINED RHS_CDC_NET_NETMASK)
@@ -27,7 +27,7 @@ target_include_directories(
 )
 
 # Check if tinyusb and mongoose targets are available
-if(NOT TARGET tinyusb OR NOT TARGET mongoose)
+if(NOT TARGET tinyusb)
         message(FATAL_ERROR "tinyusb and mongoose libraries must be available to build usb_cdc_net")
 endif()
 
@@ -35,11 +35,7 @@ endif()
 target_compile_definitions(
         mongoose
         PUBLIC
-        -DMG_ENABLE_TCPIP=1
-        -DMG_ENABLE_CUSTOM_MILLIS=0
-        -DMG_ENABLE_PACKED_FS=1
         -DMG_IO_SIZE=512
-        # -DMG_ENABLE_LINES=1
 )
 
 target_link_libraries(

@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "tusb.h"
 
 typedef enum
 {
@@ -21,13 +22,15 @@ typedef struct
     void (*rx_callback)(void* context);
     void (*state_callback)(void* context, CdcState state);
     void (*ctrl_line_callback)(void* context, CdcCtrlLine ctrl_lines);
+    void (*line_config_callback)(void* context, cdc_line_coding_t const* config);
 } CdcCallbacks;
 
-extern RHSHalUsbInterface usb_cdc_desc;
+extern RHSHalUsbInterface usb_dual_cdc_desc;
+extern RHSHalUsbInterface usb_single_cdc_desc;
 
 void rhs_hal_cdc_set_callbacks(uint8_t if_num, CdcCallbacks* cb, void* context);
 
-struct usb_cdc_line_coding* rhs_hal_cdc_get_port_settings(uint8_t if_num);
+cdc_line_coding_t* rhs_hal_cdc_get_port_settings(uint8_t if_num);
 
 uint8_t rhs_hal_cdc_get_ctrl_line_state(uint8_t if_num);
 

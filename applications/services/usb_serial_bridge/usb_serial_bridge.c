@@ -57,21 +57,20 @@ static void vcp_on_cdc_tx_complete(void* context);
 static void vcp_on_cdc_rx(void* context);
 static void vcp_state_callback(void* context, uint8_t state);
 static void vcp_on_cdc_control_line(void* context, uint8_t state);
-// static void vcp_on_line_config(void* context, struct usb_cdc_line_coding* config);
+static void vcp_on_line_config(void* context, cdc_line_coding_t const* config);
 
 static const CdcCallbacks cdc_cb = {
     vcp_on_cdc_tx_complete,
     vcp_on_cdc_rx,
     vcp_state_callback,
     vcp_on_cdc_control_line,
-    // vcp_on_line_config,
+    vcp_on_line_config,
 };
 
 static void serial_rx_cb(RHSHalSerial* handle, RHSHalSerialRxEvent event, void* context)
 {
     UsbSerialBridge* usb_serial = (UsbSerialBridge*) context;
 
-    rhs_hal_serial_async_rx(handle);
     if (event & (RHSHalSerialRxEventData))
     {
         uint8_t data = rhs_hal_serial_async_rx(handle);
@@ -82,22 +81,43 @@ static void serial_rx_cb(RHSHalSerial* handle, RHSHalSerialRxEvent event, void* 
 
 static void usb_serial_vcp_init(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
 {
-    // rhs_hal_usb_unlock();
-    rhs_hal_usb_set_interface(&usb_cdc_desc);
+    if (vcp_ch == 0)
+    {
+        rhs_hal_usb_set_interface(&usb_single_cdc_desc);
+    }
+    else
+    {
+        rhs_hal_usb_set_interface(&usb_dual_cdc_desc);
+    }
     rhs_hal_cdc_set_callbacks(vcp_ch, (CdcCallbacks*) &cdc_cb, usb_serial);
 }
 
 static void usb_serial_vcp_deinit(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
 {
     rhs_hal_cdc_set_callbacks(vcp_ch, NULL, NULL);
-    if (vcp_ch != 0)
+    RHSHalUsbInterface* iface = rhs_hal_usb_get_interface();
+    if (iface == &usb_dual_cdc_desc)
     {
+        if (vcp_ch == 1)
+        {
+            rhs_hal_usb_set_interface(&usb_single_cdc_desc);
+        }
     }
+    if (iface == &usb_single_cdc_desc)
+    {
+        if (vcp_ch == 0)
+        {
+            rhs_hal_usb_set_interface(NULL);
+        }
+    }
+    // If there is dual cdc interface and vcp_ch is 0, we can't switch to single cdc interface,
+    // because it will break the second cdc interface.
+    // So we just leave the dual cdc interface as is.
 }
 
 static void usb_uart_serial_init(UsbSerialBridge* usb_uart, uint32_t ch)
 {
-    usb_uart->serial_handle = rhs_hal_serial_init(ch, 115200);
+    usb_uart->serial_handle = rhs_hal_serial_init(ch, usb_uart->cfg.baudrate);
     rhs_hal_serial_async_rx_start(usb_uart->serial_handle, serial_rx_cb, usb_uart);
 }
 
@@ -154,8 +174,8 @@ static int32_t usb_serial_worker(void* context)
 
     usb_serial_vcp_init(usb_serial, usb_serial->cfg.vcp_ch);
 
-    usb_serial->serial_handle = rhs_hal_serial_init(usb_serial->cfg.serial_ch, usb_serial->cfg.baudrate);
-    rhs_hal_serial_async_rx_start(usb_serial->serial_handle, serial_rx_cb, usb_serial);
+    usb_uart_serial_init(usb_serial, usb_serial->cfg.serial_ch);
+    usb_serial->st.baudrate_cur = usb_serial->cfg.baudrate;
 
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->tx_thread), WorkerEvtCdcRx);
 
@@ -169,7 +189,7 @@ static int32_t usb_serial_worker(void* context)
             break;
         if (events & (WorkerEvtRxDone | WorkerEvtCdcTxComplete))
         {
-            uint16_t len = rhs_stream_buffer_receive(usb_serial->rx_stream, usb_serial->rx_buf, USB_CDC_PKT_LEN, 0);
+            size_t len = rhs_stream_buffer_receive(usb_serial->rx_stream, usb_serial->rx_buf, USB_CDC_PKT_LEN, 0);
             if (len > 0)
             {
                 if (rhs_semaphore_acquire(usb_serial->tx_sem, 100) == RHSStatusOk)
@@ -207,17 +227,23 @@ static int32_t usb_serial_worker(void* context)
                 rhs_thread_join(usb_serial->tx_thread);
 
                 usb_uart_serial_deinit(usb_serial);
-                usb_uart_serial_init(usb_serial, usb_serial->cfg_new.serial_ch);
-
                 usb_serial->cfg.serial_ch = usb_serial->cfg_new.serial_ch;
+                usb_uart_serial_init(usb_serial, usb_serial->cfg.serial_ch);
 
                 rhs_thread_start(usb_serial->tx_thread);
             }
             if (usb_serial->cfg.baudrate != usb_serial->cfg_new.baudrate)
             {
-                rhs_crash("Baudrate change not implemented");
-                // usb_serial_set_baudrate(usb_serial, usb_serial->cfg_new.baudrate);
-                usb_serial->cfg.baudrate = usb_serial->cfg_new.baudrate;
+                rhs_thread_flags_set(rhs_thread_get_id(usb_serial->tx_thread), WorkerEvtTxStop);
+                rhs_thread_join(usb_serial->tx_thread);
+
+                usb_uart_serial_deinit(usb_serial);
+
+                usb_serial->cfg.baudrate    = usb_serial->cfg_new.baudrate;
+                usb_serial->st.baudrate_cur = usb_serial->cfg_new.baudrate;
+                usb_uart_serial_init(usb_serial, usb_serial->cfg.serial_ch);
+
+                rhs_thread_start(usb_serial->tx_thread);
             }
             if (usb_serial->cfg.flow_pins != usb_serial->cfg_new.flow_pins)
             {
@@ -234,14 +260,22 @@ static int32_t usb_serial_worker(void* context)
         }
         if (events & WorkerEvtLineCfgSet)
         {
-            if (usb_serial->cfg.baudrate == 0)
+            cdc_line_coding_t* coding       = rhs_hal_cdc_get_port_settings(usb_serial->cfg.vcp_ch);
+            uint32_t           new_baudrate = coding->bit_rate;
+            if (new_baudrate != 0 && new_baudrate != usb_serial->st.baudrate_cur)
             {
-                // usb_serial_set_baudrate(usb_serial, usb_serial->cfg.baudrate);
+                usb_uart_serial_deinit(usb_serial);
+                usb_serial->serial_handle = rhs_hal_serial_init(usb_serial->cfg.serial_ch, new_baudrate);
+                rhs_hal_serial_async_rx_start(usb_serial->serial_handle, serial_rx_cb, usb_serial);
+
+                usb_serial->cfg.baudrate    = new_baudrate;
+                usb_serial->st.baudrate_cur = new_baudrate;
+                RHS_LOG_I(TAG, "Baudrate changed to %lu", (unsigned long) new_baudrate);
             }
-            if (events & WorkerEvtCtrlLineSet)
-            {
-                // usb_serial_update_ctrl_lines(usb_serial);
-            }
+        }
+        if (events & WorkerEvtCtrlLineSet)
+        {
+            /* Control line state changed — no action needed */
         }
     }
 
@@ -279,20 +313,20 @@ static void vcp_on_cdc_rx(void* context)
 
 static void vcp_state_callback(void* context, uint8_t state)
 {
-    // UNUSED(context);
-    // UNUSED(state);
+    UNUSED(context);
+    UNUSED(state);
 }
 
 static void vcp_on_cdc_control_line(void* context, uint8_t state)
 {
-    // UNUSED(state);
+    UNUSED(state);
     UsbSerialBridge* usb_serial = (UsbSerialBridge*) context;
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtCtrlLineSet);
 }
 
-static void vcp_on_line_config(void* context, struct usb_cdc_line_coding* config)
+static void vcp_on_line_config(void* context, cdc_line_coding_t const* config)
 {
-    // UNUSED(config);
+    UNUSED(config);
     UsbSerialBridge* usb_serial = (UsbSerialBridge*) context;
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtLineCfgSet);
 }
@@ -307,21 +341,25 @@ static void usb_bridge_cb(char* args, void* context)
         return;
     }
 
-    char* separator = strchr(args, ' ');
-    if (separator != NULL && *(separator + 1) != 0)
+    bool want_rs232 = strstr(args, "-rs232") != NULL;
+    bool want_rs485 = strstr(args, "-rs485") != NULL;
+
+    if (!want_rs232 && !want_rs485)
     {
+        RHS_LOG_E(TAG, "Invalid argument");
+        return;
     }
 
-    if (strstr(args, "-rs232") == args)
+    if (want_rs232)
     {
         if (usb_rs232 == NULL)
         {
             UsbSerialConfig cfg = {
-                .vcp_ch         = 0,
+                .vcp_ch         = usb_rs485 ? 1 : 0,
                 .serial_ch      = RHSHalSerialIdRS232,
                 .flow_pins      = 0,
                 .baudrate_mode  = 0,
-                .baudrate       = 115200,
+                .baudrate       = 9600,
                 .software_de_re = 0,
             };
             usb_rs232 = usb_serial_enable(&cfg);
@@ -333,18 +371,18 @@ static void usb_bridge_cb(char* args, void* context)
             usb_rs232 = NULL;
             RHS_LOG_W(TAG, "RS232 disabled");
         }
-        return;
     }
-    else if (strstr(args, "-rs485") == args)
+
+    if (want_rs485)
     {
         if (usb_rs485 == NULL)
         {
             UsbSerialConfig cfg = {
-                .vcp_ch         = 1,
+                .vcp_ch         = usb_rs232 ? 1 : 0,
                 .serial_ch      = RHSHalSerialIdRS485,
                 .flow_pins      = 0,
                 .baudrate_mode  = 0,
-                .baudrate       = 115200,
+                .baudrate       = 9600,
                 .software_de_re = 0,
             };
             usb_rs485 = usb_serial_enable(&cfg);
@@ -356,11 +394,6 @@ static void usb_bridge_cb(char* args, void* context)
             usb_rs485 = NULL;
             RHS_LOG_W(TAG, "RS485 disabled");
         }
-        return;
-    }
-    else
-    {
-        RHS_LOG_E(TAG, "Invalid argument");
     }
 }
 
@@ -383,6 +416,30 @@ void usb_serial_disable(UsbSerialBridge* usb_serial)
     rhs_thread_join(usb_serial->thread);
     rhs_thread_free(usb_serial->thread);
     free(usb_serial);
+}
+
+void usb_serial_set_config(UsbSerialBridge* usb_serial, UsbSerialConfig* cfg)
+{
+    rhs_assert(usb_serial);
+    rhs_assert(cfg);
+    usb_serial->cfg_lock = api_lock_alloc_locked();
+    memcpy(&(usb_serial->cfg_new), cfg, sizeof(UsbSerialConfig));
+    rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtCfgChange);
+    api_lock_wait_unlock_and_free(usb_serial->cfg_lock);
+}
+
+void usb_serial_get_config(UsbSerialBridge* usb_serial, UsbSerialConfig* cfg)
+{
+    rhs_assert(usb_serial);
+    rhs_assert(cfg);
+    memcpy(cfg, &(usb_serial->cfg_new), sizeof(UsbSerialConfig));
+}
+
+void usb_serial_get_state(UsbSerialBridge* usb_serial, UsbSerialState* st)
+{
+    rhs_assert(usb_serial);
+    rhs_assert(st);
+    memcpy(st, &(usb_serial->st), sizeof(UsbSerialState));
 }
 
 void cli_vcp_start_up(void)

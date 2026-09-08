@@ -172,7 +172,7 @@ add_subdirectory(rlibs)
 | `rhs_hal_rtc` | always on | RTC + Unix time conversion | [hal/rhs_hal_rtc/README.md](hal/rhs_hal_rtc/README.md) |
 | `rhs_hal_serial` | always on | UART HAL | [hal/rhs_hal_serial/README.md](hal/rhs_hal_serial/README.md) |
 | `rhs_hal_speaker` | always on | PWM buzzer | [hal/rhs_hal_speaker/README.md](hal/rhs_hal_speaker/README.md) |
-| `rhs_hal_usb` | always on | TinyUSB device stack + `tud_net_dispatch` | [hal/rhs_hal_usb/README.md](hal/rhs_hal_usb/README.md) |
+| `rhs_hal_usb` | always on | TinyUSB device stack + `rhs_hal_cdc_net` | [hal/rhs_hal_usb/README.md](hal/rhs_hal_usb/README.md) |
 | `rhs_hal_version` | always on | Device UID / version string | [hal/rhs_hal_version/README.md](hal/rhs_hal_version/README.md) |
 
 ## Drivers (`drivers/`)

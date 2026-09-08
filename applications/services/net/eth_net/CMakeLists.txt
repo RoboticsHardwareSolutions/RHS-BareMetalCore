@@ -28,29 +28,6 @@ target_include_directories(
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 
-if(NOT TARGET mongoose)
-    message(FATAL_ERROR "mongoose library not found, please add_subdirectory(mongoose) before eth_net")
-endif()
-
-# Configure Mongoose options for Ethernet networking
-target_compile_definitions(
-    mongoose
-    PUBLIC
-    MG_ENABLE_PACKED_FS=1
-    MG_ENABLE_CUSTOM_MILLIS=0
-    MG_ENABLE_MBEDTLS=0
-    MG_ARCH=MG_ARCH_FREERTOS
-    MG_ENABLE_TCPIP=1
-    MG_ENABLE_DRIVER_STM32F=1
-    # MG_ENABLE_TCPIP_DRIVER_INIT if 1 (by default), call MG_TCPIP_DRIVER_INIT(&mgr) in mg_mgr_init().
-    # If 0, call it manually later. Useful if you need several mgr, e.g. for dual interfaces (Eth + USB + WiFi)
-    MG_ENABLE_TCPIP_DRIVER_INIT=0
-    MG_TCPIP_PHY_ADDR=1
-    MG_DRIVER_MDC_CR=4
-    # If MG_ENABLE_PACKED_FS is enabled, disable MG_ENABLE_FILE
-    MG_ENABLE_FILE=0
-)
-
 target_link_libraries(
     ${PROJECT_NAME}
     PUBLIC

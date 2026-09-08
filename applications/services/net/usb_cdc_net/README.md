@@ -245,7 +245,7 @@ curl http://cdc_net.local/status
 
 ## Runtime exclusion with usb_eth_bridge
 
-The TinyUSB network callbacks are owned by `rhs_hal_usb` and dispatched via `tud_net_dispatch`. Both `usb_cdc_net` and `usb_eth_bridge` may be compiled into the same binary, but only one may be active at a time. To switch between them, stop the current one and start the other:
+The TinyUSB network callbacks are owned by `rhs_hal_usb` and dispatched via `rhs_hal_cdc_net`. Both `usb_cdc_net` and `usb_eth_bridge` may be compiled into the same binary, but only one may be active at a time. To switch between them, stop the current one and start the other:
 
 ```c
 usb_cdc_net_stop(cdc_net);

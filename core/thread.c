@@ -143,7 +143,7 @@ const char* rhs_thread_get_name(RHSThreadId thread_id)
 
 RHSThread* rhs_thread_alloc(const char* name, uint32_t stack_size, RHSThreadCallback callback, void* context)
 {
-    RHSThread* thread    = calloc(1, sizeof(RHSThread));
+    RHSThread* thread = calloc(1, sizeof(RHSThread));
     rhs_assert(thread);
     thread->stack_buffer = malloc(stack_size);
     thread->stack_size   = stack_size;
@@ -504,21 +504,20 @@ void rhs_thread_enumerate(RHSThreadList* thread_list)
 
         configRUN_TIME_COUNTER_TYPE total_run_time;
         count = uxTaskGetSystemState(task, count, &total_run_time);
-        rhs_thread_list_erase(thread_list);
-
         for (uint32_t i = 0U; i < count; i++)
         {
-            RHSThreadListItem* item = rhs_thread_list_add(thread_list);
+            RHSThreadListItem* item = rhs_thread_list_get_or_insert(thread_list, (RHSThread*) task[i].xHandle);
 
-            item->name             = task[i].pcTaskName;
-            item->priority         = task[i].uxCurrentPriority;
-            item->stack_address    = (uint32_t) task[i].pxStackBase;
-            item->stack_size       = (task[i].pxEndOfStack - task[i].pxStackBase + 2);
-            item->stack_min_free   = (uint32_t) (uxTaskGetStackHighWaterMark(task[i].xHandle));
-            item->state            = rhs_thread_state_name(task[i].eCurrentState);
-            item->counter_previous = item->counter_current;
-            item->counter_current  = task[i].ulRunTimeCounter;
-            item->tick             = tick;
+            item->thread            = (RHSThread*) task[i].xHandle;
+            item->name              = task[i].pcTaskName;
+            item->priority          = task[i].uxCurrentPriority;
+            item->stack_address     = (uint32_t) task[i].pxStackBase;
+            item->stack_size        = (task[i].pxEndOfStack - task[i].pxStackBase + 2);
+            item->stack_min_free    = (uint32_t) (uxTaskGetStackHighWaterMark(task[i].xHandle));
+            item->state             = rhs_thread_state_name(task[i].eCurrentState);
+            item->tick              = tick;
+            item->counter_previous  = item->counter_current;
+            item->counter_current   = task[i].ulRunTimeCounter;
         }
         vPortFree(task);
         rhs_thread_list_process(thread_list, total_run_time, tick);

@@ -1,5 +1,6 @@
 #include "stdbool.h"
 #include "FreeRTOS.h"
+#include "task.h"
 #include "semphr.h"
 #include "rserial.h"
 #include "rhs.h"
@@ -102,11 +103,13 @@ void rhs_hal_serial_deinit(RHSHalSerial* serial)
         rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS232, NULL, NULL);
         break;
     case RHSHalSerialIdRS485:
+#if !defined(STM32F103xE)
         rhs_hal_rs485_async_tx_dma_stop();
         rhs_hal_rs485_async_rx_dma_stop();
-        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS485, NULL, NULL);
         rhs_hal_interrupt_set_isr(RHS_DMA_RX_RS485, NULL, NULL);
         rhs_hal_interrupt_set_isr(RHS_DMA_TX_RS485, NULL, NULL);
+#endif
+        rhs_hal_interrupt_set_isr(RHS_INTERRUPT_RS485, NULL, NULL);
         break;
 #if !defined(BMPLC_XL)
     case RHSHalSerialIdRS422:
@@ -124,12 +127,16 @@ void rhs_hal_serial_deinit(RHSHalSerial* serial)
 /*********************************** SERIAL TX ************************************/
 void rhs_hal_serial_tx(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buffer_size)
 {
+    rhs_assert(serial);
     rhs_assert(serial->enabled == true);
+    RHSHalSerialId id = rhs_hal_serial_get_id(serial);
     if (LL_USART_IsEnabled(serial->rserial.uart.Instance) == 0)
         return;
 #if defined(BMPLC_M)
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
+    if (id == RHSHalSerialIdRS485)
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
 #endif
+    vTaskSuspendAll();
     while (buffer_size > 0)
     {
         while (!LL_USART_IsActiveFlag_TXE(serial->rserial.uart.Instance))
@@ -139,8 +146,14 @@ void rhs_hal_serial_tx(RHSHalSerial* serial, const uint8_t* buffer, uint16_t buf
         buffer++;
         buffer_size--;
     }
+    xTaskResumeAll();
 #if defined(BMPLC_M)
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+    if (id == RHSHalSerialIdRS485)
+    {
+        while (!LL_USART_IsActiveFlag_TC(serial->rserial.uart.Instance))
+            ;
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+    }
 #endif
 }
 

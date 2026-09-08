@@ -21,8 +21,6 @@ static void rhs_hal_i2c_bus_external_event(RHSHalI2cBus* bus, RHSHalI2cBusEvent 
 {
     if (event == RHSHalI2cBusEventInit)
     {
-        if (bus->mutex)
-            rhs_mutex_free(bus->mutex);
         bus->mutex          = rhs_mutex_alloc(RHSMutexTypeNormal);
         bus->current_handle = NULL;
     }

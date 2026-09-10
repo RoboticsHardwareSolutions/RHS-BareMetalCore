@@ -51,7 +51,12 @@ static void rhs_hal_cortex_configure_mpu(void)
 
 inline static void dwt_unlock(void)
 {
-#if __CORTEX_M == 7 || __CORTEX_M == 33
+#if __CORTEX_M == 3
+    if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) == 0U)
+    {
+        CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    }
+#elif __CORTEX_M == 7 || __CORTEX_M == 33
     if ((DWT->LAR != 0xC5ACCE55U) && (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) == 0U)
     {
         CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;

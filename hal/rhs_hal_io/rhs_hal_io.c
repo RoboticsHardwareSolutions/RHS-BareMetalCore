@@ -66,6 +66,39 @@
 #    define IN4_Pin GPIO_PIN_12
 #    define IN4_GPIO_Port GPIOG
 
+#elif BMPLC_M
+#    include "stm32f1xx_hal.h"
+#    define KEY0_Pin GPIO_PIN_3
+#    define KEY0_GPIO_Port GPIOC
+#    define KEY1_Pin GPIO_PIN_2
+#    define KEY1_GPIO_Port GPIOC
+#    define KEY2_Pin GPIO_PIN_1
+#    define KEY2_GPIO_Port GPIOC
+#    define KEY3_Pin GPIO_PIN_0
+#    define KEY3_GPIO_Port GPIOC
+#    define KEY4_Pin GPIO_PIN_13
+#    define KEY4_GPIO_Port GPIOC
+#    define OUT0_Pin GPIO_PIN_5
+#    define OUT0_GPIO_Port GPIOC
+#    define OUT1_Pin GPIO_PIN_4
+#    define OUT1_GPIO_Port GPIOC
+#    define OUT2_Pin GPIO_PIN_7
+#    define OUT2_GPIO_Port GPIOA
+#    define OUT3_Pin GPIO_PIN_6
+#    define OUT3_GPIO_Port GPIOA
+#    define OUT4_Pin GPIO_PIN_5
+#    define OUT4_GPIO_Port GPIOA
+#    define IN0_Pin GPIO_PIN_0
+#    define IN0_GPIO_Port GPIOA
+#    define IN1_Pin GPIO_PIN_1
+#    define IN1_GPIO_Port GPIOA
+#    define IN2_Pin GPIO_PIN_2
+#    define IN2_GPIO_Port GPIOA
+#    define IN3_Pin GPIO_PIN_3
+#    define IN3_GPIO_Port GPIOA
+#    define IN4_Pin GPIO_PIN_4
+#    define IN4_GPIO_Port GPIOA
+
 #endif
 
 /** pin control **/
@@ -158,6 +191,31 @@ void OUT4_OFF(void)
     PIN_LOW(OUT4_GPIO_Port, OUT4_Pin);
 }
 
+bool OUT0_IS_HIGH(void)
+{
+    return PIN_IS_HIGH(OUT0_GPIO_Port, OUT0_Pin);
+}
+
+bool OUT1_IS_HIGH(void)
+{
+    return PIN_IS_HIGH(OUT1_GPIO_Port, OUT1_Pin);
+}
+
+bool OUT2_IS_HIGH(void)
+{
+    return PIN_IS_HIGH(OUT2_GPIO_Port, OUT2_Pin);
+}
+
+bool OUT3_IS_HIGH(void)
+{
+    return PIN_IS_HIGH(OUT3_GPIO_Port, OUT3_Pin);
+}
+
+bool OUT4_IS_HIGH(void)
+{
+    return PIN_IS_HIGH(OUT4_GPIO_Port, OUT4_Pin);
+}
+
 /** KEYs defines **/
 
 void KEY0_ON(void)
@@ -201,8 +259,34 @@ void KEY4_OFF(void)
     PIN_LOW(KEY4_GPIO_Port, KEY4_Pin);
 }
 
+bool KEY0_IS_OPEN(void)
+{
+    return PIN_IS_HIGH(KEY0_GPIO_Port, KEY0_Pin);
+}
+
+bool KEY1_IS_OPEN(void)
+{
+    return PIN_IS_HIGH(KEY1_GPIO_Port, KEY1_Pin);
+}
+
+bool KEY2_IS_OPEN(void)
+{
+    return PIN_IS_HIGH(KEY2_GPIO_Port, KEY2_Pin);
+}
+
+bool KEY3_IS_OPEN(void)
+{
+    return PIN_IS_HIGH(KEY3_GPIO_Port, KEY3_Pin);
+}
+
+bool KEY4_IS_OPEN(void)
+{
+    return PIN_IS_HIGH(KEY4_GPIO_Port, KEY4_Pin);
+}
+
 void rhs_hal_io_init(void)
 {
+#if defined(BMPLC_XL) || defined(BMPLC_L)
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
     /* GPIO Ports Clock Enable */
@@ -265,4 +349,64 @@ void rhs_hal_io_init(void)
     GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(IN4_GPIO_Port, &GPIO_InitStruct);
+#elif defined(BMPLC_M)
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    /*Configure GPIO pin Output Level */
+
+    HAL_GPIO_WritePin(KEY0_GPIO_Port, KEY0_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(KEY1_GPIO_Port, KEY0_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(KEY2_GPIO_Port, KEY0_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(KEY3_GPIO_Port, KEY0_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(KEY4_GPIO_Port, KEY0_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(OUT0_GPIO_Port, OUT0_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(OUT1_GPIO_Port, OUT1_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(OUT2_GPIO_Port, OUT2_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(OUT3_GPIO_Port, OUT3_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(OUT4_GPIO_Port, OUT4_Pin, GPIO_PIN_RESET);
+
+    /*Configure GPIO pins : PEPin PEPin */
+    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Pin   = KEY0_Pin;
+    HAL_GPIO_Init(KEY0_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = KEY1_Pin;
+    HAL_GPIO_Init(KEY1_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = KEY2_Pin;
+    HAL_GPIO_Init(KEY2_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = KEY3_Pin;
+    HAL_GPIO_Init(KEY3_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = KEY4_Pin;
+    HAL_GPIO_Init(KEY4_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = OUT0_Pin;
+    HAL_GPIO_Init(OUT0_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = OUT1_Pin;
+    HAL_GPIO_Init(OUT1_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = OUT2_Pin;
+    HAL_GPIO_Init(OUT2_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = OUT3_Pin;
+    HAL_GPIO_Init(OUT3_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = OUT4_Pin;
+    HAL_GPIO_Init(OUT4_GPIO_Port, &GPIO_InitStruct);
+
+    /*Configure GPIO pins : PCPin PCPin */
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Pin  = IN0_Pin;
+    HAL_GPIO_Init(IN0_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin  = IN1_Pin;
+    HAL_GPIO_Init(IN1_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin  = IN2_Pin;
+    HAL_GPIO_Init(IN2_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin  = IN3_Pin;
+    HAL_GPIO_Init(IN3_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin  = IN4_Pin;
+    HAL_GPIO_Init(IN4_GPIO_Port, &GPIO_InitStruct);
+
+#endif
 }

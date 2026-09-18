@@ -124,6 +124,11 @@ void rhs_hal_usb_reinit(void)
     if (gpio_read(PIN('G', 10)) != 0)
     {
 #    endif
+        RCC->AHB2ENR &= ~RCC_AHB2ENR_OTGFSEN;
+
+        gpio_write(PIN('A', 11), 0);
+        gpio_write(PIN('A', 12), 0);
+        rhs_delay_ms(40);  // Wait 40ms
         RCC->AHB2ENR |= RCC_AHB2ENR_OTGFSEN;
         gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);
         gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);
@@ -218,7 +223,7 @@ extern void descriptor_switch_mode(tusb_desc_device_t* new_desc,
 
 static RHSHalUsbInterface* s_usb_desc = NULL;
 
-void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface)
+void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface, void* context)
 {
     if (iface == s_usb_desc)
         return;
@@ -227,19 +232,19 @@ void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface)
     if (s_usb_desc != NULL)
     {
         if (s_usb_desc->deinit)
-            s_usb_desc->deinit();
+            s_usb_desc->deinit(s_usb_desc->context);
     }
     if (iface != NULL)
     {
-        // TODO init deinit interface
-        // TODO chech if iface different from current
         descriptor_switch_mode((tusb_desc_device_t*) iface->device_desc,
                                (uint8_t const**) iface->configuration_arr,
                                (char const**) iface->string_desc_arr,
                                iface->string_desc_arr_count);
 
+        iface->context = context;
+
         if (iface->init)
-            iface->init();
+            iface->init(iface->context);
     }
     s_usb_desc = iface;
     rhs_mutex_release(s_usb_mutex);

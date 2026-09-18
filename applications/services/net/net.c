@@ -179,8 +179,9 @@ void net_stop(Net* net)
 
 int32_t net_worker(void* context)
 {
-    Net* net = (Net*) context;
-    net->cli = rhs_record_open(RECORD_CLI);
+    Net* net   = (Net*) context;
+    net->cli   = rhs_record_open(RECORD_CLI);
+    net->queue = rhs_message_queue_alloc(3, sizeof(NetApiEventMessage));
 
     const char* name = rhs_thread_get_name(rhs_thread_get_id(net->thread));
     cli_add_command(net->cli, name, net_cli_command, net);
@@ -302,4 +303,7 @@ int32_t net_worker(void* context)
     }
     net_mdns_stop(net);
     rhs_record_close(RECORD_CLI);
+    rhs_message_queue_free(net->queue);
+    mg_mgr_free(net->mgr);
+    return 0;
 }

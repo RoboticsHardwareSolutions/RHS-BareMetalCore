@@ -69,7 +69,6 @@ static EthNet* eth_net_alloc(const NetConfig* config, const EthPhyConfig* phy_co
     rhs_assert(app != NULL);
 
     memset(app, 0, sizeof(*app));
-    app->net.queue  = rhs_message_queue_alloc(3, sizeof(NetApiEventMessage));
     app->net.mgr    = malloc(sizeof(struct mg_mgr));
     app->net.config = malloc(sizeof(NetConfig));
     rhs_assert(app->net.mgr != NULL && app->net.config != NULL);
@@ -100,8 +99,6 @@ static EthNet* eth_net_alloc(const NetConfig* config, const EthPhyConfig* phy_co
 static void eth_net_free(EthNet* app)
 {
     rhs_thread_free(app->net.thread);
-    rhs_message_queue_free(app->net.queue);
-    mg_mgr_free(app->net.mgr);
     free(app->net.mgr->ifp->driver_data);
     free(app->net.mgr->ifp);
     free(app->net.config);
@@ -123,8 +120,8 @@ Net* eth_net_start(const NetConfig* net_config, const EthPhyConfig* phy_config)
 
 void eth_net_stop(Net* net)
 {
-    rhs_assert(net != NULL);
     EthNet* app = (EthNet*) net;
+    rhs_assert(app);
     net_stop(net);
     rhs_thread_join(app->net.thread);
     eth_net_free(app);

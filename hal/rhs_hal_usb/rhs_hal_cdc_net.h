@@ -7,6 +7,7 @@
 #include "tusb.h"
 
 extern RHSHalUsbInterface usb_cdc_net_desc;
+extern RHSHalUsbInterface usb_cdc_enet_desc;
 
 /**
  * @brief Virtual dispatch table for TinyUSB network callbacks.

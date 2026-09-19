@@ -124,11 +124,6 @@ void rhs_hal_usb_reinit(void)
     if (gpio_read(PIN('G', 10)) != 0)
     {
 #    endif
-        RCC->AHB2ENR &= ~RCC_AHB2ENR_OTGFSEN;
-
-        gpio_write(PIN('A', 11), 0);
-        gpio_write(PIN('A', 12), 0);
-        rhs_delay_ms(40);  // Wait 40ms
         RCC->AHB2ENR |= RCC_AHB2ENR_OTGFSEN;
         gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);
         gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);

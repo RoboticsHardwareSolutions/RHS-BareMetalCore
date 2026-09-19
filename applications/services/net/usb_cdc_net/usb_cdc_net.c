@@ -182,13 +182,15 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
 
 Net* usb_cdc_net_start(const NetConfig* config)
 {
+    // Net thread will create record with this name and we wait it
+    const char* net_name = "rhs_cdc_net";
     CdcNet* app = usb_cdc_net_alloc(config);
 
     int32_t net_worker(void* context);
-    app->net.thread = rhs_thread_alloc("rhs_cdc_net", 4 * 1024, net_worker, &app->net);
+    app->net.thread = rhs_thread_alloc(net_name, 4 * 1024, net_worker, &app->net);
     rhs_thread_start(app->net.thread);
 
-    rhs_record_open("rhs_cdc_net");
+    rhs_record_open(net_name);
     
     return &app->net;
 }

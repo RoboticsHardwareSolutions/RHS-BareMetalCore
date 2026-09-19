@@ -108,14 +108,16 @@ static void eth_net_free(EthNet* app)
 
 Net* eth_net_start(const NetConfig* net_config, const EthPhyConfig* phy_config)
 {
-    EthNet* app = eth_net_alloc(net_config, phy_config);
+    // Net thread will create record with this name and we wait it
+    const char* net_name = "rhs_cdc_net";
+    EthNet*     app      = eth_net_alloc(net_config, phy_config);
 
     int32_t                             net_worker(void* context);
     struct mg_tcpip_driver_stm32f_data* driver = (struct mg_tcpip_driver_stm32f_data*) app->net.mgr->ifp->driver_data;
-    app->net.thread = rhs_thread_alloc("rhs_eth_net", 4 * 1024, net_worker, &app->net);
+    app->net.thread                            = rhs_thread_alloc(net_name, 4 * 1024, net_worker, &app->net);
     rhs_thread_start(app->net.thread);
 
-    rhs_record_open("rhs_eth_net");
+    rhs_record_open(net_name);
 
     return &app->net;
 }

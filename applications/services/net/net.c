@@ -187,6 +187,8 @@ int32_t net_worker(void* context)
     cli_add_command(net->cli, name, net_cli_command, net);
     net_mdns_start(net, name);
 
+    rhs_record_create(name, net);
+
     NetApiEventMessage msg;
 
     for (;;)
@@ -303,6 +305,7 @@ int32_t net_worker(void* context)
     }
     net_mdns_stop(net);
     rhs_record_close(RECORD_CLI);
+    rhs_record_destroy(name);
     rhs_message_queue_free(net->queue);
     mg_mgr_free(net->mgr);
     return 0;

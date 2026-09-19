@@ -188,6 +188,8 @@ Net* usb_cdc_net_start(const NetConfig* config)
     app->net.thread = rhs_thread_alloc("rhs_cdc_net", 4 * 1024, net_worker, &app->net);
     rhs_thread_start(app->net.thread);
 
+    rhs_record_open("rhs_cdc_net");
+    
     return &app->net;
 }
 

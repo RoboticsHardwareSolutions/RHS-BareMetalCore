@@ -191,6 +191,7 @@ Net* usb_cdc_net_start(const NetConfig* config)
     rhs_thread_start(app->net.thread);
 
     rhs_record_open(net_name);
+    rhs_record_close(net_name);
     
     return &app->net;
 }

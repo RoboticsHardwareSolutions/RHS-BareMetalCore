@@ -117,6 +117,7 @@ Net* eth_net_start(const NetConfig* net_config, const EthPhyConfig* phy_config)
     rhs_thread_start(app->net.thread);
 
     rhs_record_open(net_name);
+    rhs_record_close(net_name);
 
     return &app->net;
 }

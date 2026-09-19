@@ -305,8 +305,8 @@ int32_t net_worker(void* context)
     }
     net_mdns_stop(net);
     rhs_record_close(RECORD_CLI);
-    rhs_record_destroy(name);
     rhs_message_queue_free(net->queue);
     mg_mgr_free(net->mgr);
+    rhs_assert(rhs_record_destroy(name));
     return 0;
 }

@@ -41,6 +41,7 @@ if(RHS_APPLICATION_ETH_NET OR RHS_APPLICATION_USB_CDC_NET OR RHS_APPLICATION_USB
     )
 
     if(RHS_APPLICATION_USB_CDC_NET)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC -DRHS_APPLICATION_USB_CDC_NET)
         message("\t\tRHS_APPLICATION_USB_CDC_NET\t\t- ON")
         add_subdirectory(usb_cdc_net)
         message("\t\t\tIP: ${RHS_CDC_NET_IP}")
@@ -50,6 +51,7 @@ if(RHS_APPLICATION_ETH_NET OR RHS_APPLICATION_USB_CDC_NET OR RHS_APPLICATION_USB
         message("\t\tRHS_APPLICATION_USB_CDC_NET\t\t- OFF")
     endif()
     if(RHS_APPLICATION_ETH_NET)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC -DRHS_APPLICATION_ETH_NET)
         message("\t\tRHS_APPLICATION_ETH_NET\t\t\t\t- ON")
         add_subdirectory(eth_net)
         message("\t\t\tIP: ${RHS_ETH_NET_IP}")
@@ -60,6 +62,7 @@ if(RHS_APPLICATION_ETH_NET OR RHS_APPLICATION_USB_CDC_NET OR RHS_APPLICATION_USB
     endif()
 
     if(RHS_APPLICATION_USB_ETH_BRIDGE)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC -DRHS_APPLICATION_USB_ETH_BRIDGE)
         message("\t\tRHS_APPLICATION_USB_ETH_BRIDGE\t\t- ON")
         add_subdirectory(usb_eth_bridge)
     else()

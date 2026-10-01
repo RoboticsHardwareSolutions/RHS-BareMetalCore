@@ -10,10 +10,12 @@ typedef struct RHSHalUsbInterface RHSHalUsbInterface;
 
 struct RHSHalUsbInterface
 {
-    void (*init)(void);
-    void (*deinit)(void);
+    void (*init)(void* context);
+    void (*deinit)(void* context);
     void (*wakeup)(void);
     void (*suspend)(void);
+
+    void* context;
 
     tusb_desc_device_t const* device_desc;
     uint8_t const* const*     configuration_arr;
@@ -31,7 +33,7 @@ void rhs_hal_usb_disable(void);
  */
 void rhs_hal_usb_reinit(void);
 
-void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface);
+void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface, void* context);
 
 RHSHalUsbInterface* rhs_hal_usb_get_interface(void);
 

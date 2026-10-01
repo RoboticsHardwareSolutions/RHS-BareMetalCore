@@ -113,13 +113,22 @@ static void cdc_net_init_tcpip(Net* net)
 static void usb_cdc_net_free(CdcNet* app)
 {
     rhs_thread_free(app->net.thread);
-    rhs_message_queue_free(app->net.queue);
-    mg_mgr_free(app->net.mgr);
     free(app->net.mgr->ifp->driver);
     free(app->net.mgr->ifp);
     free(app->net.config);
     free(app->net.mgr);
     free(app);
+}
+
+static void cdc_deinit(void* context)
+{
+    CdcNet* app = (CdcNet*) context;
+    rhs_assert(app);
+    rhs_hal_cdc_net_clear();
+    net_stop(&app->net);
+    rhs_thread_join(app->net.thread);
+    usb_cdc_net_free(app);
+    tusb_deinit(0);
 }
 
 static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
@@ -128,7 +137,6 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
     rhs_assert(app != NULL);
 
     memset(app, 0, sizeof(*app));
-    app->net.queue = rhs_message_queue_alloc(3, sizeof(NetApiEventMessage));
 
     app->net.mgr    = malloc(sizeof(struct mg_mgr));
     app->net.config = malloc(sizeof(NetConfig));
@@ -154,7 +162,8 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
     tud_network_mac_address[5] = 0;
 
     app->prev_intf = rhs_hal_usb_get_interface();
-    rhs_hal_usb_set_interface(&usb_cdc_net_desc);
+    usb_cdc_net_desc.deinit = cdc_deinit;
+    rhs_hal_usb_set_interface(&usb_cdc_net_desc, &app->net);
 
     cdc_net_init_tcpip(&app->net);
 
@@ -173,12 +182,17 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
 
 Net* usb_cdc_net_start(const NetConfig* config)
 {
+    // Net thread will create record with this name and we wait it
+    const char* net_name = "rhs_cdc_net";
     CdcNet* app = usb_cdc_net_alloc(config);
 
     int32_t net_worker(void* context);
-    app->net.thread = rhs_thread_alloc("rhs_cdc_net", 4 * 1024, net_worker, &app->net);
+    app->net.thread = rhs_thread_alloc(net_name, 4 * 1024, net_worker, &app->net);
     rhs_thread_start(app->net.thread);
 
+    rhs_record_open(net_name);
+    rhs_record_close(net_name);
+    
     return &app->net;
 }
 
@@ -186,10 +200,5 @@ void usb_cdc_net_stop(Net* net)
 {
     rhs_assert(net != NULL);
     CdcNet* app = (CdcNet*) net;
-    rhs_hal_cdc_net_clear();
-    net_stop(net);
-    rhs_thread_join(app->net.thread);
-    usb_cdc_net_free(app);
-    tusb_deinit(0);
-    rhs_hal_usb_set_interface(app->prev_intf);
+    rhs_hal_usb_set_interface(app->prev_intf, app->prev_intf->context);
 }

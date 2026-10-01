@@ -66,6 +66,35 @@ static int32_t bridge_worker(void* ctx)
 {
     UsbEthBridge* b       = (UsbEthBridge*) ctx;
     uint64_t      last_1s = 0;
+    b->prev_usb_intf      = rhs_hal_usb_get_interface();
+
+    rhs_hal_usb_set_interface(&usb_cdc_enet_desc, NULL);
+
+    /* No IP/mask/gw - we never run an IP stack on this interface.
+     * mg_tcpip_init is called only to let the driver allocate DMA descriptors
+     * and the recv_queue.  mg_mgr_poll is never called. */
+    mg_mgr_init(&b->eth_mgr);
+    mg_tcpip_init(&b->eth_mgr, &b->eth_ifp);
+
+    /* Switch Ethernet MAC filter to promiscuous so ALL frames from the LAN
+     * (not just those addressed to our device MAC) are received and can be
+     * forwarded to the USB host. */
+    ETH->MACFFR = MG_BIT(0); /* PM = promiscuous mode */
+
+    /* --- USB init --------------------------------------------------------- */
+    // It is necessary that the mac for usb_cdc_net and usb_eth_bridge be different,
+    // otherwise the system may incorrectly name the interface.
+    tud_network_mac_address[5] = 0;
+
+    rhs_hal_usb_reinit();
+    tusb_init();
+
+    /* --- Publish and start worker ----------------------------------------- */
+    bridge_ops.recv    = bridge_recv_cb;
+    bridge_ops.init    = bridge_init_cb;
+    bridge_ops.xmit    = bridge_xmit_cb;
+    bridge_ops.context = b;
+    rhs_hal_cdc_net_set(&bridge_ops);
 
     for (;;)
     {
@@ -129,33 +158,6 @@ UsbEthBridge* usb_eth_bridge_start(const UsbEthBridgePhyConfig* phy_config)
 
     b->eth_ifp.driver      = &mg_tcpip_driver_stm32f;
     b->eth_ifp.driver_data = &b->eth_drv_data;
-    /* No IP/mask/gw - we never run an IP stack on this interface.
-     * mg_tcpip_init is called only to let the driver allocate DMA descriptors
-     * and the recv_queue.  mg_mgr_poll is never called. */
-    mg_mgr_init(&b->eth_mgr);
-    mg_tcpip_init(&b->eth_mgr, &b->eth_ifp);
-
-    /* Switch Ethernet MAC filter to promiscuous so ALL frames from the LAN
-     * (not just those addressed to our device MAC) are received and can be
-     * forwarded to the USB host. */
-    ETH->MACFFR = MG_BIT(0); /* PM = promiscuous mode */
-
-    /* --- USB init --------------------------------------------------------- */
-    // It is necessary that the mac for usb_cdc_net and usb_eth_bridge be different,
-    // otherwise the system may incorrectly name the interface.
-    tud_network_mac_address[5] = 0;
-
-    b->prev_usb_intf = rhs_hal_usb_get_interface();
-    rhs_hal_usb_set_interface(&usb_cdc_net_desc);
-    rhs_hal_usb_reinit();
-    tusb_init();
-
-    /* --- Publish and start worker ----------------------------------------- */
-    bridge_ops.recv    = bridge_recv_cb;
-    bridge_ops.init    = bridge_init_cb;
-    bridge_ops.xmit    = bridge_xmit_cb;
-    bridge_ops.context = b;
-    rhs_hal_cdc_net_set(&bridge_ops);
 
     b->thread = rhs_thread_alloc("usb_eth_bridge", 2 * 1024, bridge_worker, b);
     rhs_thread_start(b->thread);
@@ -179,7 +181,7 @@ void usb_eth_bridge_stop(UsbEthBridge* bridge)
     rhs_thread_join(bridge->thread);
     usb_eth_bridge_free(bridge);
     tusb_deinit(0);
-    rhs_hal_usb_set_interface(bridge->prev_usb_intf);
+    rhs_hal_usb_set_interface(bridge->prev_usb_intf, bridge->prev_usb_intf->context);
     rhs_hal_eth_deinit();  // disable IRQ, clocks, reset GPIO
 }
 

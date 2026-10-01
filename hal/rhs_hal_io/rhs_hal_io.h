@@ -24,6 +24,11 @@ void OUT3_ON(void);
 void OUT3_OFF(void);
 void OUT4_ON(void);
 void OUT4_OFF(void);
+bool OUT0_IS_HIGH(void);
+bool OUT1_IS_HIGH(void);
+bool OUT2_IS_HIGH(void);
+bool OUT3_IS_HIGH(void);
+bool OUT4_IS_HIGH(void);
 
 /** KEYs defines **/
 void KEY0_ON(void);
@@ -36,3 +41,8 @@ void KEY3_ON(void);
 void KEY3_OFF(void);
 void KEY4_ON(void);
 void KEY4_OFF(void);
+bool KEY0_IS_OPEN(void);
+bool KEY1_IS_OPEN(void);
+bool KEY2_IS_OPEN(void);
+bool KEY3_IS_OPEN(void);
+bool KEY4_IS_OPEN(void);

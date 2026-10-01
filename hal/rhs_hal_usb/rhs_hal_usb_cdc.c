@@ -196,15 +196,17 @@ static int32_t usb_dual_cdc(void* context);
 static RHSThread* thread;
 static bool       finish = false;
 
-static void cdc_init(void)
+static void cdc_init(void* context)
 {
+    UNUSED(context);
     thread = rhs_thread_alloc("CDCDual", 4096, usb_dual_cdc, NULL);
     finish = false;
     rhs_thread_start(thread);
 }
 
-static void cdc_deinit(void)
+static void cdc_deinit(void* context)
 {
+    UNUSED(context);
     finish = true;
     rhs_hal_usb_disable();
     rhs_thread_join(thread);

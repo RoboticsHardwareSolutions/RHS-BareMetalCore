@@ -83,11 +83,11 @@ static void usb_serial_vcp_init(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
 {
     if (vcp_ch == 0)
     {
-        rhs_hal_usb_set_interface(&usb_single_cdc_desc);
+        rhs_hal_usb_set_interface(&usb_single_cdc_desc, NULL);
     }
     else
     {
-        rhs_hal_usb_set_interface(&usb_dual_cdc_desc);
+        rhs_hal_usb_set_interface(&usb_dual_cdc_desc, NULL);
     }
     rhs_hal_cdc_set_callbacks(vcp_ch, (CdcCallbacks*) &cdc_cb, usb_serial);
 }
@@ -100,14 +100,14 @@ static void usb_serial_vcp_deinit(UsbSerialBridge* usb_serial, uint8_t vcp_ch)
     {
         if (vcp_ch == 1)
         {
-            rhs_hal_usb_set_interface(&usb_single_cdc_desc);
+            rhs_hal_usb_set_interface(&usb_single_cdc_desc, NULL);
         }
     }
     if (iface == &usb_single_cdc_desc)
     {
         if (vcp_ch == 0)
         {
-            rhs_hal_usb_set_interface(NULL);
+            rhs_hal_usb_set_interface(NULL, NULL);
         }
     }
     // If there is dual cdc interface and vcp_ch is 0, we can't switch to single cdc interface,

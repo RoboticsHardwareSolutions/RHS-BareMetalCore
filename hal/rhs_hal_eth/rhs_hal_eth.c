@@ -20,7 +20,7 @@ void rhs_hal_eth_init(void)
     for (size_t i = 0; i < sizeof(pins) / sizeof(pins[0]); i++)
     {
         // 11 is the Ethernet function
-        gpio_init(pins[i], MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 11);
+        gpio_init(pins[i], RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 11);
     }
     NVIC_EnableIRQ(ETH_IRQn);                // Setup Ethernet IRQ handler
     SYSCFG->PMC |= SYSCFG_PMC_MII_RMII_SEL;  // Use RMII. Goes first!
@@ -67,7 +67,7 @@ void rhs_hal_eth_deinit(void)
     for (size_t i = 0; i < sizeof(pins) / sizeof(pins[0]); i++)
     {
         // No alternate function
-        gpio_init(pins[i], MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_LOW, MG_GPIO_PULL_NONE, 0);
+        gpio_init(pins[i], RHS_GPIO_MODE_INPUT, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_LOW, RHS_GPIO_PULL_NONE, 0);
     }
 #endif
 }

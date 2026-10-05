@@ -195,22 +195,18 @@ bool OUT0_IS_HIGH(void)
 {
     return PIN_IS_HIGH(OUT0_GPIO_Port, OUT0_Pin);
 }
-
 bool OUT1_IS_HIGH(void)
 {
     return PIN_IS_HIGH(OUT1_GPIO_Port, OUT1_Pin);
 }
-
 bool OUT2_IS_HIGH(void)
 {
     return PIN_IS_HIGH(OUT2_GPIO_Port, OUT2_Pin);
 }
-
 bool OUT3_IS_HIGH(void)
 {
     return PIN_IS_HIGH(OUT3_GPIO_Port, OUT3_Pin);
 }
-
 bool OUT4_IS_HIGH(void)
 {
     return PIN_IS_HIGH(OUT4_GPIO_Port, OUT4_Pin);

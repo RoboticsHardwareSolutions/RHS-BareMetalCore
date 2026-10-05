@@ -4,6 +4,7 @@
 
 #ifdef __cplusplus
 extern "C" {
+
 #endif
 
 /** Timer ISR */
@@ -80,6 +81,8 @@ typedef enum
     RHSHalInterruptIdDMA1Channel2,
     RHSHalInterruptIdDMA1Channel3,
 #    elif defined(STM32G0B1xx)
+    RHSHalInterruptIdEXTI0_1,
+    RHSHalInterruptIdEXTI2_3,
     RHSHalInterruptIdEXTI4_15,
     RHSHalInterruptIdUSB_UCPD1_2,
 #    endif
@@ -101,8 +104,8 @@ typedef enum
     /* Special group, read docs first(ALL OF THEM: especially FreeRTOS configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY) */
     RHSHalInterruptPriorityKamiSama =
         6, /**< Forget about thread safety, you are god now. No one can prevent you from messing with OS critical
-              section. You are not allowed to use any OS primitives, but who can stop you? Use this priority only for
-              direct hardware interaction with LL HAL. */
+                  section. You are not allowed to use any OS primitives, but who can stop you? Use this priority only
+              for direct hardware interaction with LL HAL. */
 } RHSHalInterruptPriority;
 
 /** Initialize interrupt subsystem */

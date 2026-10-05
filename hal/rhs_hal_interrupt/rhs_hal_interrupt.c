@@ -314,7 +314,10 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
 {
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Rx0);
 #    if defined(TINYUSB)
-    tud_int_handler(0);
+    if (tud_inited())
+    {
+        tud_int_handler(0);
+    }
 #    endif
 }
 
@@ -322,7 +325,10 @@ void USB_HP_CAN1_TX_IRQHandler(void)
 {
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
 #    if defined(TINYUSB)
-    tud_int_handler(0);
+    if (tud_inited())
+    {
+        tud_int_handler(0);
+    }
 #    endif
 }
 

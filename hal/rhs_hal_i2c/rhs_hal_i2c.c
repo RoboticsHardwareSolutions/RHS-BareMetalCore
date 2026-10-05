@@ -365,6 +365,7 @@ static bool rhs_hal_i2c_transaction(I2C_TypeDef*      i2c,
         {
             if (rhs_hal_cortex_timer_is_expired(timer))
             {
+                LL_I2C_GenerateStopCondition(i2c);
                 return false;
             }
         }
@@ -388,6 +389,8 @@ static bool rhs_hal_i2c_transaction(I2C_TypeDef*      i2c,
             if (LL_I2C_IsActiveFlag_AF(i2c) || rhs_hal_cortex_timer_is_expired(timer))
             {
                 LL_I2C_ClearFlag_AF(i2c);
+                // Release the bus so a NACK/timeout does not wedge it in BUSY
+                LL_I2C_GenerateStopCondition(i2c);
                 return false;
             }
         }
@@ -399,6 +402,12 @@ static bool rhs_hal_i2c_transaction(I2C_TypeDef*      i2c,
     // Perform data transfer
     if (!rhs_hal_i2c_transfer(i2c, data, size, end, read, timer))
     {
+        if (end != RHSHalI2cEndStop)
+        {
+            // transfer() only issues STOP for RHSHalI2cEndStop; make sure a
+            // failed paused (Resumed later) transaction still releases the bus
+            LL_I2C_GenerateStopCondition(i2c);
+        }
         return false;
     }
 

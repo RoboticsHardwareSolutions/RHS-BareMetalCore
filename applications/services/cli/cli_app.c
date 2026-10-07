@@ -312,3 +312,165 @@ int32_t cli_service(void* context)
         cli_process_input(app);
     }
 }
+
+/* ---------------------------------------------------------------------------
+ * Commands with options: "<cmd> <opt> [args...]"
+ * ------------------------------------------------------------------------- */
+
+/** Upper bound of tokens in one line: each token takes at least "x " (2 chars) */
+#define CLI_MAX_ARGS (MAX_LINE_LENGTH / 2)
+
+/** Context of a command registered via cli_add_option() */
+typedef struct
+{
+    void*            ctx;      /**< User context passed to cli_add_option() */
+    const char*      command;  /**< Command name (not copied, used for output) */
+    const CliOption* options;  /**< Option table (not copied) */
+    size_t           op_count; /**< Number of entries in @ref options */
+} cli_entry_t;
+
+/**
+ * @brief Splits @p str into tokens separated by spaces/tabs, in place.
+ *
+ * Separators are replaced with '\0', empty tokens are not produced.
+ * Tokens beyond @p max_tokens are left unparsed.
+ *
+ * @param str        String to split (modified); may be NULL.
+ * @param tokens     Output array of pointers into @p str.
+ * @param max_tokens Capacity of @p tokens.
+ * @return Number of tokens stored in @p tokens.
+ */
+static int cli_tokenize(char* str, char* tokens[], int max_tokens)
+{
+    int count = 0;
+    while (str && *str && count < max_tokens)
+    {
+        while (*str == ' ' || *str == '\t')
+            str++;
+        if (*str == '\0')
+            break;
+        tokens[count++] = str;
+        while (*str && *str != ' ' && *str != '\t')
+            str++;
+        if (*str)
+            *str++ = '\0';
+    }
+    return count;
+}
+
+/** Prints all options of the command with their descriptions */
+static void cli_options_help(cli_entry_t* entry)
+{
+    printf("%s options:\r\n", entry->command);
+    for (size_t i = 0; i < entry->op_count; i++)
+    {
+        printf("%12s - %s\r\n", entry->options[i].name, entry->options[i].desc);
+    }
+}
+
+/**
+ * @brief CliCallback shared by all commands registered via cli_add_option().
+ *
+ * Tokenizes @p args, looks up the option by the first token and either
+ * prints help or calls the option handler with the remaining tokens.
+ *
+ * @param args Command line after the command name (modified in place).
+ * @param op   cli_entry_t of the command.
+ */
+static void cli_options_handler(char* args, void* op)
+{
+    rhs_assert(op);
+    cli_entry_t* entry = op;
+    char*        av[CLI_MAX_ARGS];
+    int          ac = cli_tokenize(args, av, CLI_MAX_ARGS);
+
+    // "<cmd>" or "<cmd> ?" - list all options
+    if (ac == 0 || strcmp(av[0], "?") == 0)
+    {
+        cli_options_help(entry);
+        return;
+    }
+
+    for (size_t i = 0; i < entry->op_count; i++)
+    {
+        const CliOption* option = &entry->options[i];
+        if (strcmp(av[0], option->name) != 0)
+            continue;
+
+        // "<cmd> <opt> ?" - describe a single option
+        if (ac > 1 && strcmp(av[1], "?") == 0)
+        {
+            printf("\t'%s %s' - %s\r\n", entry->command, option->name, option->desc);
+            return;
+        }
+        if (!option->handler)
+        {
+            printf("ERROR: [CLI] %s: no handler for '%s'\r\n", entry->command, option->name);
+            return;
+        }
+        // Skip the option name: the handler gets only its own arguments
+        int err = option->handler(ac - 1, av + 1, entry->ctx);
+        if (err)
+        {
+            printf("WARN: [CLI] %s %s failed (%d)\r\n", entry->command, option->name, err);
+        }
+        return;
+    }
+    printf("ERROR: [CLI] %s: unknown option '%s'. '?' for available options\r\n", entry->command, av[0]);
+}
+
+/**
+ * Allocates a cli_entry_t for the command and registers it with the common
+ * cli_options_handler(). The entry is freed by cli_remove_option().
+ */
+void cli_add_option(Cli* app, const char* name, const CliOptionList opList, void* context)
+{
+    rhs_assert(app && name);
+    rhs_assert(name[0] != ' ');
+    rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
+    CliCommand* existed = CliCommandDict_get(app->commands, name);
+    if (!existed)
+    {
+        cli_entry_t* cli_ctx = calloc(1, sizeof(cli_entry_t));
+        if (cli_ctx)
+        {
+            cli_ctx->ctx      = context;
+            cli_ctx->command  = name;
+            cli_ctx->op_count = opList.count;
+            cli_ctx->options  = opList.list;
+            // Mutex is already held: cli_add_command() would deadlock on it
+            CliCommand command = {
+                .context  = cli_ctx,
+                .callback = cli_options_handler,
+            };
+            CliCommandDict_set_at(app->commands, name, command);
+        }
+        else
+        {
+            printf("ERROR: [CLI] Failed to add command '%s' - out of heap memory\r\n", name);
+        }
+    }
+    else
+    {
+        printf("ERROR: [CLI] Command '%s' already registered\r\n", name);
+    }
+    rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
+}
+
+void cli_remove_option(Cli* app, const char* name)
+{
+    rhs_assert(app && name);
+    rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
+
+    CliCommand* command = CliCommandDict_get(app->commands, name);
+    if (command)
+    {
+        if (command->callback == cli_options_handler)
+        {
+            free(command->context);
+        }
+        // Mutex is already held: cli_remove_command() would deadlock on it
+        CliCommandDict_erase(app->commands, name);
+    }
+    rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
+}

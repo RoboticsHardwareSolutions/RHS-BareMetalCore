@@ -62,46 +62,4 @@ void mg_log(const char* fmt, ...)
 }
 
 
-static void mg_log_putchar(char c, void* param)
-{
-    (void) param;
 
-    static char buf[256];
-    static size_t len = 0;
-
-    if (c == '\r' || c == '\n')
-    {
-        if (len > 0)
-        {
-            buf[len] = '\0';
-
-            if (s_file != NULL && len + 32 < sizeof(buf))
-            {
-                snprintf(&buf[len], sizeof(buf) - len, " (%s:%d %s)", s_file, s_line, s_func);
-            }
-
-            switch (s_level)
-            {
-            case MG_LL_ERROR:   RHS_LOG_E(TAG, "%s", buf); break;
-            case MG_LL_INFO:    RHS_LOG_I(TAG, "%s", buf); break;
-            case MG_LL_DEBUG:   RHS_LOG_D(TAG, "%s", buf); break;
-            case MG_LL_VERBOSE: RHS_LOG_T(TAG, "%s", buf); break;
-            default:            RHS_LOG_I(TAG, "%s", buf); break;
-            }
-        }
-        len = 0;
-    }
-    else
-    {
-        if (len < sizeof(buf) - 1)
-        {
-            buf[len++] = c;
-        }
-    }
-}
-
-void mongoose_log_init(void)
-{
-    mg_log_set_fn(mg_log_putchar, NULL);
-    mg_log_set(MG_LL_ERROR);
-}

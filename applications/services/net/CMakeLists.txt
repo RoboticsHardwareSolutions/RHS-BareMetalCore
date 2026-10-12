@@ -27,6 +27,14 @@ if(RHS_APPLICATION_ETH_NET OR RHS_APPLICATION_USB_CDC_NET OR RHS_APPLICATION_USB
         MG_DRIVER_MDC_CR=4
         MG_ENABLE_FILE=0
         MG_ARCH=MG_ARCH_ARMGCC
+        MG_ENABLE_CUSTOM_LOG=1
+    )
+
+    target_sources(mongoose PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty/rhs/applications/services/net/log/mg_log.c)
+    target_include_directories(mongoose
+            PUBLIC
+            ${CMAKE_SOURCE_DIR}/thirdparty/rhs/applications/services/net/log
+            ${CMAKE_SOURCE_DIR}/thirdparty/rhs/
     )
 
     target_link_libraries(

@@ -2,7 +2,7 @@
 #include "rhs.h"
 #include "rhs_hal.h"
 #include "net_i.h"
-#include "../log/mongoose_log.h"
+
 
 #define TAG "eth_net"
 
@@ -92,7 +92,7 @@ static EthNet* eth_net_alloc(const NetConfig* config, const EthPhyConfig* phy_co
 
     mg_mgr_init(app->net.mgr);  // and attach it to the interface
 
-    mongoose_log_init();
+    mg_log_set(MG_LL_ERROR);
 
     eth_net_init_tcpip(&app->net, phy_config);
 

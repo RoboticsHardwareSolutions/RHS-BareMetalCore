@@ -4,7 +4,7 @@
 #include "net_i.h"
 #include "tusb.h"
 #include "rhs_hal_cdc_net.h"
-#include "../log/mongoose_log.h"
+
 
 typedef struct
 {
@@ -158,7 +158,7 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
 
     mg_mgr_init(app->net.mgr);  // Mongoose event manager
 
-    mongoose_log_init();
+    mg_log_set(MG_LL_ERROR);
 
     // It is necessary that the mac for usb_cdc_net and usb_eth_bridge be different,
     // otherwise the system may incorrectly name the interface.

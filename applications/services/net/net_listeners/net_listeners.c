@@ -3,6 +3,8 @@
 #include "rhs.h"
 #include "net_listeners.h"
 
+#define TAG "net_listeners"
+
 void net_listeners_add(NetListener**   listeners,
                            NetListenerType type,
                            const char*        uri,
@@ -42,7 +44,7 @@ void net_listeners_add(NetListener**   listeners,
         current->next = listener;
     }
 
-    MG_INFO(("Listener added: type=%d, uri=%s", type, uri));
+    RHS_LOG_I(TAG, "Listener added: type=%d, uri=%s", type, uri);
 }
 
 bool net_listeners_remove(NetListener** listeners, const char* uri)
@@ -74,7 +76,7 @@ bool net_listeners_remove(NetListener** listeners, const char* uri)
                 previous->next = current->next;
             }
 
-            MG_INFO(("Listener removed: type=%d, uri=%s", current->type, current->uri));
+            RHS_LOG_I(TAG, "Listener removed: type=%d, uri=%s", current->type, current->uri);
 
             // Free the memory
             free(current->uri);

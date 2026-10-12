@@ -20,6 +20,7 @@
 #include "rhs_hal_cdc_net.h"
 #include "cli.h"
 
+
 struct UsbEthBridge
 {
     struct mg_tcpip_if                 eth_ifp; /* ETH interface (for driver only) */
@@ -74,6 +75,7 @@ static int32_t bridge_worker(void* ctx)
      * mg_tcpip_init is called only to let the driver allocate DMA descriptors
      * and the recv_queue.  mg_mgr_poll is never called. */
     mg_mgr_init(&b->eth_mgr);
+    mg_log_set(MG_LL_ERROR);
     mg_tcpip_init(&b->eth_mgr, &b->eth_ifp);
 
     /* Switch Ethernet MAC filter to promiscuous so ALL frames from the LAN

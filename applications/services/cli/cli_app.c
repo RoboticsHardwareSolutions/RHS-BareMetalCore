@@ -1,8 +1,10 @@
 #include "cli.h"
-#include "cli_app.h"
+#include "core/log.h"
 #include "rhs.h"
 #include "rhs_hal.h"
+#include <ctype.h>
 #include <stddef.h>
+#include <string.h>
 #include "rhs_version.h"
 #include <m-dict.h>
 #include "core/m_cstr_dup.h"
@@ -10,6 +12,17 @@
 #define TAG "cli"
 
 #define MAX_LINE_LENGTH 64
+
+/** Upper bound of tokens in one line: each token takes at least "x " (2 chars) */
+#define CLI_MAX_ARGS (MAX_LINE_LENGTH / 2)
+
+typedef struct
+{
+    void*         context;  /**< User context of the callback or option handlers */
+    CliOptionList options;  /**< Option table; empty for legacy commands */
+    CliCallback   callback; /**< Raw-line handler of cli_add_command(); NULL for option commands */
+    uint32_t      flags;    /**< Not used yet */
+} CliCommand;
 
 DICT_DEF2(CliCommandDict, const char*, M_CSTR_DUP_OPLIST, CliCommand, M_POD_OPLIST);
 
@@ -20,6 +33,46 @@ struct Cli
     char             line[MAX_LINE_LENGTH];
     CliCommandDict_t commands;
 };
+
+/**
+ * @brief Dispatches "<cmd> <opt> [args...]" to the option table of @p command.
+ *
+ * Tokenizes @p args, looks up the option by the first token and either
+ * prints help or calls the option handler with the remaining tokens.
+ * Unknown options, missing handlers and handler errors are reported to the CLI.
+ *
+ * @param name    Command name, used for output.
+ * @param command Command with an option table.
+ * @param args    Command line after the command name (modified in place); may be NULL.
+ */
+static void cli_options_handler(const char* name, const CliCommand* command, char* args);
+
+/**
+ * @brief Adds new command to command dictionary (under the CLI mutex).
+ *
+ * An already registered name is not replaced: an error is logged instead.
+ *
+ * @param app CLI instance
+ * @param name Command name (copied): starts with a visible character, no spaces/tabs (asserted)
+ * @param cmd Command entity
+ */
+static void cli_add_to_dict(Cli* app, const char* name, CliCommand cmd)
+{
+    rhs_assert(app && name);
+    rhs_assert(app->commands);
+    rhs_assert(isgraph((unsigned char) name[0]));
+    rhs_assert(strpbrk(name, " \t") == NULL);
+    rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
+    if (CliCommandDict_get(app->commands, name))
+    {
+        RHS_LOG_E(TAG, "Command '%s' already registered", name);
+    }
+    else
+    {
+        CliCommandDict_set_at(app->commands, name, cmd);
+    }
+    rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
+}
 
 Cli* cli_alloc(void)
 {
@@ -33,20 +86,31 @@ Cli* cli_alloc(void)
 
 void cli_add_command(Cli* app, const char* name, CliCallback callback, void* context)
 {
-    rhs_assert(strcmp(name, " ") != 0);
-
+    rhs_assert(callback);
     CliCommand command = {
         .context  = context,
         .callback = callback,
+        .options  = {0},
     };
 
-    rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
-    CliCommandDict_set_at(app->commands, name, command);
-    rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
+    cli_add_to_dict(app, name, command);
+}
+
+void cli_add_command_options(Cli* app, const char* name, const CliOptionList opList, void* context)
+{
+    rhs_assert(opList.list || opList.count == 0);
+    CliCommand command = {
+        .context = context,
+        .options = opList,
+        .callback = NULL,
+    };
+
+    cli_add_to_dict(app, name, command);
 }
 
 void cli_remove_command(Cli* app, const char* name)
 {
+    rhs_assert(app && name);
     rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
     CliCommandDict_erase(app->commands, name);
     rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
@@ -72,29 +136,34 @@ static char cli_getc(void)
     return c;
 }
 
-void cli_reset(Cli* app)
+static void cli_reset(Cli* app)
 {
     app->cursor_position = 0;
     memset(app->line, 0, MAX_LINE_LENGTH);
 }
 
-void cli_handle_enter(Cli* app)
+static void cli_handle_enter(Cli* app)
 {
-    char* end;
-    if (end = strchr(app->line, ' '))
-    {
-        *end = 0;
-    }
+    rhs_assert(app);
 
-    CliCommand* command = CliCommandDict_get(app->commands, app->line);
+    // Legacy callbacks get the raw rest of the line: NULL if there is no separator
+    char* args = strpbrk(app->line, " \t");
+    if (args)
+        *args++ = '\0';
+
+    // The command runs under the mutex, so it can't be removed while running.
+    // Thus handlers must not (un)register CLI commands: the mutex is not recursive.
+    rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
+    const CliCommand* command = CliCommandDict_get(app->commands, app->line);
     if (command)
     {
-        command->callback(end ? end + 1 : NULL, command->context);
+        (command->callback) ? command->callback(args, command->context) : cli_options_handler(app->line, command, args);
     }
     else
     {
-        RHS_LOG_W(TAG, "Unknown command. Type '?' for list of commands.");
+        printf("Unknown command. Type '?' for list of commands.\r\n");
     }
+    rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
     cli_reset(app);
 }
 
@@ -132,8 +201,12 @@ void cli_process_input(Cli* app)
     }
     else if ((in_chr >= 0x20 && in_chr < 0x7F))
     {
-        app->line[app->cursor_position] = in_chr;
-        app->cursor_position++;
+        // Keep the last byte for the terminating '\0', extra characters are dropped
+        if (app->cursor_position < MAX_LINE_LENGTH - 1)
+        {
+            app->line[app->cursor_position] = in_chr;
+            app->cursor_position++;
+        }
     }
     else
     {
@@ -243,7 +316,7 @@ void cli_command_uid(char* args, void* context)
 void cli_command_top(char* args, void* context)
 {
     static RHSThreadList* thread_list = NULL;
-    if (!thread_list) // FIXME: It must be separate thread
+    if (!thread_list)  // FIXME: It must be separate thread
         thread_list = rhs_thread_list_create();
     uint16_t count;
 
@@ -313,22 +386,6 @@ int32_t cli_service(void* context)
     }
 }
 
-/* ---------------------------------------------------------------------------
- * Commands with options: "<cmd> <opt> [args...]"
- * ------------------------------------------------------------------------- */
-
-/** Upper bound of tokens in one line: each token takes at least "x " (2 chars) */
-#define CLI_MAX_ARGS (MAX_LINE_LENGTH / 2)
-
-/** Context of a command registered via cli_add_option() */
-typedef struct
-{
-    void*            ctx;      /**< User context passed to cli_add_option() */
-    const char*      command;  /**< Command name (not copied, used for output) */
-    const CliOption* options;  /**< Option table (not copied) */
-    size_t           op_count; /**< Number of entries in @ref options */
-} cli_entry_t;
-
 /**
  * @brief Splits @p str into tokens separated by spaces/tabs, in place.
  *
@@ -359,118 +416,51 @@ static int cli_tokenize(char* str, char* tokens[], int max_tokens)
 }
 
 /** Prints all options of the command with their descriptions */
-static void cli_options_help(cli_entry_t* entry)
+static void cli_options_help(const char* name, const CliCommand* command)
 {
-    printf("%s options:\r\n", entry->command);
-    for (size_t i = 0; i < entry->op_count; i++)
+    printf("%s options:\r\n", name);
+    for (size_t i = 0; i < command->options.count; i++)
     {
-        printf("%12s - %s\r\n", entry->options[i].name, entry->options[i].desc);
+        printf("%12s - %s\r\n", command->options.list[i].name, command->options.list[i].desc);
     }
 }
 
-/**
- * @brief CliCallback shared by all commands registered via cli_add_option().
- *
- * Tokenizes @p args, looks up the option by the first token and either
- * prints help or calls the option handler with the remaining tokens.
- *
- * @param args Command line after the command name (modified in place).
- * @param op   cli_entry_t of the command.
- */
-static void cli_options_handler(char* args, void* op)
+static void cli_options_handler(const char* name, const CliCommand* command, char* args)
 {
-    rhs_assert(op);
-    cli_entry_t* entry = op;
-    char*        av[CLI_MAX_ARGS];
-    int          ac = cli_tokenize(args, av, CLI_MAX_ARGS);
+    char* av[CLI_MAX_ARGS];
+    int   ac = cli_tokenize(args, av, CLI_MAX_ARGS);
 
     // "<cmd>" or "<cmd> ?" - list all options
     if (ac == 0 || strcmp(av[0], "?") == 0)
     {
-        cli_options_help(entry);
+        cli_options_help(name, command);
         return;
     }
 
-    for (size_t i = 0; i < entry->op_count; i++)
+    for (size_t i = 0; i < command->options.count; i++)
     {
-        const CliOption* option = &entry->options[i];
+        const CliOption* option = &command->options.list[i];
         if (strcmp(av[0], option->name) != 0)
             continue;
 
         // "<cmd> <opt> ?" - describe a single option
         if (ac > 1 && strcmp(av[1], "?") == 0)
         {
-            printf("\t'%s %s' - %s\r\n", entry->command, option->name, option->desc);
+            printf("Usage: '%s %s' - %s\r\n", name, option->name, option->desc);
             return;
         }
         if (!option->handler)
         {
-            printf("ERROR: [CLI] %s: no handler for '%s'\r\n", entry->command, option->name);
+            printf("%s: no handler for '%s'\r\n", name, option->name);
             return;
         }
         // Skip the option name: the handler gets only its own arguments
-        int err = option->handler(ac - 1, av + 1, entry->ctx);
+        int err = option->handler(ac - 1, av + 1, command->context);
         if (err)
         {
-            printf("WARN: [CLI] %s %s failed (%d)\r\n", entry->command, option->name, err);
+            printf("%s %s failed (%d)\r\n", name, option->name, err);
         }
         return;
     }
-    printf("ERROR: [CLI] %s: unknown option '%s'. '?' for available options\r\n", entry->command, av[0]);
-}
-
-/**
- * Allocates a cli_entry_t for the command and registers it with the common
- * cli_options_handler(). The entry is freed by cli_remove_option().
- */
-void cli_add_option(Cli* app, const char* name, const CliOptionList opList, void* context)
-{
-    rhs_assert(app && name);
-    rhs_assert(name[0] != ' ');
-    rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
-    CliCommand* existed = CliCommandDict_get(app->commands, name);
-    if (!existed)
-    {
-        cli_entry_t* cli_ctx = calloc(1, sizeof(cli_entry_t));
-        if (cli_ctx)
-        {
-            cli_ctx->ctx      = context;
-            cli_ctx->command  = name;
-            cli_ctx->op_count = opList.count;
-            cli_ctx->options  = opList.list;
-            // Mutex is already held: cli_add_command() would deadlock on it
-            CliCommand command = {
-                .context  = cli_ctx,
-                .callback = cli_options_handler,
-            };
-            CliCommandDict_set_at(app->commands, name, command);
-        }
-        else
-        {
-            printf("ERROR: [CLI] Failed to add command '%s' - out of heap memory\r\n", name);
-        }
-    }
-    else
-    {
-        printf("ERROR: [CLI] Command '%s' already registered\r\n", name);
-    }
-    rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
-}
-
-void cli_remove_option(Cli* app, const char* name)
-{
-    rhs_assert(app && name);
-    rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
-
-    CliCommand* command = CliCommandDict_get(app->commands, name);
-    if (command)
-    {
-        if (command->callback == cli_options_handler)
-        {
-            free(command->context);
-        }
-        // Mutex is already held: cli_remove_command() would deadlock on it
-        CliCommandDict_erase(app->commands, name);
-    }
-    rhs_assert(rhs_mutex_release(app->mutex) == RHSStatusOk);
+    printf("%s: unknown option '%s'. '?' for available options\r\n", name, av[0]);
 }

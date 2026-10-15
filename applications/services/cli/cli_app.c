@@ -18,10 +18,10 @@
 
 typedef struct
 {
-    void*         context;  /**< User context of the callback or option handlers */
-    CliOptionList options;  /**< Option table; empty for legacy commands */
-    CliCallback   callback; /**< Raw-line handler of cli_add_command(); NULL for option commands */
-    uint32_t      flags;    /**< Not used yet */
+    void* context; /**< User context of the callback; CliOptionList for option commands */
+    // CliOptionList options;  /**< Option table; empty for legacy commands */
+    CliCallback callback; /**< Raw-line handler: user one or cli_options_handler() for option commands */
+    uint32_t    flags;    /**< Not used yet */
 } CliCommand;
 
 DICT_DEF2(CliCommandDict, const char*, M_CSTR_DUP_OPLIST, CliCommand, M_POD_OPLIST);
@@ -35,17 +35,17 @@ struct Cli
 };
 
 /**
- * @brief Dispatches "<cmd> <opt> [args...]" to the option table of @p command.
+ * @brief CliCallback of option commands: dispatches "<cmd> <opt> [args...]" to the option table.
  *
- * Tokenizes @p args, looks up the option by the first token and either
- * prints help or calls the option handler with the remaining tokens.
- * Unknown options, missing handlers and handler errors are reported to the CLI.
+ * Tokenizes @p args, looks up the option by name and either prints help or
+ * calls the option handler with the tokens after the option name and
+ * CliOptionList::context.
+ * Unknown options and handler errors are reported to the CLI; options without a handler are ignored.
  *
- * @param name    Command name, used for output.
- * @param command Command with an option table.
- * @param args    Command line after the command name (modified in place); may be NULL.
+ * @param args Command line (modified in place); may be NULL.
+ * @param ctx  CliOptionList registered by cli_add_command_options(), with the user context inside.
  */
-static void cli_options_handler(const char* name, const CliCommand* command, char* args);
+static void cli_options_handler(char* args, void* ctx);
 
 /**
  * @brief Adds new command to command dictionary (under the CLI mutex).
@@ -86,26 +86,19 @@ Cli* cli_alloc(void)
 
 void cli_add_command(Cli* app, const char* name, CliCallback callback, void* context)
 {
-    rhs_assert(callback);
+    rhs_assert(app && callback);
     CliCommand command = {
         .context  = context,
         .callback = callback,
-        .options  = {0},
     };
-
     cli_add_to_dict(app, name, command);
 }
 
-void cli_add_command_options(Cli* app, const char* name, const CliOptionList opList, void* context)
+void cli_add_command_options(Cli* app, const char* name, CliOptionList* list, void* context)
 {
-    rhs_assert(opList.list || opList.count == 0);
-    CliCommand command = {
-        .context = context,
-        .options = opList,
-        .callback = NULL,
-    };
-
-    cli_add_to_dict(app, name, command);
+    rhs_assert(list);
+    list->context = context;
+    cli_add_command(app, name, cli_options_handler, list);
 }
 
 void cli_remove_command(Cli* app, const char* name)
@@ -155,9 +148,9 @@ static void cli_handle_enter(Cli* app)
     // Thus handlers must not (un)register CLI commands: the mutex is not recursive.
     rhs_assert(rhs_mutex_acquire(app->mutex, RHSWaitForever) == RHSStatusOk);
     const CliCommand* command = CliCommandDict_get(app->commands, app->line);
-    if (command)
+    if (command && command->callback)
     {
-        (command->callback) ? command->callback(args, command->context) : cli_options_handler(app->line, command, args);
+        command->callback(args, command->context);
     }
     else
     {
@@ -415,52 +408,52 @@ static int cli_tokenize(char* str, char* tokens[], int max_tokens)
     return count;
 }
 
-/** Prints all options of the command with their descriptions */
-static void cli_options_help(const char* name, const CliCommand* command)
+/** Prints names of all options of the command, two per line */
+static void cli_options_help(const CliOptionList* options)
 {
-    printf("%s options:\r\n", name);
-    for (size_t i = 0; i < command->options.count; i++)
+    printf("Options:\r\n");
+    for (size_t i = 0; i < options->count; i++)
     {
-        printf("%12s - %s\r\n", command->options.list[i].name, command->options.list[i].desc);
+        printf("%-12s", options->list[i].name);
+        (i % 2 == 1) ? printf("\r\n") : printf(" ");
     }
+    if (options->count % 2 == 1)
+        printf("\r\n");
 }
 
-static void cli_options_handler(const char* name, const CliCommand* command, char* args)
+static void cli_options_handler(char* args, void* ctx)
 {
-    char* av[CLI_MAX_ARGS];
-    int   ac = cli_tokenize(args, av, CLI_MAX_ARGS);
+    CliOptionList* options = ctx;
+    char*          av[CLI_MAX_ARGS];
+    int            ac = cli_tokenize(args, av, CLI_MAX_ARGS);
 
-    // "<cmd>" or "<cmd> ?" - list all options
     if (ac == 0 || strcmp(av[0], "?") == 0)
     {
-        cli_options_help(name, command);
+        cli_options_help(options);
         return;
     }
 
-    for (size_t i = 0; i < command->options.count; i++)
+    for (size_t i = 0; i < options->count; i++)
     {
-        const CliOption* option = &command->options.list[i];
+        const CliOption* option = &options->list[i];
         if (strcmp(av[0], option->name) != 0)
             continue;
 
         // "<cmd> <opt> ?" - describe a single option
         if (ac > 1 && strcmp(av[1], "?") == 0)
         {
-            printf("Usage: '%s %s' - %s\r\n", name, option->name, option->desc);
+            printf("Usage: '%s' - %s\r\n", option->name, option->desc);
             return;
         }
-        if (!option->handler)
+        if (option->handler)
         {
-            printf("%s: no handler for '%s'\r\n", name, option->name);
-            return;
-        }
-        // Skip the option name: the handler gets only its own arguments
-        int err = option->handler(ac - 1, av + 1, command->context);
-        if (err)
-        {
-            printf("%s %s failed (%d)\r\n", name, option->name, err);
+            int err = option->handler(ac - 1, av + 1, options->context);
+            if (err)
+            {
+                printf("%s failed (code %d)\r\n", option->name, err);
+            }
         }
         return;
     }
-    printf("%s: unknown option '%s'. '?' for available options\r\n", name, av[0]);
+    printf("Unknown option '%s'. '?' for available options\r\n", av[0]);
 }

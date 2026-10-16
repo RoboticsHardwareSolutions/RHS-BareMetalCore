@@ -19,7 +19,6 @@
 typedef struct
 {
     void* context; /**< User context of the callback; CliOptionList for option commands */
-    // CliOptionList options;  /**< Option table; empty for legacy commands */
     CliCallback callback; /**< Raw-line handler: user one or cli_options_handler() for option commands */
     uint32_t    flags;    /**< Not used yet */
 } CliCommand;

@@ -2,22 +2,24 @@
 #include <string.h>
 #include "rhs.h"
 
+#define TAG "modbus"
+
 static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len, void* context)
 {
     if (context == NULL)
     {
-        MG_ERROR(("There isn't modbus context"));
+        RHS_LOG_E(TAG, "There isn't modbus context");
         return;
     }
 
     ModbusTcpApi* api = (ModbusTcpApi*) context;
 
-    MG_DEBUG(("Received PDU %p len %lu, hexdump:", buf, len));
+    RHS_LOG_D(TAG, "Received PDU %p len %lu, hexdump:", buf, len);
     mg_hexdump(buf, len);
     // size_t hdr_size = 8, max_data_size = sizeof(response) - hdr_size;
     if (len < 12)
     {
-        MG_ERROR(("PDU too small"));
+        RHS_LOG_E(TAG, "PDU too small");
         return;
     }
 
@@ -67,18 +69,17 @@ static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len,
                 response[8]  = bytes_count;
                 response_len = 9 + bytes_count;
                 success      = true;
-                MG_DEBUG(("Read discrete inputs: start=%u, num=%u, bytes=%u", start, num, bytes_count));
+                RHS_LOG_D(TAG, "Read discrete inputs: start=%u, num=%u, bytes=%u", start, num, bytes_count);
             }
             else
             {
-                MG_ERROR(("Response too large for discrete inputs: bytes=%u", bytes_count));
+                RHS_LOG_E(TAG, "Response too large for discrete inputs: bytes=%u", bytes_count);
                 success = false;
             }
         }
         else
         {
-            MG_ERROR(
-                ("Invalid discrete inputs request: start=%u, num=%u, size=%u", start, num, api->discrete_inputs_size));
+            RHS_LOG_E(TAG, "Invalid discrete inputs request: start=%u, num=%u, size=%u", start, num, api->discrete_inputs_size);
             success = false;
         }
     }
@@ -116,17 +117,17 @@ static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len,
                 response[8]  = bytes_count;
                 response_len = 9 + bytes_count;
                 success      = true;
-                MG_DEBUG(("Read coils: start=%u, num=%u, bytes=%u", start, num, bytes_count));
+                RHS_LOG_D(TAG, "Read coils: start=%u, num=%u, bytes=%u", start, num, bytes_count);
             }
             else
             {
-                MG_ERROR(("Response too large for coils: bytes=%u", bytes_count));
+                RHS_LOG_E(TAG, "Response too large for coils: bytes=%u", bytes_count);
                 success = false;
             }
         }
         else
         {
-            MG_ERROR(("Invalid coils request: start=%u, num=%u, size=%u", start, num, api->coils_size));
+            RHS_LOG_E(TAG, "Invalid coils request: start=%u, num=%u, size=%u", start, num, api->coils_size);
             success = false;
         }
     }
@@ -155,17 +156,17 @@ static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len,
                 *(uint16_t*) &response[10] = mg_htons(value);
                 response_len               = 12;
                 success                    = true;
-                MG_DEBUG(("Write single coil: addr=%u, value=0x%04X", start, value));
+                RHS_LOG_D(TAG, "Write single coil: addr=%u, value=0x%04X", start, value);
             }
             else
             {
-                MG_ERROR(("Invalid coil value: 0x%04X (expected 0x0000 or 0xFF00)", value));
+                RHS_LOG_E(TAG, "Invalid coil value: 0x%04X (expected 0x0000 or 0xFF00)", value);
                 success = false;
             }
         }
         else
         {
-            MG_ERROR(("Invalid coil address: %u, size=%u", start, api->coils_size));
+            RHS_LOG_E(TAG, "Invalid coil address: %u, size=%u", start, api->coils_size);
             success = false;
         }
     }
@@ -178,8 +179,8 @@ static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len,
         *(uint16_t*) &response[8]  = mg_htons(start);
         *(uint16_t*) &response[10] = mg_htons(value);
         response_len               = 12;
-        MG_ERROR(("func %d NOT IMPLEMENTED", func));
-        // MG_DEBUG(("Glue returned %s", success ? "success" : "failure"));
+        RHS_LOG_E(TAG, "func %d NOT IMPLEMENTED", func);
+        // RHS_LOG_D(TAG, "Glue returned %s", success ? "success" : "failure");
     }
     else if (func == 15)
     {  // Write Multiple Coils
@@ -218,18 +219,17 @@ static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len,
                 *(uint16_t*) &response[10] = mg_htons(num);
                 response_len               = 12;
                 success                    = true;
-                MG_DEBUG(("Write multiple coils: start=%u, num=%u, bytes=%u", start, num, byte_count));
+                RHS_LOG_D(TAG, "Write multiple coils: start=%u, num=%u, bytes=%u", start, num, byte_count);
             }
             else
             {
-                MG_ERROR(
-                    ("Invalid coil data format: expected_bytes=%u, received_bytes=%u", expected_bytes, byte_count));
+                RHS_LOG_E(TAG, "Invalid coil data format: expected_bytes=%u, received_bytes=%u", expected_bytes, byte_count);
                 success = false;
             }
         }
         else
         {
-            MG_ERROR(("Invalid coils write request: start=%u, num=%u, size=%u", start, num, api->coils_size));
+            RHS_LOG_E(TAG, "Invalid coils write request: start=%u, num=%u, size=%u", start, num, api->coils_size);
             success = false;
         }
     }
@@ -249,8 +249,8 @@ static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len,
             *(uint16_t*) &response[8]  = mg_htons(start);
             *(uint16_t*) &response[10] = mg_htons(num);
             response_len               = 12;
-            MG_ERROR(("func %d NOT IMPLEMENTED", func));
-            // MG_DEBUG(("Glue returned %s", success ? "success" : "failure"));
+            RHS_LOG_E(TAG, "func %d NOT IMPLEMENTED", func);
+            // RHS_LOG_D(TAG, "Glue returned %s", success ? "success" : "failure");
         }
     }
     else if (func == 3)
@@ -282,17 +282,17 @@ static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len,
                 response[8]  = (uint8_t) (num * 2);  // Byte count
                 response_len = 9 + response[8];
                 success      = true;
-                MG_DEBUG(("Read holding registers: start=%u, num=%u, bytes=%u", start, num, response[8]));
+                RHS_LOG_D(TAG, "Read holding registers: start=%u, num=%u, bytes=%u", start, num, response[8]);
             }
             else
             {
-                MG_ERROR(("Response too large for holding registers: num=%u", num));
+                RHS_LOG_E(TAG, "Response too large for holding registers: num=%u", num);
                 success = false;
             }
         }
         else
         {
-            MG_ERROR(("Invalid holding registers request: start=%u, num=%u, size=%u", start, num, api->holdings_size));
+            RHS_LOG_E(TAG, "Invalid holding registers request: start=%u, num=%u, size=%u", start, num, api->holdings_size);
             success = false;
         }
     }
@@ -312,8 +312,8 @@ static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len,
             }
             response[8]  = (uint8_t) (num * 2);
             response_len = 9 + response[8];
-            MG_ERROR(("func %d NOT IMPLEMENTED", func));
-            // MG_DEBUG(("Glue returned %s", success ? "success" : "failure"));
+            RHS_LOG_E(TAG, "func %d NOT IMPLEMENTED", func);
+            // RHS_LOG_D(TAG, "Glue returned %s", success ? "success" : "failure");
         }
     }
 
@@ -325,7 +325,7 @@ static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len,
         response[8] = 4;  // Server Device Failure
     }
     *(uint16_t*) &response[4] = mg_htons((uint16_t) (response_len - 6));
-    MG_DEBUG(("Sending PDU response %lu:", response_len));
+    RHS_LOG_D(TAG, "Sending PDU response %lu:", response_len);
     mg_hexdump(response, response_len);
     mg_send(c, response, response_len);
 }
@@ -339,7 +339,7 @@ static void modbus_ev_handler(struct mg_connection* c, int ev, void* ev_data)
         if (c->recv.len < 7)
             return;                                    // Less than minimum length, buffer more
         len = mg_ntohs(*(uint16_t*) &c->recv.buf[4]);  // PDU length
-        MG_INFO(("Got %lu, expecting %lu", c->recv.len, len + 6));
+        RHS_LOG_I(TAG, "Got %lu, expecting %lu", c->recv.len, len + 6);
         if (c->recv.len < len + 6U)
             return;                                              // Partial frame, buffer more
         handle_modbus_pdu(c, c->recv.buf, len + 6, c->fn_data);  // Parse PDU and call user

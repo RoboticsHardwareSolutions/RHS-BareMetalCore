@@ -3,6 +3,7 @@
 #include "rhs_hal.h"
 #include "net_i.h"
 
+
 #define TAG "eth_net"
 
 typedef struct
@@ -90,6 +91,8 @@ static EthNet* eth_net_alloc(const NetConfig* config, const EthPhyConfig* phy_co
     rhs_hal_eth_init();
 
     mg_mgr_init(app->net.mgr);  // and attach it to the interface
+
+    mg_log_set(MG_LL_ERROR);
 
     eth_net_init_tcpip(&app->net, phy_config);
 

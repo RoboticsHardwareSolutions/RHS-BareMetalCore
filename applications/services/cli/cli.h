@@ -59,9 +59,9 @@ typedef struct
  */
 typedef struct
 {
-    void*     context; /**< Handler context, set by cli_add_command_options() */
-    unsigned  count;   /**< Number of entries in @ref list */
-    CliOption list[];  /**< Option table */
+    void*           context; /**< Handler context, set by cli_add_command_options() */
+    unsigned        count;   /**< Number of entries in @ref list */
+    const CliOption list[];  /**< Option table */
 } CliOptionList;
 
 /**

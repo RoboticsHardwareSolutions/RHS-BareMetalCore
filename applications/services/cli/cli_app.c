@@ -1,5 +1,4 @@
 #include "cli.h"
-#include "core/log.h"
 #include "rhs.h"
 #include "rhs_hal.h"
 #include <ctype.h>

@@ -108,45 +108,50 @@
 #define PIN_LOW(PORT, PIN...) (PORT->BSRR) = ((uint32_t) (PIN) << 16)
 
 /** INs defines **/
+/* IN0-4 are driven by an active-low input stage (external pull-up + sinking source):
+ * electrically LOW means the input signal is asserted, electrically HIGH is the
+ * unasserted/floating default. IS_HIGH()/IS_LOW() here report the logical signal
+ * state, not the raw electrical level -- hence the swapped PIN_IS_LOW/PIN_IS_HIGH
+ * below. */
 bool IN0_IS_HIGH(void)
-{
-    return PIN_IS_HIGH(IN0_GPIO_Port, IN0_Pin);
-}
-bool IN1_IS_HIGH(void)
-{
-    return PIN_IS_HIGH(IN1_GPIO_Port, IN1_Pin);
-}
-bool IN2_IS_HIGH(void)
-{
-    return PIN_IS_HIGH(IN2_GPIO_Port, IN2_Pin);
-}
-bool IN3_IS_HIGH(void)
-{
-    return PIN_IS_HIGH(IN3_GPIO_Port, IN3_Pin);
-}
-bool IN4_IS_HIGH(void)
-{
-    return PIN_IS_HIGH(IN4_GPIO_Port, IN4_Pin);
-}
-bool IN0_IS_LOW(void)
 {
     return PIN_IS_LOW(IN0_GPIO_Port, IN0_Pin);
 }
-bool IN1_IS_LOW(void)
+bool IN1_IS_HIGH(void)
 {
     return PIN_IS_LOW(IN1_GPIO_Port, IN1_Pin);
 }
-bool IN2_IS_LOW(void)
+bool IN2_IS_HIGH(void)
 {
     return PIN_IS_LOW(IN2_GPIO_Port, IN2_Pin);
 }
-bool IN3_IS_LOW(void)
+bool IN3_IS_HIGH(void)
 {
     return PIN_IS_LOW(IN3_GPIO_Port, IN3_Pin);
 }
-bool IN4_IS_LOW(void)
+bool IN4_IS_HIGH(void)
 {
     return PIN_IS_LOW(IN4_GPIO_Port, IN4_Pin);
+}
+bool IN0_IS_LOW(void)
+{
+    return PIN_IS_HIGH(IN0_GPIO_Port, IN0_Pin);
+}
+bool IN1_IS_LOW(void)
+{
+    return PIN_IS_HIGH(IN1_GPIO_Port, IN1_Pin);
+}
+bool IN2_IS_LOW(void)
+{
+    return PIN_IS_HIGH(IN2_GPIO_Port, IN2_Pin);
+}
+bool IN3_IS_LOW(void)
+{
+    return PIN_IS_HIGH(IN3_GPIO_Port, IN3_Pin);
+}
+bool IN4_IS_LOW(void)
+{
+    return PIN_IS_HIGH(IN4_GPIO_Port, IN4_Pin);
 }
 
 /** OUTs defines **/
@@ -355,10 +360,10 @@ void rhs_hal_io_init(void)
     /*Configure GPIO pin Output Level */
 
     HAL_GPIO_WritePin(KEY0_GPIO_Port, KEY0_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(KEY1_GPIO_Port, KEY0_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(KEY2_GPIO_Port, KEY0_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(KEY3_GPIO_Port, KEY0_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(KEY4_GPIO_Port, KEY0_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(KEY1_GPIO_Port, KEY1_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(KEY2_GPIO_Port, KEY2_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(KEY3_GPIO_Port, KEY3_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(KEY4_GPIO_Port, KEY4_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(OUT0_GPIO_Port, OUT0_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(OUT1_GPIO_Port, OUT1_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(OUT2_GPIO_Port, OUT2_Pin, GPIO_PIN_RESET);

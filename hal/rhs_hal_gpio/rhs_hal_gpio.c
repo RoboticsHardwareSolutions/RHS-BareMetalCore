@@ -4,8 +4,10 @@
 #include "stm32f1xx_ll_exti.h"
 #include "stm32f1xx_ll_gpio.h"
 #elif defined(STM32F765xx)
+#include "stm32f7xx_ll_bus.h"
 #include "stm32f7xx_ll_exti.h"
 #include "stm32f7xx_ll_gpio.h"
+#include "stm32f7xx_ll_system.h"
 #endif
 
 #if defined(STM32F103xE) || defined(STM32F765xx)
@@ -43,14 +45,59 @@ static uint32_t rhs_hal_gpio_invalid_argument_crash(void)
      : ((pin) == (LL_GPIO_PIN_15)) ? prefix##15 \
                                    : rhs_hal_gpio_invalid_argument_crash())
 
-// #define GET_SYSCFG_EXTI_PORT(port) GPIO_PORT_MAP(port, LL_SYSCFG_EXTI_PORT)
-#define GET_SYSCFG_EXTI_LINE(pin) GPIO_PIN_MAP(pin, LL_SYSCFG_EXTI_LINE)
 #define GET_EXTI_LINE(pin) GPIO_PIN_MAP(pin, LL_EXTI_LINE_)
+
+/* Port/line selector for the EXTI-source routing register (AFIO_EXTICR on
+ * F1, SYSCFG_EXTICR on F7) -- a *different* constant set than LL_GPIO_PIN_n,
+ * so it needs its own port/line maps rather than reusing GPIO_PORT_MAP (which
+ * only covers A-E, insufficient for BMPLC_XL's IN pins on GPIOF/G). */
+#if defined(STM32F103xE)
+#define EXTI_SRC_PORT_MAP(port) GPIO_PORT_MAP(port, LL_GPIO_AF_EXTI_PORT)
+#define EXTI_SRC_LINE_MAP(pin) GPIO_PIN_MAP(pin, LL_GPIO_AF_EXTI_LINE)
+#define rhs_hal_gpio_set_exti_source(port, pin) \
+    LL_GPIO_AF_SetEXTISource(EXTI_SRC_PORT_MAP(port), EXTI_SRC_LINE_MAP(pin))
+#elif defined(STM32F765xx)
+#define EXTI_SRC_PORT_MAP(port)                 \
+    (((port) == (GPIOA))   ? LL_SYSCFG_EXTI_PORTA \
+     : ((port) == (GPIOB)) ? LL_SYSCFG_EXTI_PORTB \
+     : ((port) == (GPIOC)) ? LL_SYSCFG_EXTI_PORTC \
+     : ((port) == (GPIOD)) ? LL_SYSCFG_EXTI_PORTD \
+     : ((port) == (GPIOE)) ? LL_SYSCFG_EXTI_PORTE \
+     : ((port) == (GPIOF)) ? LL_SYSCFG_EXTI_PORTF \
+     : ((port) == (GPIOG)) ? LL_SYSCFG_EXTI_PORTG \
+     : ((port) == (GPIOH)) ? LL_SYSCFG_EXTI_PORTH \
+                            : rhs_hal_gpio_invalid_argument_crash())
+#define EXTI_SRC_LINE_MAP(pin) GPIO_PIN_MAP(pin, LL_SYSCFG_EXTI_LINE)
+#define rhs_hal_gpio_set_exti_source(port, pin) \
+    LL_SYSCFG_SetEXTISource(EXTI_SRC_PORT_MAP(port), EXTI_SRC_LINE_MAP(pin))
+#endif
 
 // #define GET_PWR_PORT(port) GPIO_PORT_MAP(port, LL_PWR_GPIO_)
 // #define GET_PWR_PIN(pin) GPIO_PIN_MAP(pin, LL_PWR_GPIO_BIT_)
 
 static volatile RHSGpioInterrupt gpio_interrupt[GPIO_NUMBER];
+
+/* EXTI0-4 each have their own NVIC vector; lines 5-9 and 10-15 share one
+ * vector each -- map a pin number to the IRQn that will actually fire for
+ * it, so rhs_hal_gpio_add_int_callback() can enable the right one. */
+static IRQn_Type rhs_hal_gpio_exti_irqn(uint8_t pin_num)
+{
+    switch (pin_num)
+    {
+    case 0:
+        return EXTI0_IRQn;
+    case 1:
+        return EXTI1_IRQn;
+    case 2:
+        return EXTI2_IRQn;
+    case 3:
+        return EXTI3_IRQn;
+    case 4:
+        return EXTI4_IRQn;
+    default:
+        return (pin_num <= 9) ? EXTI9_5_IRQn : EXTI15_10_IRQn;
+    }
+}
 
 static uint8_t rhs_hal_gpio_get_pin_num(const RHSGpioPin* gpio)
 {
@@ -111,6 +158,17 @@ void rhs_hal_gpio_init_ex(const RHSGpioPin* gpio,
     // Set gpio mode
     if (mode >= RHSGpioModeInterruptRise)
     {
+#if defined(STM32F765xx)
+        // SYSCFG (the EXTI-source router on F7) has no other enabler in this
+        // codebase -- idempotent, safe to call on every interrupt-mode config.
+        LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
+#endif
+        // Route this pin's port onto its EXTI line (AFIO_EXTICR on F1,
+        // SYSCFG_EXTICR on F7) -- without this, the EXTI line stays routed
+        // to whatever port reset selected (Port A), so a pin on any other
+        // port would silently never see its own edges.
+        rhs_hal_gpio_set_exti_source(gpio->port, gpio->pin);
+
         // Set pin in interrupt mode
         LL_GPIO_SetPinMode(gpio->port, gpio->pin, LL_GPIO_MODE_INPUT);
         if (mode == RHSGpioModeInterruptRise || mode == RHSGpioModeInterruptRiseFall)
@@ -221,6 +279,14 @@ void rhs_hal_gpio_add_int_callback(const RHSGpioPin* gpio, RHSGpioExtiCallback c
 
     const uint32_t exti_line = GET_EXTI_LINE(gpio->pin);
     LL_EXTI_EnableIT_0_31(exti_line);
+
+    // LL_EXTI_EnableIT_0_31() only unmasks the line at the EXTI peripheral --
+    // the NVIC vector for it is never enabled anywhere else in this codebase
+    // (unlike CAN/UART/etc, which go through rhs_hal_interrupt.c's own IRQn
+    // table), so without this the interrupt would latch but never dispatch.
+    IRQn_Type irqn = rhs_hal_gpio_exti_irqn(pin_num);
+    NVIC_SetPriority(irqn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+    NVIC_EnableIRQ(irqn);
 
     RHS_CRITICAL_EXIT();
 }

@@ -311,3 +311,10 @@ void io_init(void)
     }
 #endif
 }
+
+void io_in_exti_enable(uint8_t ch, RHSGpioExtiCallback callback, void* context)
+{
+    rhs_assert(ch < 5);
+    rhs_hal_gpio_init_ex(&in_pins[ch], RHSGpioModeInterruptRiseFall, RHSGpioPullNo, RHSGpioSpeedLow, RHSGpioAltFnUnused);
+    rhs_hal_gpio_add_int_callback(&in_pins[ch], callback, context);
+}

@@ -12,7 +12,6 @@ $ git submodule add https://github.com/RoboticsHardwareSolutions/RHS-BareMetalCo
         
 ```cmake
 set(BMPLC_XL ON) # or
-set(BMPLC_L ON)  # or
 set(BMPLC_M ON)
 
 include(thirdparty/rhs/rhs.cmake)

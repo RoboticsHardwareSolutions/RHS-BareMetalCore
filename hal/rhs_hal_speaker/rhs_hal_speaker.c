@@ -299,7 +299,7 @@ bool rhs_hal_speaker_is_mine(void)
 
 void rhs_hal_speaker_start(float frequency, float volume)
 {
-#if defined(BMPLC_XL) || defined(BMPLC_L)
+#if defined(BMPLC_XL)
     htim.Init.Period    = rhs_hal_speaker_calculate_autoreload(frequency);
     htim.Instance->ARR  = htim.Init.Period;
     htim.Instance->CCR1 = rhs_hal_speaker_calculate_compare(volume);
@@ -324,7 +324,7 @@ void rhs_hal_speaker_start(float frequency, float volume)
 
 void rhs_hal_speaker_stop(void)
 {
-#if defined(BMPLC_XL) || defined(BMPLC_L)
+#if defined(BMPLC_XL)
     HAL_TIM_PWM_Stop(&htim, TIM_CHANNEL_1);
 #elif defined(BMPLC_M)
     HAL_TIM_PWM_Stop(&htim, TIM_CHANNEL_2);

@@ -1,6 +1,6 @@
 #include "rhs_hal_power.h"
 
-#if defined(BMPLC_XL) || defined(BMPLC_L)
+#if defined(BMPLC_XL)
 #    include "stm32f765xx.h"
 #elif defined(BMPLC_M)
 #    include "stm32f103xe.h"

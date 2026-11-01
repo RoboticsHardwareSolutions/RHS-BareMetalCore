@@ -12,7 +12,7 @@ typedef void (*RHSHalInterruptISR)(void* context);
 
 typedef enum
 {
-#if defined(BMPLC_XL) || defined(BMPLC_L)
+#if defined(BMPLC_XL)
     /* CAN */
     RHSHalInterruptIdCAN1Rx0,
     RHSHalInterruptIdCAN1SCE,

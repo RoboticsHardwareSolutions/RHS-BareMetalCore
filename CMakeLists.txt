@@ -107,13 +107,16 @@ if(TARGET rhs_hal_rtc)
 endif()
 
 #################### FORMAT SECTION #######################
-include(FetchContent)
-FetchContent_Declare(
-        rlibhelper
-        GIT_REPOSITORY https://github.com/RoboticsHardwareSolutions/rlibhelper.git
-        GIT_TAG main
-)
-FetchContent_MakeAvailable(rlibhelper)
+
+if (NOT TARGET rlibhelper)
+        include(FetchContent)
+        FetchContent_Declare(
+                rlibhelper
+                GIT_REPOSITORY https://github.com/RoboticsHardwareSolutions/rlibhelper.git
+                GIT_TAG main
+        )
+        FetchContent_MakeAvailable(rlibhelper)
+endif ()
 
 file(GLOB_RECURSE FILES
 "${CMAKE_CURRENT_SOURCE_DIR}/*.c"

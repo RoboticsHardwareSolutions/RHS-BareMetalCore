@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 project(rhs_hal_gpio C)
 
-# Header-only library – no compiled sources
-add_library(${PROJECT_NAME} STATIC old_rhs_hal_gpio.h)
+add_library(${PROJECT_NAME} STATIC rhs_hal_gpio.c)
 
 target_include_directories(
         ${PROJECT_NAME} INTERFACE

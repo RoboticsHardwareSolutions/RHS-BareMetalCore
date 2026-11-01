@@ -14,9 +14,8 @@
 #if RHS_HAL_RTC
 #    include "rhs_hal_rtc.h"
 #endif
-#if RHS_HAL_IO
-#    include "rhs_hal_io.h"
-#    include "old_rhs_hal_gpio.h"
+#if RHS_BSP_IO
+#    include "io.h"
 #endif
 #if RHS_HAL_I2C
 #    include "rhs_hal_i2c.h"

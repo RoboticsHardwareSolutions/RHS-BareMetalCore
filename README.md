@@ -166,7 +166,6 @@ add_subdirectory(rlibs)
 | `rhs_hal_gpio` | always on | GPIO abstraction | [hal/rhs_hal_gpio/README.md](hal/rhs_hal_gpio/README.md) |
 | `rhs_hal_i2c` | always on | I2C HAL | [hal/rhs_hal_i2c/README.md](hal/rhs_hal_i2c/README.md) |
 | `rhs_hal_interrupt` | always on | IRQ registration table | [hal/rhs_hal_interrupt/README.md](hal/rhs_hal_interrupt/README.md) |
-| `rhs_hal_io` | always on | Digital I/O abstraction | [hal/rhs_hal_io/README.md](hal/rhs_hal_io/README.md) |
 | `rhs_hal_power` | always on | Reset / power control | [hal/rhs_hal_power/README.md](hal/rhs_hal_power/README.md) |
 | `rhs_hal_random` | always on | Hardware RNG | [hal/rhs_hal_random/README.md](hal/rhs_hal_random/README.md) |
 | `rhs_hal_rtc` | always on | RTC + Unix time conversion | [hal/rhs_hal_rtc/README.md](hal/rhs_hal_rtc/README.md) |
@@ -175,11 +174,12 @@ add_subdirectory(rlibs)
 | `rhs_hal_usb` | always on | TinyUSB device stack + `rhs_hal_cdc_net` | [hal/rhs_hal_usb/README.md](hal/rhs_hal_usb/README.md) |
 | `rhs_hal_version` | always on | Device UID / version string | [hal/rhs_hal_version/README.md](hal/rhs_hal_version/README.md) |
 
-## Drivers (`drivers/`)
+## BSP (`bsp/`)
 
 | Module | CMake option / target | Description | README |
 |---|---|---|---|
-| `eeprom` | always on | I2C EEPROM read/write | [drivers/eeprom/README.md](drivers/eeprom/README.md) |
+| `eeprom` | always on | I2C EEPROM read/write | [bsp/eeprom/README.md](bsp/eeprom/README.md) |
+| `io` | `RHS_BSP_IO` | Digital I/O abstraction (board-specific IN0-4/OUT0-4/KEY0-4) | [bsp/io/README.md](bsp/io/README.md) |
 
 ## Services (`applications/services/`)
 

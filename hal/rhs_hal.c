@@ -13,8 +13,8 @@ void rhs_hal_init(void)
 #if RHS_HAL_RTC
     rhs_hal_rtc_init();
 #endif
-#if RHS_HAL_IO
-    rhs_hal_io_init();
+#if RHS_BSP_IO
+    io_init();
 #endif
 #if RHS_HAL_I2C
     rhs_hal_i2c_init(&rhs_hal_i2c1_handle);

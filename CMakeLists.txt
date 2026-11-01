@@ -98,7 +98,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 add_subdirectory(hal)
-add_subdirectory(drivers)
+add_subdirectory(bsp)
 add_subdirectory(applications)
 
 if(TARGET rhs_hal_rtc)

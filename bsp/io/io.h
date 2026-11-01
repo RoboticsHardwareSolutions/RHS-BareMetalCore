@@ -1,7 +1,7 @@
 #pragma once
 #include <stdbool.h>
 
-void rhs_hal_io_init(void);
+void io_init(void);
 
 bool IN0_IS_HIGH(void);
 bool IN1_IS_HIGH(void);

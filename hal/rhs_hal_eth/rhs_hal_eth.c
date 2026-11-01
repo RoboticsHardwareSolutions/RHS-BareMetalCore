@@ -1,5 +1,6 @@
 #include "rhs.h"
 #include "rhs_hal.h"
+#include "old_rhs_hal_gpio.h"
 
 void rhs_hal_eth_init(void)
 {

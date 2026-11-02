@@ -8,9 +8,14 @@
 #include "stm32f7xx_ll_exti.h"
 #include "stm32f7xx_ll_gpio.h"
 #include "stm32f7xx_ll_system.h"
+#elif  defined (STM32G0B1xx)
+#include "stm32g0xx_ll_bus.h"
+#include "stm32g0xx_ll_exti.h"
+#include "stm32g0xx_ll_gpio.h"
+#include "stm32g0xx_ll_system.h"
 #endif
 
-#if defined(STM32F103xE) || defined(STM32F765xx)
+
 
 static uint32_t rhs_hal_gpio_invalid_argument_crash(void)
 {
@@ -19,38 +24,39 @@ static uint32_t rhs_hal_gpio_invalid_argument_crash(void)
 }
 
 #define GPIO_PORT_MAP(port, prefix)    \
-    (((port) == (GPIOA))   ? prefix##A \
-     : ((port) == (GPIOB)) ? prefix##B \
-     : ((port) == (GPIOC)) ? prefix##C \
-     : ((port) == (GPIOD)) ? prefix##D \
-     : ((port) == (GPIOE)) ? prefix##E \
+    (((port) == (GPIOA))   ? prefix## A \
+     : ((port) == (GPIOB)) ? prefix## B \
+     : ((port) == (GPIOC)) ? prefix## C \
+     : ((port) == (GPIOD)) ? prefix## D \
+     : ((port) == (GPIOE)) ? prefix## E \
                            : rhs_hal_gpio_invalid_argument_crash())
 
 #define GPIO_PIN_MAP(pin, prefix)               \
-    (((pin) == (LL_GPIO_PIN_0))    ? prefix##0  \
-     : ((pin) == (LL_GPIO_PIN_1))  ? prefix##1  \
-     : ((pin) == (LL_GPIO_PIN_2))  ? prefix##2  \
-     : ((pin) == (LL_GPIO_PIN_3))  ? prefix##3  \
-     : ((pin) == (LL_GPIO_PIN_4))  ? prefix##4  \
-     : ((pin) == (LL_GPIO_PIN_5))  ? prefix##5  \
-     : ((pin) == (LL_GPIO_PIN_6))  ? prefix##6  \
-     : ((pin) == (LL_GPIO_PIN_7))  ? prefix##7  \
-     : ((pin) == (LL_GPIO_PIN_8))  ? prefix##8  \
-     : ((pin) == (LL_GPIO_PIN_9))  ? prefix##9  \
-     : ((pin) == (LL_GPIO_PIN_10)) ? prefix##10 \
-     : ((pin) == (LL_GPIO_PIN_11)) ? prefix##11 \
-     : ((pin) == (LL_GPIO_PIN_12)) ? prefix##12 \
-     : ((pin) == (LL_GPIO_PIN_13)) ? prefix##13 \
-     : ((pin) == (LL_GPIO_PIN_14)) ? prefix##14 \
-     : ((pin) == (LL_GPIO_PIN_15)) ? prefix##15 \
+    (((pin) == (LL_GPIO_PIN_0))    ? prefix## 0  \
+     : ((pin) == (LL_GPIO_PIN_1))  ? prefix## 1  \
+     : ((pin) == (LL_GPIO_PIN_2))  ? prefix## 2  \
+     : ((pin) == (LL_GPIO_PIN_3))  ? prefix## 3  \
+     : ((pin) == (LL_GPIO_PIN_4))  ? prefix## 4  \
+     : ((pin) == (LL_GPIO_PIN_5))  ? prefix## 5  \
+     : ((pin) == (LL_GPIO_PIN_6))  ? prefix## 6  \
+     : ((pin) == (LL_GPIO_PIN_7))  ? prefix## 7  \
+     : ((pin) == (LL_GPIO_PIN_8))  ? prefix## 8  \
+     : ((pin) == (LL_GPIO_PIN_9))  ? prefix## 9  \
+     : ((pin) == (LL_GPIO_PIN_10)) ? prefix## 10 \
+     : ((pin) == (LL_GPIO_PIN_11)) ? prefix## 11 \
+     : ((pin) == (LL_GPIO_PIN_12)) ? prefix## 12 \
+     : ((pin) == (LL_GPIO_PIN_13)) ? prefix## 13 \
+     : ((pin) == (LL_GPIO_PIN_14)) ? prefix## 14 \
+     : ((pin) == (LL_GPIO_PIN_15)) ? prefix## 15 \
                                    : rhs_hal_gpio_invalid_argument_crash())
 
 #define GET_EXTI_LINE(pin) GPIO_PIN_MAP(pin, LL_EXTI_LINE_)
 
 /* Port/line selector for the EXTI-source routing register (AFIO_EXTICR on
- * F1, SYSCFG_EXTICR on F7) -- a *different* constant set than LL_GPIO_PIN_n,
- * so it needs its own port/line maps rather than reusing GPIO_PORT_MAP (which
- * only covers A-E, insufficient for BMPLC_XL's IN pins on GPIOF/G). */
+ * F1, SYSCFG_EXTICR on F7, EXTI_EXTICR on G0) -- a *different* constant set
+ * than LL_GPIO_PIN_n, so it needs its own port/line maps rather than reusing
+ * GPIO_PORT_MAP (which only covers A-E, insufficient for BMPLC_XL's IN pins on
+ * GPIOF/G). */
 #if defined(STM32F103xE)
 #define EXTI_SRC_PORT_MAP(port) GPIO_PORT_MAP(port, LL_GPIO_AF_EXTI_PORT)
 #define EXTI_SRC_LINE_MAP(pin) GPIO_PIN_MAP(pin, LL_GPIO_AF_EXTI_LINE)
@@ -70,16 +76,43 @@ static uint32_t rhs_hal_gpio_invalid_argument_crash(void)
 #define EXTI_SRC_LINE_MAP(pin) GPIO_PIN_MAP(pin, LL_SYSCFG_EXTI_LINE)
 #define rhs_hal_gpio_set_exti_source(port, pin) \
     LL_SYSCFG_SetEXTISource(EXTI_SRC_PORT_MAP(port), EXTI_SRC_LINE_MAP(pin))
-#endif
+#elif defined(STM32G0B1xx)
+/* Map GPIO port to EXTI config port (LL_EXTI_CONFIG_PORTx) */
+#define EXTI_SRC_PORT_MAP(port)                 \
+    (((port) == (GPIOA))   ? LL_EXTI_CONFIG_PORTA \
+     : ((port) == (GPIOB)) ? LL_EXTI_CONFIG_PORTB \
+     : ((port) == (GPIOC)) ? LL_EXTI_CONFIG_PORTC \
+     : ((port) == (GPIOD)) ? LL_EXTI_CONFIG_PORTD \
+     : ((port) == (GPIOE)) ? LL_EXTI_CONFIG_PORTE \
+     : ((port) == (GPIOF)) ? LL_EXTI_CONFIG_PORTF \
+                            : rhs_hal_gpio_invalid_argument_crash())
+/* Map pin to EXTI config line (LL_EXTI_CONFIG_LINEy) */
+#define EXTI_SRC_LINE_MAP(pin)                  \
+    (((pin) == (LL_GPIO_PIN_0))    ? LL_EXTI_CONFIG_LINE0  \
+     : ((pin) == (LL_GPIO_PIN_1))  ? LL_EXTI_CONFIG_LINE1  \
+     : ((pin) == (LL_GPIO_PIN_2))  ? LL_EXTI_CONFIG_LINE2  \
+     : ((pin) == (LL_GPIO_PIN_3))  ? LL_EXTI_CONFIG_LINE3  \
+     : ((pin) == (LL_GPIO_PIN_4))  ? LL_EXTI_CONFIG_LINE4  \
+     : ((pin) == (LL_GPIO_PIN_5))  ? LL_EXTI_CONFIG_LINE5  \
+     : ((pin) == (LL_GPIO_PIN_6))  ? LL_EXTI_CONFIG_LINE6  \
+     : ((pin) == (LL_GPIO_PIN_7))  ? LL_EXTI_CONFIG_LINE7  \
+     : ((pin) == (LL_GPIO_PIN_8))  ? LL_EXTI_CONFIG_LINE8  \
+     : ((pin) == (LL_GPIO_PIN_9))  ? LL_EXTI_CONFIG_LINE9  \
+     : ((pin) == (LL_GPIO_PIN_10)) ? LL_EXTI_CONFIG_LINE10 \
+     : ((pin) == (LL_GPIO_PIN_11)) ? LL_EXTI_CONFIG_LINE11 \
+     : ((pin) == (LL_GPIO_PIN_12)) ? LL_EXTI_CONFIG_LINE12 \
+     : ((pin) == (LL_GPIO_PIN_13)) ? LL_EXTI_CONFIG_LINE13 \
+     : ((pin) == (LL_GPIO_PIN_14)) ? LL_EXTI_CONFIG_LINE14 \
+     : ((pin) == (LL_GPIO_PIN_15)) ? LL_EXTI_CONFIG_LINE15 \
+                                   : rhs_hal_gpio_invalid_argument_crash())
 
-// #define GET_PWR_PORT(port) GPIO_PORT_MAP(port, LL_PWR_GPIO_)
-// #define GET_PWR_PIN(pin) GPIO_PIN_MAP(pin, LL_PWR_GPIO_BIT_)
+#define rhs_hal_gpio_set_exti_source(port, pin) \
+    LL_EXTI_SetEXTISource(EXTI_SRC_PORT_MAP(port), EXTI_SRC_LINE_MAP(pin))
+#endif
 
 static volatile RHSGpioInterrupt gpio_interrupt[GPIO_NUMBER];
 
-/* EXTI0-4 each have their own NVIC vector; lines 5-9 and 10-15 share one
- * vector each -- map a pin number to the IRQn that will actually fire for
- * it, so rhs_hal_gpio_add_int_callback() can enable the right one. */
+#if defined(STM32F765xx) || defined (STM32F103xE)
 static IRQn_Type rhs_hal_gpio_exti_irqn(uint8_t pin_num)
 {
     switch (pin_num)
@@ -98,6 +131,22 @@ static IRQn_Type rhs_hal_gpio_exti_irqn(uint8_t pin_num)
         return (pin_num <= 9) ? EXTI9_5_IRQn : EXTI15_10_IRQn;
     }
 }
+#elif defined (STM32G0B1xx)
+static IRQn_Type rhs_hal_gpio_exti_irqn(uint8_t pin_num)
+{
+    switch (pin_num)
+    {
+    case 0:
+    case 1:
+        return EXTI0_1_IRQn;
+    case 2:
+    case 3:
+        return EXTI2_3_IRQn;
+    default:
+        return EXTI4_15_IRQn;
+    }
+}
+#endif
 
 static uint8_t rhs_hal_gpio_get_pin_num(const RHSGpioPin* gpio)
 {
@@ -109,6 +158,22 @@ static uint8_t rhs_hal_gpio_get_pin_num(const RHSGpioPin* gpio)
     }
     return pin_num;
 }
+
+/* Macros to abstract platform differences for EXTI flag handling */
+#if defined(STM32G0B1xx)
+/* STM32G0 uses separate rising/falling flag registers (RPR1/FPR1).
+ * Writing 1 clears the flag. Use direct register writes for simplicity. */
+#define RHS_EXTI_CLEAR_FLAG(line)    \
+    do {                             \
+        EXTI->RPR1 = (line);         \
+        EXTI->FPR1 = (line);         \
+    } while (0)
+#define RHS_EXTI_IS_ACTIVE_FLAG(line) ((EXTI->RPR1 & (line)) || (EXTI->FPR1 & (line)))
+#else
+/* STM32F1/STM32F7 use LL_EXTI_ClearFlag_0_31 and LL_EXTI_IsActiveFlag_0_31 */
+#define RHS_EXTI_CLEAR_FLAG(line)    LL_EXTI_ClearFlag_0_31(line)
+#define RHS_EXTI_IS_ACTIVE_FLAG(line) LL_EXTI_IsActiveFlag_0_31(line)
+#endif
 
 void rhs_hal_gpio_init_simple(const RHSGpioPin* gpio, const RHSGpioMode mode)
 {
@@ -195,7 +260,7 @@ void rhs_hal_gpio_init_ex(const RHSGpioPin* gpio,
         // Disable interrupts
         {
             LL_EXTI_DisableIT_0_31(exti_line);
-            LL_EXTI_ClearFlag_0_31(exti_line);
+            RHS_EXTI_CLEAR_FLAG(exti_line);
             LL_EXTI_DisableRisingTrig_0_31(exti_line);
             LL_EXTI_DisableFallingTrig_0_31(exti_line);
         }
@@ -311,7 +376,7 @@ void rhs_hal_gpio_disable_int_callback(const RHSGpioPin* gpio)
 
     const uint32_t exti_line = GET_EXTI_LINE(gpio->pin);
     LL_EXTI_DisableIT_0_31(exti_line);
-    LL_EXTI_ClearFlag_0_31(exti_line);
+    RHS_EXTI_CLEAR_FLAG(exti_line);
 
     RHS_CRITICAL_EXIT();
 }
@@ -324,7 +389,7 @@ void rhs_hal_gpio_remove_int_callback(const RHSGpioPin* gpio)
 
     const uint32_t exti_line = GET_EXTI_LINE(gpio->pin);
     LL_EXTI_DisableIT_0_31(exti_line);
-    LL_EXTI_ClearFlag_0_31(exti_line);
+    RHS_EXTI_CLEAR_FLAG(exti_line);
 
     uint8_t pin_num = rhs_hal_gpio_get_pin_num(gpio);
     gpio_interrupt[pin_num].callback = NULL;
@@ -341,113 +406,95 @@ inline static void rhs_hal_gpio_int_call(uint16_t pin_num)
     }
 }
 
-/* Interrupt handlers */
+/* Helper macro for interrupt handlers - checks and clears flag for a specific line */
+#if defined(STM32G0B1xx)
+/* For STM32G0, check both rising and falling flag registers */
+#define RHS_EXTI_HANDLER(line) \
+    if (RHS_EXTI_IS_ACTIVE_FLAG(LL_EXTI_LINE_##line)) { \
+        RHS_EXTI_CLEAR_FLAG(LL_EXTI_LINE_##line); \
+        rhs_hal_gpio_int_call(line); \
+    }
+#else
+/* For STM32F1/STM32F7, use the standard functions */
+#define RHS_EXTI_HANDLER(line) \
+    if (RHS_EXTI_IS_ACTIVE_FLAG(LL_EXTI_LINE_##line)) { \
+        RHS_EXTI_CLEAR_FLAG(LL_EXTI_LINE_##line); \
+        rhs_hal_gpio_int_call(line); \
+    }
+#endif
+
+/* Interrupt handlers for STM32F1/STM32F7 style individual EXTI lines */
 void EXTI0_IRQHandler(void)
 {
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_0))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_0);
-        rhs_hal_gpio_int_call(0);
-    }
+    RHS_EXTI_HANDLER(0);
 }
 
 void EXTI1_IRQHandler(void)
 {
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_1))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_1);
-        rhs_hal_gpio_int_call(1);
-    }
+    RHS_EXTI_HANDLER(1);
 }
 
 void EXTI2_IRQHandler(void)
 {
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_2))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_2);
-        rhs_hal_gpio_int_call(2);
-    }
+    RHS_EXTI_HANDLER(2);
 }
 
 void EXTI3_IRQHandler(void)
 {
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_3))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_3);
-        rhs_hal_gpio_int_call(3);
-    }
+    RHS_EXTI_HANDLER(3);
 }
 
 void EXTI4_IRQHandler(void)
 {
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_4))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_4);
-        rhs_hal_gpio_int_call(4);
-    }
+    RHS_EXTI_HANDLER(4);
 }
 
 void EXTI9_5_IRQHandler(void)
 {
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_5))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_5);
-        rhs_hal_gpio_int_call(5);
-    }
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_6))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_6);
-        rhs_hal_gpio_int_call(6);
-    }
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_7))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_7);
-        rhs_hal_gpio_int_call(7);
-    }
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_8))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_8);
-        rhs_hal_gpio_int_call(8);
-    }
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_9))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_9);
-        rhs_hal_gpio_int_call(9);
-    }
+    RHS_EXTI_HANDLER(5);
+    RHS_EXTI_HANDLER(6);
+    RHS_EXTI_HANDLER(7);
+    RHS_EXTI_HANDLER(8);
+    RHS_EXTI_HANDLER(9);
 }
 
 void EXTI15_10_IRQHandler(void)
 {
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_10))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_10);
-        rhs_hal_gpio_int_call(10);
-    }
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_11))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_11);
-        rhs_hal_gpio_int_call(11);
-    }
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_12))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_12);
-        rhs_hal_gpio_int_call(12);
-    }
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_13))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_13);
-        rhs_hal_gpio_int_call(13);
-    }
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_14))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_14);
-        rhs_hal_gpio_int_call(14);
-    }
-    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_15))
-    {
-        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_15);
-        rhs_hal_gpio_int_call(15);
-    }
+    RHS_EXTI_HANDLER(10);
+    RHS_EXTI_HANDLER(11);
+    RHS_EXTI_HANDLER(12);
+    RHS_EXTI_HANDLER(13);
+    RHS_EXTI_HANDLER(14);
+    RHS_EXTI_HANDLER(15);
 }
 
-#endif /* defined(STM32F103xE) || defined(STM32F765xx) */
+/* Interrupt handlers for STM32G0 (combined EXTI lines) */
+#if defined(STM32G0B1xx)
+void EXTI0_1_IRQHandler(void)
+{
+    RHS_EXTI_HANDLER(0);
+    RHS_EXTI_HANDLER(1);
+}
+
+void EXTI2_3_IRQHandler(void)
+{
+    RHS_EXTI_HANDLER(2);
+    RHS_EXTI_HANDLER(3);
+}
+
+void EXTI4_15_IRQHandler(void)
+{
+    RHS_EXTI_HANDLER(4);
+    RHS_EXTI_HANDLER(5);
+    RHS_EXTI_HANDLER(6);
+    RHS_EXTI_HANDLER(7);
+    RHS_EXTI_HANDLER(8);
+    RHS_EXTI_HANDLER(9);
+    RHS_EXTI_HANDLER(10);
+    RHS_EXTI_HANDLER(11);
+    RHS_EXTI_HANDLER(12);
+    RHS_EXTI_HANDLER(13);
+    RHS_EXTI_HANDLER(14);
+    RHS_EXTI_HANDLER(15);
+}
+#endif

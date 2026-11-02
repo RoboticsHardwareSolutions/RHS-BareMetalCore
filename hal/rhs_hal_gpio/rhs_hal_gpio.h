@@ -12,6 +12,7 @@
 #    include "stm32f7xx_ll_gpio.h"
 #elif defined(STM32G0B1xx)
 #    include <stm32g0b1xx.h>
+#    include "stm32g0xx_ll_exti.h"
 #    include "stm32g0xx_ll_gpio.h"
 #else
 #    error "Device not specified for rhs_hal_gpio"

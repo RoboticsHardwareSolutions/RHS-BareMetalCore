@@ -1,6 +1,7 @@
 #include "rhs_hal_gpio.h"
 
 #if defined(STM32F103xE)
+#include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_exti.h"
 #include "stm32f1xx_ll_gpio.h"
 #elif defined(STM32F765xx)
@@ -51,6 +52,39 @@ static uint32_t rhs_hal_gpio_invalid_argument_crash(void)
                                    : rhs_hal_gpio_invalid_argument_crash())
 
 #define GET_EXTI_LINE(pin) GPIO_PIN_MAP(pin, LL_EXTI_LINE_)
+
+/* Port clock enable: each GPIO port is gated behind its own RCC/bus-enable
+ * bit (APB2 IOPxEN on F1, AHB1 GPIOxEN on F7, IOPENR GPIOxEN on G0) that
+ * reset leaves off for every port but the debug one, so writing MODER/PUPDR/
+ * etc. on a freshly-reset port is a no-op until this runs. Idempotent --
+ * safe to call on every init. F7 needs F/G/H too (BMPLC_XL's IN/OUT/KEY
+ * pins live there), unlike GPIO_PORT_MAP which only covers A-E. */
+#if defined(STM32F103xE)
+#define GPIO_CLOCK_PORT_MAP(port) GPIO_PORT_MAP(port, LL_APB2_GRP1_PERIPH_GPIO)
+#define rhs_hal_gpio_enable_port_clock(port) LL_APB2_GRP1_EnableClock(GPIO_CLOCK_PORT_MAP(port))
+#elif defined(STM32F765xx)
+#define GPIO_CLOCK_PORT_MAP(port)                        \
+    (((port) == (GPIOA))   ? LL_AHB1_GRP1_PERIPH_GPIOA   \
+     : ((port) == (GPIOB)) ? LL_AHB1_GRP1_PERIPH_GPIOB   \
+     : ((port) == (GPIOC)) ? LL_AHB1_GRP1_PERIPH_GPIOC   \
+     : ((port) == (GPIOD)) ? LL_AHB1_GRP1_PERIPH_GPIOD   \
+     : ((port) == (GPIOE)) ? LL_AHB1_GRP1_PERIPH_GPIOE   \
+     : ((port) == (GPIOF)) ? LL_AHB1_GRP1_PERIPH_GPIOF   \
+     : ((port) == (GPIOG)) ? LL_AHB1_GRP1_PERIPH_GPIOG   \
+     : ((port) == (GPIOH)) ? LL_AHB1_GRP1_PERIPH_GPIOH   \
+                            : rhs_hal_gpio_invalid_argument_crash())
+#define rhs_hal_gpio_enable_port_clock(port) LL_AHB1_GRP1_EnableClock(GPIO_CLOCK_PORT_MAP(port))
+#elif defined(STM32G0B1xx)
+#define GPIO_CLOCK_PORT_MAP(port)                        \
+    (((port) == (GPIOA))   ? LL_IOP_GRP1_PERIPH_GPIOA    \
+     : ((port) == (GPIOB)) ? LL_IOP_GRP1_PERIPH_GPIOB    \
+     : ((port) == (GPIOC)) ? LL_IOP_GRP1_PERIPH_GPIOC    \
+     : ((port) == (GPIOD)) ? LL_IOP_GRP1_PERIPH_GPIOD    \
+     : ((port) == (GPIOE)) ? LL_IOP_GRP1_PERIPH_GPIOE    \
+     : ((port) == (GPIOF)) ? LL_IOP_GRP1_PERIPH_GPIOF    \
+                            : rhs_hal_gpio_invalid_argument_crash())
+#define rhs_hal_gpio_enable_port_clock(port) LL_IOP_GRP1_EnableClock(GPIO_CLOCK_PORT_MAP(port))
+#endif
 
 /* Port/line selector for the EXTI-source routing register (AFIO_EXTICR on
  * F1, SYSCFG_EXTICR on F7, EXTI_EXTICR on G0) -- a *different* constant set
@@ -217,6 +251,10 @@ void rhs_hal_gpio_init_ex(const RHSGpioPin* gpio,
 
     // Configure gpio with interrupts disabled
     RHS_CRITICAL_ENTER();
+
+    // Enable this port's clock -- must happen before any MODER/PUPDR/etc.
+    // write below, otherwise they land on a gated register and are lost.
+    rhs_hal_gpio_enable_port_clock(gpio->port);
 
     // Set gpio speed
     switch (speed)

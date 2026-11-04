@@ -277,15 +277,6 @@ bool KEY4_IS_OPEN(void)
 void io_init(void)
 {
 #if defined(BMPLC_XL)
-    __HAL_RCC_GPIOE_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    __HAL_RCC_GPIOF_CLK_ENABLE();
-    __HAL_RCC_GPIOH_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOG_CLK_ENABLE();
-    __HAL_RCC_GPIOD_CLK_ENABLE();
-
     rhs_hal_gpio_init(&rev_strap_pin, RHSGpioModeInput, RHSGpioPullDown, RHSGpioSpeedLow);
     xl_rev_strap_high = rhs_hal_gpio_read(&rev_strap_pin);
 
@@ -298,9 +289,6 @@ void io_init(void)
         rhs_hal_gpio_init_simple(&in_pins[ch], RHSGpioModeInput);
     }
 #elif defined(BMPLC_M)
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-
     for (uint8_t ch = 0; ch < 5; ch++)
     {
         rhs_hal_gpio_write(&key_pins[ch], false);

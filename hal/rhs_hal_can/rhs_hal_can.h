@@ -34,7 +34,7 @@ typedef struct
 typedef enum
 {
     RHSHalCANId1,
-#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_M)
     RHSHalCANId2,
 #endif
     RHSHalCANIdMax,

@@ -1,8 +1,15 @@
-message("\tDRIVERS:")
+message("\tBSP:")
 
 if(RHS_DRIVER_EEPROM)
     add_subdirectory(eeprom)
     message("\t\tRHS_DRIVER_EEPROM\t- ON")
 else()
     message("\t\tRHS_DRIVER_EEPROM\t- OFF")
+endif()
+
+if(RHS_BSP_IO)
+    add_subdirectory(io)
+    message("\t\tRHS_BSP_IO\t\t- ON")
+else()
+    message("\t\tRHS_BSP_IO\t\t- OFF")
 endif()

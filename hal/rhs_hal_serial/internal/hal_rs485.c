@@ -5,7 +5,7 @@
 
 #define TAG "rs485"
 
-#if defined(BMPLC_XL) || defined(BMPLC_L)
+#if defined(BMPLC_XL)
 
 #    include "stm32f7xx_ll_rcc.h"
 #    include "stm32f7xx_ll_dma.h"

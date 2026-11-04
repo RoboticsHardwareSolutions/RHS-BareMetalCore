@@ -2,6 +2,7 @@
 #include "rcan.h"
 #include "rhs.h"
 #include "rhs_hal_can.h"
+#include "old_rhs_hal_gpio.h"
 #include "rhs_hal.h"
 
 #define TAG "rhs_hal_can"
@@ -49,32 +50,23 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
 
         /* Check strap pin PG10 BEFORE configuring CAN1 pins:
            low  -> PA11/PA12, high -> PD0/PD1 */
-        gpio_init(PIN('G', 10), MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_DOWN, 0);
+        gpio_init(PIN('G', 10), RHS_GPIO_MODE_INPUT, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_DOWN, 0);
         if (gpio_read(PIN('G', 10)))
         {
             /* PG10 pulled to power -> CAN1 on PD0/PD1 */
-            gpio_init(PIN('D', 0), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
-            gpio_init(PIN('D', 1), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
+            gpio_init(PIN('D', 0), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 9);
+            gpio_init(PIN('D', 1), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 9);
             rhs_hal_can1_gpio_port = GPIOD;
             rhs_hal_can1_gpio_pins = GPIO_PIN_0 | GPIO_PIN_1;
         }
         else
         {
             /* PG10 not pulled -> CAN1 on PA11/PA12 */
-            gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
-            gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
+            gpio_init(PIN('A', 11), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 9);
+            gpio_init(PIN('A', 12), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 9);
             rhs_hal_can1_gpio_port = GPIOA;
             rhs_hal_can1_gpio_pins = GPIO_PIN_11 | GPIO_PIN_12;
         }
-    }
-#elif defined(BMPLC_L)
-    if (canHandle->Instance == CAN1)
-    {
-        __HAL_RCC_CAN1_CLK_ENABLE();
-        /* CAN1 GPIO Configuration:
-           PA11 -> CAN1_RX, PA12 -> CAN1_TX (AF9) */
-        gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
-        gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
     }
 #elif defined(BMPLC_M)
     if (canHandle->Instance == CAN1)
@@ -82,8 +74,8 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
         __HAL_RCC_CAN1_CLK_ENABLE();
         /* CAN1 GPIO Configuration:
            PB8 -> CAN1_RX, PB9 -> CAN1_TX (AF remap CAN1_2) */
-        gpio_init(PIN('B', 8), GPIO_MODE_INPUT_FLOATING);
-        gpio_init(PIN('B', 9), GPIO_MODE_AF_PP_50MHZ);
+        gpio_init(PIN('B', 8), RHS_GPIO_MODE_INPUT_FLOATING);
+        gpio_init(PIN('B', 9), RHS_GPIO_MODE_AF_PP_50MHZ);
 
         __HAL_AFIO_REMAP_CAN1_2();
     }
@@ -99,8 +91,8 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
 
         /* CAN1 GPIO Configuration:
            PD0 -> CAN1_RX, PD1 -> CAN1_TX (AF9) */
-        gpio_init(PIN('D', 0), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
-        gpio_init(PIN('D', 1), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
+        gpio_init(PIN('D', 0), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 9);
+        gpio_init(PIN('D', 1), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 9);
     }
     else if (canHandle->Instance == CAN2)
     {
@@ -113,8 +105,8 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
 
         /* CAN2 GPIO Configuration:
            PB5 -> CAN2_RX, PB6 -> CAN2_TX (AF9) */
-        gpio_init(PIN('B', 5), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
-        gpio_init(PIN('B', 6), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 9);
+        gpio_init(PIN('B', 5), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 9);
+        gpio_init(PIN('B', 6), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 9);
     }
 #    else
 #        error "No processor defined or not implemented"
@@ -133,18 +125,6 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
         /* Deinit the pins selected in MspInit by strap pin PG10:
            PD0/PD1 (PG10 high) or PA11/PA12 (PG10 low) */
         HAL_GPIO_DeInit(rhs_hal_can1_gpio_port, rhs_hal_can1_gpio_pins);
-    }
-#elif defined(BMPLC_L)
-    if (canHandle->Instance == CAN1)
-    {
-        /* Peripheral clock disable */
-        __HAL_RCC_CAN1_CLK_DISABLE();
-
-        /**CAN1 GPIO Configuration
-        PA11     ------> CAN1_RX
-        PA12     ------> CAN1_TX
-        */
-        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_11 | GPIO_PIN_12);
     }
 #elif defined(BMPLC_M)
     if (canHandle->Instance == CAN1)
@@ -195,7 +175,7 @@ static uint8_t get_can_num_interface(CAN_TypeDef* can)
     {
         return RHSHalCANId1;
     }
-#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_M)
     else if (can == CAN2)
     {
         return RHSHalCANId2;
@@ -396,7 +376,7 @@ void rhs_hal_can_init(RHSHalCANId id, uint32_t baud)
         rhs_assert(rcan_start(&rhs_hal_can[id].rcan, (uint32_t) CAN1, baud) == true);
         rhs_hal_can[id].enabled = true;
         break;
-#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_M)
     case RHSHalCANId2:
         rhs_assert(rcan_start(&rhs_hal_can[id].rcan, (uint32_t) CAN2, baud) == true);
         rhs_hal_can[id].enabled = true;
@@ -418,7 +398,7 @@ void rhs_hal_can_deinit(RHSHalCANId id)
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN1Tx, NULL, NULL);
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN1Rx0, NULL, NULL);
         break;
-#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_M)
     case RHSHalCANId2:
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN2SCE, NULL, NULL);
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN2Tx, NULL, NULL);
@@ -455,7 +435,7 @@ void rhs_hal_can_async_sce(RHSHalCANId id, RHSHalCANAsyncSCECallback callback, v
                                      can_sce_callback,
                                      &rhs_hal_can[id]);
         break;
-#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_M)
     case RHSHalCANId2:
         rhs_hal_interrupt_set_isr_ex(RHSHalInterruptIdCAN2SCE,
                                      RHSHalInterruptPriorityLow,
@@ -515,7 +495,7 @@ void rhs_hal_can_tx_cmplt_cb(RHSHalCANId id, RHSHalCANAsyncTxCallback callback, 
     case RHSHalCANId1:
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN1Tx, can_tx_callback, &rhs_hal_can[id]);
         break;
-#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_M)
     case RHSHalCANId2:
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN2Tx, can_tx_callback, &rhs_hal_can[id]);
         break;
@@ -542,7 +522,7 @@ void rhs_hal_can_async_rx_start(RHSHalCANId id, RHSHalCANAsyncRxCallback callbac
     case RHSHalCANId1:
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN1Rx0, can_rx_callback, &rhs_hal_can[id]);
         break;
-#if !defined(BMPLC_XL) && !defined(BMPLC_L) && !defined(BMPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_M)
     case RHSHalCANId2:
         rhs_hal_interrupt_set_isr(RHSHalInterruptIdCAN2Rx0, can_rx_callback, &rhs_hal_can[id]);
         break;

@@ -111,8 +111,15 @@ static uint32_t rhs_hal_gpio_invalid_argument_crash(void)
 #endif
 
 /* An EXTI line is shared by the pins with one number on all ports, so a pin may disable the line only when the line is
- * routed to its port. The other targets do not check it: their port maps crash on a port without EXTI routing. */
-#if defined(STM32G0B1xx)
+ * routed to its port. EXTI_SRC_PORT_MAP crashes on a port which it does not list, now also for a pin without interrupts:
+ * add the port there first. */
+#if defined(STM32F103xE)
+#define rhs_hal_gpio_exti_is_routed(port, pin) \
+    (LL_GPIO_AF_GetEXTISource(EXTI_SRC_LINE_MAP(pin)) == EXTI_SRC_PORT_MAP(port))
+#elif defined(STM32F765xx)
+#define rhs_hal_gpio_exti_is_routed(port, pin) \
+    (LL_SYSCFG_GetEXTISource(EXTI_SRC_LINE_MAP(pin)) == EXTI_SRC_PORT_MAP(port))
+#elif defined(STM32G0B1xx)
 #define rhs_hal_gpio_exti_is_routed(port, pin) \
     (LL_EXTI_GetEXTISource(EXTI_SRC_LINE_MAP(pin)) == EXTI_SRC_PORT_MAP(port))
 #else

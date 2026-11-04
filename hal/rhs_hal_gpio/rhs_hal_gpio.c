@@ -110,6 +110,15 @@ static uint32_t rhs_hal_gpio_invalid_argument_crash(void)
     LL_EXTI_SetEXTISource(EXTI_SRC_PORT_MAP(port), EXTI_SRC_LINE_MAP(pin))
 #endif
 
+/* An EXTI line is shared by the pins with one number on all ports, so a pin may disable the line only when the line is
+ * routed to its port. The other targets do not check it: their port maps crash on a port without EXTI routing. */
+#if defined(STM32G0B1xx)
+#define rhs_hal_gpio_exti_is_routed(port, pin) \
+    (LL_EXTI_GetEXTISource(EXTI_SRC_LINE_MAP(pin)) == EXTI_SRC_PORT_MAP(port))
+#else
+#define rhs_hal_gpio_exti_is_routed(port, pin) (true)
+#endif
+
 static volatile RHSGpioInterrupt gpio_interrupt[GPIO_NUMBER];
 
 #if defined(STM32F765xx) || defined (STM32F103xE)
@@ -258,6 +267,7 @@ void rhs_hal_gpio_init_ex(const RHSGpioPin* gpio,
     else
     {
         // Disable interrupts
+        if (rhs_hal_gpio_exti_is_routed(gpio->port, gpio->pin))
         {
             LL_EXTI_DisableIT_0_31(exti_line);
             RHS_EXTI_CLEAR_FLAG(exti_line);
@@ -325,8 +335,6 @@ void rhs_hal_gpio_init_ex(const RHSGpioPin* gpio,
         rhs_crash("Incorrect GpioPull");
     }
 
-
-    // TODO add remap for BMPLC M !!!
     RHS_CRITICAL_EXIT();
 }
 

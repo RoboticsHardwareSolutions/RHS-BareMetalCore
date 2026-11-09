@@ -288,13 +288,11 @@ uint8_t rhs_hal_cdc_get_ctrl_line_state(uint8_t if_num)
     return cdc_ctrl_line_state[if_num];
 }
 
-void rhs_hal_cdc_send(uint8_t if_num, uint8_t* buf, uint16_t len)
+uint16_t rhs_hal_cdc_send(uint8_t if_num, uint8_t* buf, uint16_t len)
 {
-    for (uint32_t i = 0; i < len; i++)
-    {
-        tud_cdc_n_write_char(if_num, buf[i]);
-    }
+    uint16_t written = (uint16_t) tud_cdc_n_write(if_num, buf, len);
     tud_cdc_n_write_flush(if_num);
+    return written;
 }
 
 int32_t rhs_hal_cdc_receive(uint8_t if_num, uint8_t* buf, uint16_t max_len)

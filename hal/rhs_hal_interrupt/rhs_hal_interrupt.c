@@ -109,6 +109,7 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     [RHSHalInterruptIdUsart3] = USART3_IRQn,
 #    elif defined(STM32G0B1xx)
     [RHSHalInterruptIdUSB_UCPD1_2] = USB_UCPD1_2_IRQn,
+    [RHSHalInterruptIdFDCANIT0]    = TIM16_FDCAN_IT0_IRQn,
 
 #    endif
 #endif
@@ -369,6 +370,12 @@ void USB_UCPD1_2_IRQHandler(void)
 #    if defined(TINYUSB)
     tud_int_handler(0);
 #    endif
+}
+
+/* FDCAN interrupt line 0 (TIM16 is not used) */
+void TIM16_FDCAN_IT0_IRQHandler(void)
+{
+    rhs_hal_interrupt_call(RHSHalInterruptIdFDCANIT0);
 }
 #endif
 

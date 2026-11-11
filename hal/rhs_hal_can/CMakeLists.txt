@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 project(rhs_hal_can C)
 set(CMAKE_C_STANDARD 11)
 
-add_library(${PROJECT_NAME} STATIC rhs_hal_can.c)
+add_library(${PROJECT_NAME} STATIC rhs_hal_can.c rhs_hal_can_fdcan.c)
 
 target_include_directories(
         ${PROJECT_NAME} PUBLIC

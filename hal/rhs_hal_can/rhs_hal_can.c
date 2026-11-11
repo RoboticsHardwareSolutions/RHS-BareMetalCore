@@ -1,5 +1,9 @@
-#include "stdbool.h"
+/* rhs_hal_can for the bxCAN peripheral (STM32F1/F4/F7), FDCAN is in rhs_hal_can_fdcan.c */
 #include "rcan.h"
+
+#if defined(RCAN_BACKEND_BXCAN)
+
+#include "stdbool.h"
 #include "rhs.h"
 #include "rhs_hal_can.h"
 #include "old_rhs_hal_gpio.h"
@@ -566,3 +570,5 @@ RHSHalCANStatistic rhs_hal_can_get_statistic(RHSHalCANId id)
     rhs_assert(id < RHSHalCANIdMax);
     return rhs_hal_can[id].statistic;
 }
+
+#endif  // defined(RCAN_BACKEND_BXCAN)

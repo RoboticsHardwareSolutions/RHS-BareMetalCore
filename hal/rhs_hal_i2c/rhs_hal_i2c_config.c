@@ -260,7 +260,10 @@ void rhs_hal_i2c_bus_handle_event(const RHSHalI2cBusHandle* handle, RHSHalI2cBus
         /** I2C Initialization */
         LL_I2C_InitTypeDef I2C_InitStruct;
         I2C_InitStruct.PeripheralMode  = LL_I2C_MODE_I2C;
-        I2C_InitStruct.Timing          = 0x10B17DB5;
+        /* I2CCLK = PCLK = 64 MHz. 0x10B17DB5: about 90 kHz (CubeMX).
+         * 0x10E21E2B: about 380 kHz for the I2C3 EEPROM: PRESC 1 (31.25 ns), SCLL 1.375 us, SCLH 0.97 us,
+         * SCLDEL 469 ns (tr 300 ns + tSU;DAT 150 ns), SDADEL 62.5 ns. */
+        I2C_InitStruct.Timing          = (handle->bus == &rhs_hal_i2c3_bus) ? 0x10E21E2B : 0x10B17DB5;
         I2C_InitStruct.AnalogFilter    = LL_I2C_ANALOGFILTER_ENABLE;
         I2C_InitStruct.DigitalFilter   = 0;
         I2C_InitStruct.OwnAddress1     = 0;

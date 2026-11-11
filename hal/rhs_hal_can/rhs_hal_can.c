@@ -390,6 +390,8 @@ void rhs_hal_can_init(RHSHalCANId id, uint32_t baud)
     default:
         rhs_crash("No CAN interface");
     }
+    // rcan starts bxCAN without automatic bus-off management: without ABOM the node stays off the bus for good
+    rhs_hal_can[id].rcan.handle.Instance->MCR |= CAN_MCR_ABOM;
 }
 
 void rhs_hal_can_deinit(RHSHalCANId id)

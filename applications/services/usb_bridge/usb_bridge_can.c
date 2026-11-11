@@ -73,8 +73,11 @@ static void can_rx_isr(RHSHalCANId id, void* context)
 static void can_sce_isr(RHSHalCANId id, RHSHalCANSCEEvent event, void* context)
 {
     UNUSED(id);
-    UNUSED(event);
     UsbBridge* bridge = (UsbBridge*) context;
+    if (event == 0)
+    {
+        return;  // back to error active
+    }
     bridge->st.device_errors++;
     usb_bridge_notify(bridge, UsbBridgeEvtDeviceError);
 }

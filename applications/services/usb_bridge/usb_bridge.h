@@ -51,7 +51,7 @@ typedef struct
     uint32_t device_rx_drops;  /**< Lost from the device: RX queue full */
     uint32_t device_tx;        /**< To the device */
     uint32_t device_tx_errors; /**< Not sent to the device */
-    uint32_t device_errors;    /**< Bus / line errors */
+    uint32_t device_errors;    /**< Bus / line error events (CAN: error warning, error passive, bus-off) */
 
     uint32_t app_rx; /**< Passed to the application callback */
     uint32_t app_tx; /**< Sent by the application */

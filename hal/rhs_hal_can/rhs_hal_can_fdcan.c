@@ -1,7 +1,8 @@
 /* rhs_hal_can for the FDCAN peripheral (STM32G0B1), classic CAN frames only.
  * rcan (bx_canfd backend) configures, starts and stops the peripheral and moves frames in and out of the message RAM.
  * Interrupts do not go through HAL_FDCAN_IRQHandler: rhs_hal_interrupt calls can_isr(), which keeps the same
- * callback model as the bxCAN implementation (rx callback -> rhs_hal_can_rx() per pending frame). */
+ * callback model as the bxCAN implementation (rx callback -> rhs_hal_can_rx() per pending frame).
+ * Bus-off recovers automatically, like bxCAN with ABOM: the bus-off interrupt is always on and clears CCCR.INIT. */
 #include "rcan.h"
 
 #if defined(RCAN_BACKEND_BXCANFD)
@@ -19,7 +20,9 @@ static const RHSGpioPin can1_tx_pin = {.port = GPIOB, .pin = LL_GPIO_PIN_9};
 
 #    define CAN_RX_ITS (FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_RX_FIFO0_MESSAGE_LOST)
 #    define CAN_TX_ITS (FDCAN_IT_TX_COMPLETE)
-#    define CAN_SCE_ITS (FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ARB_PROTOCOL_ERROR)
+/* Error state changes only: an interrupt per protocol error (PEA) fires on every error frame, tens of thousands per
+ * second on a broken bus. Errors are counted from ECR.CEL instead, see can_count_errors(). */
+#    define CAN_SCE_ITS (FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_WARNING)
 
 typedef struct
 {
@@ -27,6 +30,7 @@ typedef struct
     bool                      isr_set;
     rcan                      rcan;
     uint8_t                   lec;
+    uint8_t                   tec; /**< TEC at the last can_count_errors(), tells TX errors from RX errors */
     RHSHalCANAsyncRxCallback  rx_callback;
     void*                     rx_context;
     RHSHalCANAsyncTxCallback  tx_callback;
@@ -63,6 +67,24 @@ void HAL_FDCAN_MspDeInit(FDCAN_HandleTypeDef* handle)
     }
 }
 
+/* Add the errors logged by the controller since the last call (ECR.CEL, cleared on read, saturates at 255) to the
+ * statistic: TX errors when the transmit error counter went up, RX errors otherwise. Call with interrupts masked. */
+static void can_count_errors(RHSHalCAN* can)
+{
+    uint32_t ecr    = can->rcan.handle.Instance->ECR;
+    uint32_t errors = (ecr & FDCAN_ECR_CEL) >> FDCAN_ECR_CEL_Pos;
+    uint8_t  tec    = (uint8_t) (ecr & FDCAN_ECR_TEC);
+    if (tec > can->tec)
+    {
+        can->statistic.tx_errs += errors;
+    }
+    else
+    {
+        can->statistic.rx_errs += errors;
+    }
+    can->tec = tec;
+}
+
 static void can_isr(void* context)
 {
     rhs_assert(context);
@@ -84,8 +106,9 @@ static void can_isr(void* context)
             can->tx_callback(can->tx_context);
         }
     }
-    if (ir & (FDCAN_IR_BO | FDCAN_IR_EP | FDCAN_IR_PEA))
+    if (ir & (FDCAN_IR_BO | FDCAN_IR_EP | FDCAN_IR_EW))
     {
+        can_count_errors(can);
         uint32_t          psr   = instance->PSR;
         RHSHalCANSCEEvent event = 0;
 
@@ -93,22 +116,17 @@ static void can_isr(void* context)
         if (psr & FDCAN_PSR_BO)
         {
             event |= RHSHalCANSCEEventBusOff;
+            // Bus-off sets CCCR.INIT: clearing it starts the recovery, the node is back on the bus after
+            // 129 x 11 recessive bits (RM0444 FDCAN "Bus-Off recovery")
+            instance->CCCR &= ~FDCAN_CCCR_INIT;
         }
         if (psr & FDCAN_PSR_EP)
         {
             event |= (instance->ECR & FDCAN_ECR_RP) ? RHSHalCANSCEEventRXPassive : RHSHalCANSCEEventTXPassive;
         }
-        if (ir & FDCAN_IR_PEA)
+        if (psr & FDCAN_PSR_EW)
         {
             event |= RHSHalCANSCEEventError;
-            if ((psr & FDCAN_PSR_ACT) == FDCAN_PSR_ACT)  // ACT = 11: node was transmitting
-            {
-                can->statistic.tx_errs++;
-            }
-            else
-            {
-                can->statistic.rx_errs++;
-            }
         }
         if (can->sce_callback)
         {
@@ -150,6 +168,8 @@ void rhs_hal_can_init(RHSHalCANId id, uint32_t baud)
 
     rhs_assert(rcan_start(&rhs_hal_can[id].rcan, (uint32_t) FDCAN1, baud) == true);
     rhs_hal_can[id].enabled = true;
+    // Bus-off recovery in can_isr(), also without an SCE callback
+    can_activate(id, FDCAN_IT_BUS_OFF, 0);
 }
 
 void rhs_hal_can_deinit(RHSHalCANId id)
@@ -248,7 +268,15 @@ bool rhs_hal_can_rx(RHSHalCANId id, RHSHalCANFrameType* frame)
 RHSHalCANStatistic rhs_hal_can_get_statistic(RHSHalCANId id)
 {
     rhs_assert(id < RHSHalCANIdMax);
-    return rhs_hal_can[id].statistic;
+    RHSHalCANStatistic statistic;
+    RHS_CRITICAL_ENTER();
+    if (rhs_hal_can[id].enabled)
+    {
+        can_count_errors(&rhs_hal_can[id]);
+    }
+    statistic = rhs_hal_can[id].statistic;
+    RHS_CRITICAL_EXIT();
+    return statistic;
 }
 
 #endif  // defined(RCAN_BACKEND_BXCANFD)

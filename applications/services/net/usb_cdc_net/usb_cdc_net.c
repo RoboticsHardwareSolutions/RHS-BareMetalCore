@@ -14,7 +14,7 @@ typedef struct
 
 static_assert(offsetof(CdcNet, net) == 0, "CdcNet must be compatible with Net for safe casting");
 
-#define TAG "cdc_net"
+#define TAG "usb_cdc_net"
 
 static TudNetOps cdc_net_ops = {0};
 
@@ -80,15 +80,15 @@ static void cdc_net_init_tcpip(Net* net)
     // If config fields are empty, fill in with default values from compile-time macros
     if (net->config->ip[0] == '\0')
     {
-        strcpy(net->config->ip, CDC_NET_IP_STRING);
+        strcpy(net->config->ip, USB_CDC_NET_IP_STRING);
     }
     if (net->config->mask[0] == '\0')
     {
-        strcpy(net->config->mask, CDC_NET_MASK_STRING);
+        strcpy(net->config->mask, USB_CDC_NET_MASK_STRING);
     }
     if (net->config->gateway[0] == '\0')
     {
-        strcpy(net->config->gateway, CDC_NET_GW_STRING);
+        strcpy(net->config->gateway, USB_CDC_NET_GW_STRING);
     }
     if (mac[0] == 0 && mac[1] == 0 && mac[2] == 0 && mac[3] == 0 && mac[4] == 0 && mac[5] == 0)
     {
@@ -145,9 +145,9 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
 
     if (config == NULL)
     {
-        strcpy(app->net.config->ip, CDC_NET_IP_STRING);
-        strcpy(app->net.config->mask, CDC_NET_MASK_STRING);
-        strcpy(app->net.config->gateway, CDC_NET_GW_STRING);
+        strcpy(app->net.config->ip, USB_CDC_NET_IP_STRING);
+        strcpy(app->net.config->mask, USB_CDC_NET_MASK_STRING);
+        strcpy(app->net.config->gateway, USB_CDC_NET_GW_STRING);
         uint8_t mac[6] = GENERATE_LOCALLY_ADMINISTERED_MAC(rhs_hal_version_uid());
         memcpy(app->net.config->mac, mac, sizeof(mac));
     }

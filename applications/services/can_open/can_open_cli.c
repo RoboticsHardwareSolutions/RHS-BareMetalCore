@@ -1,11 +1,9 @@
 #include "can_open.h"
-#include "can_open_srv.h"
+#include "can_open_i.h"
 
-#define TAG "CanOpen App"
+#define TAG "can_open"
 
 FilterId* filter_list = NULL;
-
-extern int canSend(CAN_PORT port, Message const* m);
 
 static void add_filter_id(uint16_t id)
 {

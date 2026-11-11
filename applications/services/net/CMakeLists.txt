@@ -1,19 +1,38 @@
-if(RHS_APPLICATION_ETH_NET OR RHS_APPLICATION_USB_CDC_NET OR RHS_APPLICATION_USB_ETH_BRIDGE)
-    cmake_minimum_required(VERSION 3.24)
-    project(net)
+if(NOT (RHS_SERVICE_ETH_NET OR RHS_SERVICE_USB_CDC_NET OR RHS_SERVICE_USB_ETH_BRIDGE))
+        message("\t\tRHS_SERVICE_ETH_NET / USB_CDC_NET / USB_ETH_BRIDGE  - OFF")
+        return()
+endif()
 
-    add_library(${PROJECT_NAME} net.c)
+cmake_minimum_required(VERSION 3.24)
+project(net C)
+set(CMAKE_C_STANDARD 11)
 
-    target_include_directories(
+if(NOT TARGET mongoose)
+        message(FATAL_ERROR "mongoose library not found, please add_subdirectory(mongoose)")
+endif()
+
+add_library(${PROJECT_NAME} STATIC
+        net.c
+)
+
+target_include_directories(
         ${PROJECT_NAME} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    )
+)
 
-    if(NOT TARGET mongoose)
-        message(FATAL_ERROR "mongoose library not found, please add_subdirectory(mongoose)")
-    endif()
+target_link_libraries(
+        ${PROJECT_NAME}
+        PUBLIC
+        net_utils
+        mongoose
+        rhs
+        rhs_hal
+        PRIVATE
+        net_listeners
+)
 
-    target_compile_definitions(
+# Mongoose configuration shared by all network backends
+target_compile_definitions(
         mongoose
         PUBLIC
         MG_ENABLE_PACKED_FS=1
@@ -28,56 +47,20 @@ if(RHS_APPLICATION_ETH_NET OR RHS_APPLICATION_USB_CDC_NET OR RHS_APPLICATION_USB
         MG_ENABLE_FILE=0
         MG_ARCH=MG_ARCH_ARMGCC
         MG_ENABLE_CUSTOM_LOG=1
-    )
+)
 
-    target_sources(mongoose PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty/rhs/applications/services/net/log/mg_log.c)
-    target_include_directories(mongoose
-            PUBLIC
-            ${CMAKE_SOURCE_DIR}/thirdparty/rhs/applications/services/net/log
-            ${CMAKE_SOURCE_DIR}/thirdparty/rhs/
-    )
-
-    target_link_libraries(
-        ${PROJECT_NAME}
-        PUBLIC
-        net_utils
+# Mongoose log output goes to RHS log (MG_ENABLE_CUSTOM_LOG)
+target_sources(mongoose PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/net_mg_log.c)
+target_include_directories(
         mongoose
-        rhs
-        rhs_hal
-        PRIVATE
-        net_listeners
-    )
+        PUBLIC
+        $<BUILD_INTERFACE:${rhs_SOURCE_DIR}>
+)
 
-    if(RHS_APPLICATION_USB_CDC_NET)
-        target_compile_definitions(${PROJECT_NAME} PUBLIC -DRHS_APPLICATION_USB_CDC_NET)
-        message("\t\tRHS_APPLICATION_USB_CDC_NET\t\t- ON")
-        add_subdirectory(usb_cdc_net)
-        message("\t\t\tIP: ${RHS_CDC_NET_IP}")
-        message("\t\t\tGateway: ${RHS_CDC_NET_GATEWAY}")
-        message("\t\t\tNetmask: ${RHS_CDC_NET_NETMASK}")
-    else()
-        message("\t\tRHS_APPLICATION_USB_CDC_NET\t\t- OFF")
-    endif()
-    if(RHS_APPLICATION_ETH_NET)
-        target_compile_definitions(${PROJECT_NAME} PUBLIC -DRHS_APPLICATION_ETH_NET)
-        message("\t\tRHS_APPLICATION_ETH_NET\t\t\t\t- ON")
-        add_subdirectory(eth_net)
-        message("\t\t\tIP: ${RHS_ETH_NET_IP}")
-        message("\t\t\tGateway: ${RHS_ETH_NET_GATEWAY}")
-        message("\t\t\tNetmask: ${RHS_ETH_NET_NETMASK}")
-    else()
-        message("\t\tRHS_APPLICATION_ETH_NET\t\t\t\t- OFF")
-    endif()
+service_option(RHS_SERVICE_USB_CDC_NET usb_cdc_net)
+service_option(RHS_SERVICE_ETH_NET eth_net)
+service_option(RHS_SERVICE_USB_ETH_BRIDGE usb_eth_bridge)
 
-    if(RHS_APPLICATION_USB_ETH_BRIDGE)
-        target_compile_definitions(${PROJECT_NAME} PUBLIC -DRHS_APPLICATION_USB_ETH_BRIDGE)
-        message("\t\tRHS_APPLICATION_USB_ETH_BRIDGE\t\t- ON")
-        add_subdirectory(usb_eth_bridge)
-    else()
-        message("\t\tRHS_APPLICATION_USB_ETH_BRIDGE\t\t- OFF")
-    endif()
-
-    add_subdirectory(net_listeners)
-    add_subdirectory(net_utils)
-    add_subdirectory(modbus_tcp)
-endif()
+add_subdirectory(net_listeners)
+add_subdirectory(net_utils)
+add_subdirectory(modbus_tcp)

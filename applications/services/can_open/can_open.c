@@ -1,9 +1,7 @@
 #include <stdarg.h>
 #include "can_open.h"
-#include "can_open_srv.h"
+#include "can_open_i.h"
 #include "cli.h"
-
-extern void can_open_cli(char* args, void* context);
 
 static CanOpenApp* can_open_app_alloc(void)
 {
@@ -20,7 +18,6 @@ static CanOpenApp* can_open_app_alloc(void)
     cli_add_command(cli, "can_open", can_open_cli, app);
     rhs_record_close(RECORD_CLI);
 
-    extern CanOpenApp* can_open_app; /* co_stack and rtimer use callbacks without context. It makes me use this trash */
     can_open_app = app;
 
     return app;
@@ -36,7 +33,7 @@ static void can_open_app_free(CanOpenApp* app)
     free(app);
 }
 
-int32_t can_open_service(void* context)
+int32_t can_open_srv(void* context)
 {
     CanOpenApp*        app  = can_open_app_alloc();
     uint32_t           flag = 0;

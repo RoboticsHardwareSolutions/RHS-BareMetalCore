@@ -1,4 +1,4 @@
-#include "od_common_defs.h"
+#include "can_open_od.h"
 
 const ODFieldType od_device_type     = {.index = 0x1000, .sub = 0x00, .size = sizeof(uint32_t)};
 const ODFieldType od_device_name     = {.index = 0x1008, .sub = 0x00, .size = 32};

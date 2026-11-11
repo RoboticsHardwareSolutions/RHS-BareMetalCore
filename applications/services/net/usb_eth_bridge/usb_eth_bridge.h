@@ -3,8 +3,8 @@
 
 typedef struct
 {
-    uint8_t phy_addr;  // PHY address (NULL = use default MG_TCPIP_PHY_ADDR)
-    uint8_t mdc_cr;    // MDC clock divider (NULL = use default MG_DRIVER_MDC_CR)
+    uint8_t phy_addr;  // PHY address
+    uint8_t mdc_cr;    // MDC clock divider
 } UsbEthBridgePhyConfig;
 
 /**

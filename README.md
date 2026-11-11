@@ -182,18 +182,20 @@ add_subdirectory(rlibs)
 
 ## Services (`applications/services/`)
 
+Common layout and naming rules: [applications/services/README.md](applications/services/README.md).
+
 | Module | CMake option | Description | README |
 |---|---|---|---|
 | `cli` | always on | Interactive command-line interface over RTT/UART | [applications/services/cli/README.md](applications/services/cli/README.md) |
-| `loader` | always on | Dynamic application loader | [applications/services/loader/README.md](applications/services/loader/README.md) |
-| `notification` | always on | LED / buzzer notification service | [applications/services/notification/README.md](applications/services/notification/README.md) |
-| `can_open` | `RHS_APPLICATION_CAN_OPEN` | CANopen stack integration | [applications/services/can_open/README.md](applications/services/can_open/README.md) |
-| `net` | `RHS_APPLICATION_ETH_NET` / `USB_CDC_NET` / `USB_ETH_BRIDGE` | Unified networking layer (Mongoose) | [applications/services/net/README.md](applications/services/net/README.md) |
-| `net / eth_net` | `RHS_APPLICATION_ETH_NET` | Physical Ethernet via STM32F RMII MAC | [applications/services/net/eth_net/README.md](applications/services/net/eth_net/README.md) |
-| `net / usb_cdc_net` | `RHS_APPLICATION_USB_CDC_NET` | USB device network (RNDIS/ECM/NCM) | [applications/services/net/usb_cdc_net/README.md](applications/services/net/usb_cdc_net/README.md) |
-| `net / usb_eth_bridge` | `RHS_APPLICATION_USB_ETH_BRIDGE` | Layer-2 USB-to-Ethernet bridge | [applications/services/net/usb_eth_bridge/README.md](applications/services/net/usb_eth_bridge/README.md) |
+| `loader` | always on | Runs registered tests and start-up hooks | [applications/services/loader/README.md](applications/services/loader/README.md) |
+| `notification` | `RHS_SERVICE_NOTIFICATION` | Sound notification sequences on the speaker | [applications/services/notification/README.md](applications/services/notification/README.md) |
+| `can_open` | `RHS_SERVICE_CAN_OPEN` | CANopen stack integration | [applications/services/can_open/README.md](applications/services/can_open/README.md) |
+| `net` | `RHS_SERVICE_ETH_NET` / `USB_CDC_NET` / `USB_ETH_BRIDGE` | Unified networking layer (Mongoose) | [applications/services/net/README.md](applications/services/net/README.md) |
+| `net / eth_net` | `RHS_SERVICE_ETH_NET` | Physical Ethernet via STM32F RMII MAC | [applications/services/net/eth_net/README.md](applications/services/net/eth_net/README.md) |
+| `net / usb_cdc_net` | `RHS_SERVICE_USB_CDC_NET` | USB device network (RNDIS/ECM/NCM) | [applications/services/net/usb_cdc_net/README.md](applications/services/net/usb_cdc_net/README.md) |
+| `net / usb_eth_bridge` | `RHS_SERVICE_USB_ETH_BRIDGE` | Layer-2 USB-to-Ethernet bridge | [applications/services/net/usb_eth_bridge/README.md](applications/services/net/usb_eth_bridge/README.md) |
 | `net / modbus_tcp` | included with `net` | Modbus TCP server on top of a `Net` instance | [applications/services/net/README.md](applications/services/net/README.md) |
-| `usb_serial_bridge` | `RHS_APPLICATION_USB_SERIAL_BRIDGE` | USB CDC serial bridge | [applications/services/usb_serial_bridge/README.md](applications/services/usb_serial_bridge/README.md) |
+| `usb_serial_bridge` | `RHS_SERVICE_USB_SERIAL_BRIDGE` | USB CDC serial bridge | [applications/services/usb_serial_bridge/README.md](applications/services/usb_serial_bridge/README.md) |
 
 # RHS Core Library
 

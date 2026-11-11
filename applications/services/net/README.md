@@ -10,6 +10,7 @@ net/
 ├── net.h                   # Public API: NetConfig, net_start_http/listener, net_set_config
 ├── net.c                   # Core worker thread and message-queue dispatch
 ├── net_i.h                 # Internal types (Net struct, event queue messages)
+├── net_mg_log.c            # Mongoose log output to RHS log (built into the mongoose target)
 │
 ├── eth_net/                # Transport: physical Ethernet via STM32F RMII MAC
 │   ├── CMakeLists.txt
@@ -28,14 +29,17 @@ net/
 │   └── usb_eth_bridge.c
 │
 ├── net_listeners/          # Internal: linked-list of active Mongoose connection handlers
+│   ├── CMakeLists.txt
 │   ├── net_listeners.h
 │   └── net_listeners.c
 │
 ├── net_utils/              # IP address string parsing and validation helpers
+│   ├── CMakeLists.txt
 │   ├── net_utils.h
 │   └── net_utils.c
 │
 └── modbus_tcp/             # Modbus TCP server that runs on top of a Net instance
+    ├── CMakeLists.txt
     ├── modbus_tcp.h
     └── modbus_tcp.c
 ```
@@ -46,9 +50,9 @@ Enable any combination of transport back-ends in your CMake configuration:
 
 | CMake option                        | Transport                          |
 |-------------------------------------|------------------------------------|
-| `RHS_APPLICATION_ETH_NET=ON`        | Physical Ethernet (RMII)           |
-| `RHS_APPLICATION_USB_CDC_NET=ON`    | USB device network (RNDIS/ECM/NCM) |
-| `RHS_APPLICATION_USB_ETH_BRIDGE=ON` | Layer-2 USB-to-Ethernet bridge     |
+| `RHS_SERVICE_ETH_NET=ON`        | Physical Ethernet (RMII)           |
+| `RHS_SERVICE_USB_CDC_NET=ON`    | USB device network (RNDIS/ECM/NCM) |
+| `RHS_SERVICE_USB_ETH_BRIDGE=ON` | Layer-2 USB-to-Ethernet bridge     |
 
 The `net` core library is built automatically when any of these options is ON. All three options may be enabled simultaneously in the same binary.
 

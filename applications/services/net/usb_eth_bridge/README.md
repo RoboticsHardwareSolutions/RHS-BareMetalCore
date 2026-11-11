@@ -31,10 +31,10 @@ cdc_net = usb_cdc_net_start(NULL);
 ### 1. Enable the sub-application
 
 ```cmake
-set(RHS_APPLICATION_USB_ETH_BRIDGE ON)
+set(RHS_SERVICE_USB_ETH_BRIDGE ON)
 ```
 
-The parent `net/CMakeLists.txt` adds `usb_eth_bridge` as a sub-directory. `RHS_APPLICATION_USB_CDC_NET` and `RHS_APPLICATION_ETH_NET` may be enabled at the same time. `usb_cdc_net` and `usb_eth_bridge` can coexist in the same binary but cannot be running simultaneously.
+The parent `net/CMakeLists.txt` adds `usb_eth_bridge` as a sub-directory. `RHS_SERVICE_USB_CDC_NET` and `RHS_SERVICE_ETH_NET` may be enabled at the same time. `usb_cdc_net` and `usb_eth_bridge` can coexist in the same binary but cannot be running simultaneously.
 
 ### 2. Required libraries
 
@@ -111,7 +111,7 @@ UsbEthBridge *bridge = usb_eth_bridge_start(&phy);
 
 ### Creating an application service
 
-1. Add `set(RHS_APPLICATION_USB_ETH_BRIDGE ON)` to your toolchain.
+1. Add `set(RHS_SERVICE_USB_ETH_BRIDGE ON)` to your toolchain.
 2. Create `my_bridge/CMakeLists.txt`:
 
 ```cmake

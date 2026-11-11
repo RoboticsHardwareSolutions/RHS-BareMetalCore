@@ -355,7 +355,7 @@ void cli_info(char* args, void* context)
     PRINT_ALL_VERSIONS();
 }
 
-int32_t cli_service(void* context)
+int32_t cli_srv(void* context)
 {
     Cli* app = cli_alloc();
     rhs_record_create(RECORD_CLI, app);

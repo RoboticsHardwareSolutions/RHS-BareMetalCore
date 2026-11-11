@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## [Unreleased]
+### Changed
+- Services follow one layout and naming scheme, see `applications/services/README.md`: `<name>.h` / `<name>_i.h` / `<name>.c`, entry points `<name>_srv` / `<name>_start_up`, `TAG "<name>"`, one CMakeLists template
+- CMake options `RHS_APPLICATION_ETH_NET` / `USB_CDC_NET` / `USB_ETH_BRIDGE` renamed to `RHS_SERVICE_*`, `RHS_CDC_NET_*` renamed to `RHS_USB_CDC_NET_*` (old names still accepted with a deprecation warning)
+- New `service_option()` CMake helper for optional services
+- **Breaking:** `usb_serial_enable/disable/set_config/get_config/get_state` renamed to `usb_serial_bridge_start/stop/set_config/get_config/get_state`, `UsbSerialConfig/State` to `UsbSerialBridgeConfig/State`, `EthPhyConfig` to `EthNetPhyConfig`, `od_common_defs.h` to `can_open_od.h`, CMake targets `cdc_net` and `can_open_srv` to `usb_cdc_net` and `can_open`
+- `net` no longer depends on the rhs checkout path (`CMAKE_SOURCE_DIR/thirdparty/rhs`)
+
+### Fixed
+- `can_open`: events arriving together (e.g. RX and TX) were dropped
+
+### Documentation
+- README for `cli`, `loader`, `notification`, `can_open`, `usb_serial_bridge` and for the services layout
+
 ## [0.0.6] - 2026-06-21
 ### Added
 - New `usb_eth_bridge` service: transparent Layer-2 bridge between USB CDC-Net and physical Ethernet MAC — no IP stack on the device

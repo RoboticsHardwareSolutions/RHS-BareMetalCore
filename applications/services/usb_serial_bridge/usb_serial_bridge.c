@@ -5,7 +5,7 @@
 #include "tusb.h"
 #include "rhs_hal_usb_cdc.h"
 
-#define TAG "UsbSerialBridge"
+#define TAG "usb_serial_bridge"
 
 #define USB_CDC_PKT_LEN CFG_TUD_CDC_RX_BUFSIZE
 #define USB_UART_RX_BUF_SIZE (USB_CDC_PKT_LEN * 5)
@@ -33,8 +33,8 @@ typedef enum
 
 struct UsbSerialBridge
 {
-    UsbSerialConfig cfg;
-    UsbSerialConfig cfg_new;
+    UsbSerialBridgeConfig cfg;
+    UsbSerialBridgeConfig cfg_new;
 
     RHSThread* thread;
     RHSThread* tx_thread;
@@ -46,7 +46,7 @@ struct UsbSerialBridge
 
     RHSSemaphore* tx_sem;
 
-    UsbSerialState st;
+    UsbSerialBridgeState st;
 
     RHSApiLock cfg_lock;
 
@@ -163,7 +163,7 @@ static int32_t usb_serial_worker(void* context)
 {
     UsbSerialBridge* usb_serial = (UsbSerialBridge*) context;
 
-    memcpy(&usb_serial->cfg, &usb_serial->cfg_new, sizeof(UsbSerialConfig));
+    memcpy(&usb_serial->cfg, &usb_serial->cfg_new, sizeof(UsbSerialBridgeConfig));
 
     usb_serial->rx_stream = rhs_stream_buffer_alloc(USB_UART_RX_BUF_SIZE, 1);
 
@@ -354,7 +354,7 @@ static void usb_bridge_cb(char* args, void* context)
     {
         if (usb_rs232 == NULL)
         {
-            UsbSerialConfig cfg = {
+            UsbSerialBridgeConfig cfg = {
                 .vcp_ch         = usb_rs485 ? 1 : 0,
                 .serial_ch      = RHSHalSerialIdRS232,
                 .flow_pins      = 0,
@@ -362,12 +362,12 @@ static void usb_bridge_cb(char* args, void* context)
                 .baudrate       = 9600,
                 .software_de_re = 0,
             };
-            usb_rs232 = usb_serial_enable(&cfg);
+            usb_rs232 = usb_serial_bridge_start(&cfg);
             RHS_LOG_W(TAG, "RS232 enabled");
         }
         else
         {
-            usb_serial_disable(usb_rs232);
+            usb_serial_bridge_stop(usb_rs232);
             usb_rs232 = NULL;
             RHS_LOG_W(TAG, "RS232 disabled");
         }
@@ -377,7 +377,7 @@ static void usb_bridge_cb(char* args, void* context)
     {
         if (usb_rs485 == NULL)
         {
-            UsbSerialConfig cfg = {
+            UsbSerialBridgeConfig cfg = {
                 .vcp_ch         = usb_rs232 ? 1 : 0,
                 .serial_ch      = RHSHalSerialIdRS485,
                 .flow_pins      = 0,
@@ -385,22 +385,22 @@ static void usb_bridge_cb(char* args, void* context)
                 .baudrate       = 9600,
                 .software_de_re = 0,
             };
-            usb_rs485 = usb_serial_enable(&cfg);
+            usb_rs485 = usb_serial_bridge_start(&cfg);
             RHS_LOG_W(TAG, "RS485 enabled");
         }
         else
         {
-            usb_serial_disable(usb_rs485);
+            usb_serial_bridge_stop(usb_rs485);
             usb_rs485 = NULL;
             RHS_LOG_W(TAG, "RS485 disabled");
         }
     }
 }
 
-UsbSerialBridge* usb_serial_enable(UsbSerialConfig* cfg)
+UsbSerialBridge* usb_serial_bridge_start(UsbSerialBridgeConfig* cfg)
 {
     UsbSerialBridge* usb_serial = calloc(1, sizeof(UsbSerialBridge));
-    memcpy(&(usb_serial->cfg_new), cfg, sizeof(UsbSerialConfig));
+    memcpy(&(usb_serial->cfg_new), cfg, sizeof(UsbSerialBridgeConfig));
 
     usb_serial->thread = rhs_thread_alloc("UsbSerialWorker", 1024, usb_serial_worker, usb_serial);
 
@@ -409,7 +409,7 @@ UsbSerialBridge* usb_serial_enable(UsbSerialConfig* cfg)
     return usb_serial;
 }
 
-void usb_serial_disable(UsbSerialBridge* usb_serial)
+void usb_serial_bridge_stop(UsbSerialBridge* usb_serial)
 {
     rhs_assert(usb_serial);
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtStop);
@@ -418,31 +418,31 @@ void usb_serial_disable(UsbSerialBridge* usb_serial)
     free(usb_serial);
 }
 
-void usb_serial_set_config(UsbSerialBridge* usb_serial, UsbSerialConfig* cfg)
+void usb_serial_bridge_set_config(UsbSerialBridge* usb_serial, UsbSerialBridgeConfig* cfg)
 {
     rhs_assert(usb_serial);
     rhs_assert(cfg);
     usb_serial->cfg_lock = api_lock_alloc_locked();
-    memcpy(&(usb_serial->cfg_new), cfg, sizeof(UsbSerialConfig));
+    memcpy(&(usb_serial->cfg_new), cfg, sizeof(UsbSerialBridgeConfig));
     rhs_thread_flags_set(rhs_thread_get_id(usb_serial->thread), WorkerEvtCfgChange);
     api_lock_wait_unlock_and_free(usb_serial->cfg_lock);
 }
 
-void usb_serial_get_config(UsbSerialBridge* usb_serial, UsbSerialConfig* cfg)
+void usb_serial_bridge_get_config(UsbSerialBridge* usb_serial, UsbSerialBridgeConfig* cfg)
 {
     rhs_assert(usb_serial);
     rhs_assert(cfg);
-    memcpy(cfg, &(usb_serial->cfg_new), sizeof(UsbSerialConfig));
+    memcpy(cfg, &(usb_serial->cfg_new), sizeof(UsbSerialBridgeConfig));
 }
 
-void usb_serial_get_state(UsbSerialBridge* usb_serial, UsbSerialState* st)
+void usb_serial_bridge_get_state(UsbSerialBridge* usb_serial, UsbSerialBridgeState* st)
 {
     rhs_assert(usb_serial);
     rhs_assert(st);
-    memcpy(st, &(usb_serial->st), sizeof(UsbSerialState));
+    memcpy(st, &(usb_serial->st), sizeof(UsbSerialBridgeState));
 }
 
-void cli_vcp_start_up(void)
+void usb_serial_bridge_start_up(void)
 {
     Cli* cli = rhs_record_open(RECORD_CLI);
     cli_add_command(cli, "usb_bridge", usb_bridge_cb, NULL);

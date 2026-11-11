@@ -47,47 +47,52 @@ int32_t can_open_service(void* context)
 
     while (1)
     {
-        if (flag = rhs_event_flag_wait(app->srv_event,
-                                       CanOpenAppEventTypeRX | CanOpenAppEventTypeTX | CanOpenAppEventTypePDO,
-                                       RHSFlagWaitAny,
-                                       RHSWaitForever))
+        flag = rhs_event_flag_wait(app->srv_event,
+                                   CanOpenAppEventTypeRX | CanOpenAppEventTypeTX | CanOpenAppEventTypePDO,
+                                   RHSFlagWaitAny,
+                                   RHSWaitForever);
+        if (flag & RHSFlagError)
         {
-            switch (flag)
+            continue;
+        }
+
+        /* Several events may arrive at once: handle each set bit, not only a single one */
+        if (flag & CanOpenAppEventTypeRX)
+        {
+            while (rhs_message_queue_get(app->rx_queue, &msg, 0) == RHSStatusOk)
             {
-            case CanOpenAppEventTypeRX:
-                while (rhs_message_queue_get(app->rx_queue, &msg, 0) == RHSStatusOk)
+                rhs_kernel_lock();
+                rhs_assert(msg.od);
+                canDispatch(msg.od, &msg.data);
+                rhs_kernel_unlock();
+            }
+        }
+        if (flag & CanOpenAppEventTypePDO)
+        {
+            /* sendPDOevent() queues frames to tx_queue, they are sent below */
+            for (uint8_t i = 0; i < app->counter_od; i++)
+            {
+                sendPDOevent(app->handler[i].od);
+            }
+        }
+        if (flag & (CanOpenAppEventTypeTX | CanOpenAppEventTypePDO))
+        {
+            while (rhs_message_queue_get(app->tx_queue, &msg, 0) == RHSStatusOk)
+            {
+                uint8_t try_tx = 3;
+                frame.id       = msg.data.cob_id;
+                frame.type     = FrameTypeStdID;
+                frame.len      = msg.data.len;
+                frame.rtr      = msg.data.rtr;
+                memcpy(frame.payload, msg.data.data, msg.data.len);
+                while (!rhs_hal_can_tx(msg.can_id, &frame) && try_tx)
                 {
-                    rhs_kernel_lock();
-                    rhs_assert(msg.od);
-                    canDispatch(msg.od, &msg.data);
-                    rhs_kernel_unlock();
+                    rhs_delay_ms(1);
+                    try_tx--;
                 }
-                break;
-            case CanOpenAppEventTypePDO:
-                for (uint8_t i = 0; i < app->counter_od; i++)
-                {
-                    sendPDOevent(app->handler[i].od);
-                }
-            case CanOpenAppEventTypeTX:
-                while (rhs_message_queue_get(app->tx_queue, &msg, 0) == RHSStatusOk)
-                {
-                    uint8_t try_tx = 3;
-                    frame.id       = msg.data.cob_id;
-                    frame.type     = FrameTypeStdID;
-                    frame.len      = msg.data.len;
-                    frame.rtr      = msg.data.rtr;
-                    memcpy(frame.payload, msg.data.data, msg.data.len);
-                    while (!rhs_hal_can_tx(msg.can_id, &frame) && try_tx)
-                    {
-                        rhs_delay_ms(1);
-                        try_tx--;
-                    }
-                }
-                break;
-            default:
-                break;
             }
         }
     }
     can_open_app_free(app);
+    return 0;
 }

@@ -375,6 +375,8 @@ int32_t cli_service(void* context)
     {
         cli_process_input(app);
     }
+
+    return 0;
 }
 
 /**

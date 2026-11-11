@@ -6,7 +6,6 @@
 #include "timers_driver.h"
 #include "cli.h"
 
-#define TAG "CanOpen App"
 
 #define EVENT_FLAG_SDO (1 << 0)
 

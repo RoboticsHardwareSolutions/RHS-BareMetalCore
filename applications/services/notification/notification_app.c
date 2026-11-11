@@ -84,4 +84,5 @@ int32_t notification_srv(void* context)
         // TODO block Feature
     }
     notification_app_free(app);
+    return 0;
 }

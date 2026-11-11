@@ -2,6 +2,8 @@
 #include "can_open_srv.h"
 #include "rtimer.h"
 
+#define TAG "CanOpen App"
+
 static void InitNodes(CO_Data* d, UNS32 id)
 {
     /****************************** INITIALISATION MASTER *******************************/

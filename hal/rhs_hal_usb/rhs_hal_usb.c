@@ -1,10 +1,33 @@
 #include <rhs.h>
 #include <rhs_hal.h>
+#if !defined(STM32G0B1xx)
+#    include "old_rhs_hal_gpio.h"
+#endif
 
 #define TAG "RHSHalUsb"
 
-static RHSMutex* s_usb_mutex = NULL;
+#if defined(STM32G0B1xx)
+static const RHSGpioPin usb_dm_pin = {.port = GPIOA, .pin = LL_GPIO_PIN_11};
+static const RHSGpioPin usb_dp_pin = {.port = GPIOA, .pin = LL_GPIO_PIN_12};
 
+static void usb_pins_drive_low(void)
+{
+    rhs_hal_gpio_init(&usb_dm_pin, RHSGpioModeOutputPushPull, RHSGpioPullNo, RHSGpioSpeedHigh);
+    rhs_hal_gpio_init(&usb_dp_pin, RHSGpioModeOutputPushPull, RHSGpioPullNo, RHSGpioSpeedHigh);
+
+    rhs_hal_gpio_write(&usb_dm_pin, false);
+    rhs_hal_gpio_write(&usb_dp_pin, false);
+}
+
+// Floating input - USB peripheral will control these pins
+static void usb_pins_release(void)
+{
+    rhs_hal_gpio_init_simple(&usb_dm_pin, RHSGpioModeInput);
+    rhs_hal_gpio_init_simple(&usb_dp_pin, RHSGpioModeInput);
+}
+#endif
+
+static RHSMutex* s_usb_mutex = NULL;
 /* Low-level init */
 void rhs_hal_usb_init(void)
 {
@@ -15,8 +38,8 @@ void rhs_hal_usb_init(void)
 #if defined(STM32F1)
     RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
     RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
-    gpio_init(PIN('A', 11), GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
-    gpio_init(PIN('A', 12), GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
+    gpio_init(PIN('A', 11), RHS_GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
+    gpio_init(PIN('A', 12), RHS_GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
 
     gpio_write(PIN('A', 11), 0);
     gpio_write(PIN('A', 12), 0);
@@ -25,8 +48,8 @@ void rhs_hal_usb_init(void)
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;
     RCC->APB1RSTR &= ~RCC_APB1RSTR_USBRST;
 
-    gpio_init(PIN('A', 11), GPIO_MODE_INPUT_FLOATING);  // D-
-    gpio_init(PIN('A', 12), GPIO_MODE_INPUT_FLOATING);  // D+
+    gpio_init(PIN('A', 11), RHS_GPIO_MODE_INPUT_FLOATING);  // D-
+    gpio_init(PIN('A', 12), RHS_GPIO_MODE_INPUT_FLOATING);  // D+
 
     NVIC_SetPriority(USB_LP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
     NVIC_SetPriority(USB_HP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
@@ -35,13 +58,13 @@ void rhs_hal_usb_init(void)
 #elif defined(STM32F4) || defined(STM32F765xx)
 
 #    if defined(BMPLC_XL)
-    gpio_init(PIN('G', 10), MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_DOWN, 0);
+    gpio_init(PIN('G', 10), RHS_GPIO_MODE_INPUT, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_DOWN, 0);
     if (gpio_read(PIN('G', 10)) != 0)
     {
 #    endif
         RCC->AHB2ENR |= RCC_AHB2ENR_OTGFSEN;
-        gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);
-        gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);
+        gpio_init(PIN('A', 11), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 10);
+        gpio_init(PIN('A', 12), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 10);
         NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
         NVIC_EnableIRQ(OTG_FS_IRQn);
 #    if defined(BMPLC_XL)
@@ -61,6 +84,15 @@ void rhs_hal_usb_init(void)
     // Select HSI48 as USB clock source (CCIPR2.USBSEL = 00b)
     RCC->CCIPR2 &= ~RCC_CCIPR2_USBSEL;
 
+    /* ==========================================================================
+     * TODO !!! TEMPORARY: HSI48 + CRS is used only because the board has no crystal.
+     * TODO !!! When a crystal oscillator is added, clock USB from it and remove CRS.
+     * ======================================================================== */
+    // Trim HSI48 by the USB SOF packets: without it the clock is not accurate enough for USB FS
+    RCC->APBENR1 |= RCC_APBENR1_CRSEN;
+    CRS->CFGR = (CRS->CFGR & ~CRS_CFGR_SYNCSRC) | CRS_CFGR_SYNCSRC_1;
+    CRS->CR |= CRS_CR_AUTOTRIMEN | CRS_CR_CEN;
+
     // Enable VDDUSB (USB voltage detector)
     RCC->APBENR1 |= RCC_APBENR1_PWREN;  // Enable PWR clock if not already
     PWR->CR2 |= PWR_CR2_USV;            // USB supply valid
@@ -74,11 +106,7 @@ void rhs_hal_usb_init(void)
     RCC->APBENR1 &= ~RCC_APBENR1_USBEN;
 
     // Configure USB pins (D-/D+) as output and pull low for USB reset
-    gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
-    gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
-
-    gpio_write(PIN('A', 11), 0);
-    gpio_write(PIN('A', 12), 0);
+    usb_pins_drive_low();
 
     rhs_delay_ms(40);
 
@@ -86,9 +114,7 @@ void rhs_hal_usb_init(void)
     RCC->APBENR1 |= RCC_APBENR1_USBEN;
     RCC->APBRSTR1 &= ~RCC_APBRSTR1_USBRST;
 
-    // Configure as floating input - USB peripheral will control these pins
-    gpio_init(PIN('A', 11), MG_GPIO_MODE_INPUT, 0, 0, MG_GPIO_PULL_NONE, 0);  // D-
-    gpio_init(PIN('A', 12), MG_GPIO_MODE_INPUT, 0, 0, MG_GPIO_PULL_NONE, 0);  // D+
+    usb_pins_release();
 
     NVIC_SetPriority(USB_UCPD1_2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
     NVIC_EnableIRQ(USB_UCPD1_2_IRQn);
@@ -104,8 +130,8 @@ void rhs_hal_usb_reinit(void)
 #if defined(STM32F1)
     RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
     RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
-    gpio_init(PIN('A', 11), GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
-    gpio_init(PIN('A', 12), GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
+    gpio_init(PIN('A', 11), RHS_GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
+    gpio_init(PIN('A', 12), RHS_GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
 
     gpio_write(PIN('A', 11), 0);
     gpio_write(PIN('A', 12), 0);
@@ -114,19 +140,19 @@ void rhs_hal_usb_reinit(void)
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;
     RCC->APB1RSTR &= ~RCC_APB1RSTR_USBRST;
 
-    gpio_init(PIN('A', 11), GPIO_MODE_INPUT_FLOATING);  // D-
-    gpio_init(PIN('A', 12), GPIO_MODE_INPUT_FLOATING);  // D+
+    gpio_init(PIN('A', 11), RHS_GPIO_MODE_INPUT_FLOATING);  // D-
+    gpio_init(PIN('A', 12), RHS_GPIO_MODE_INPUT_FLOATING);  // D+
 
 #elif defined(STM32F4) || defined(STM32F765xx)
 
 #    if defined(BMPLC_XL)
-    gpio_init(PIN('G', 10), MG_GPIO_MODE_INPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_DOWN, 0);
+    gpio_init(PIN('G', 10), RHS_GPIO_MODE_INPUT, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_DOWN, 0);
     if (gpio_read(PIN('G', 10)) != 0)
     {
 #    endif
         RCC->AHB2ENR |= RCC_AHB2ENR_OTGFSEN;
-        gpio_init(PIN('A', 11), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);
-        gpio_init(PIN('A', 12), MG_GPIO_MODE_AF, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 10);
+        gpio_init(PIN('A', 11), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 10);
+        gpio_init(PIN('A', 12), RHS_GPIO_MODE_AF, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 10);
         NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
         NVIC_EnableIRQ(OTG_FS_IRQn);
 #    if defined(BMPLC_XL)
@@ -140,19 +166,13 @@ void rhs_hal_usb_reinit(void)
 #elif defined(STM32G0B1xx)
     RCC->APBRSTR1 |= RCC_APBRSTR1_USBRST;
     RCC->APBENR1 &= ~RCC_APBENR1_USBEN;
-    gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
-    gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
-
-    gpio_write(PIN('A', 11), 0);
-    gpio_write(PIN('A', 12), 0);
+    usb_pins_drive_low();
 
     rhs_delay_ms(40);
     RCC->APBENR1 |= RCC_APBENR1_USBEN;
     RCC->APBRSTR1 &= ~RCC_APBRSTR1_USBRST;
 
-    // Configure as floating input - USB peripheral will control these pins
-    gpio_init(PIN('A', 11), MG_GPIO_MODE_INPUT, 0, 0, MG_GPIO_PULL_NONE, 0);  // D-
-    gpio_init(PIN('A', 12), MG_GPIO_MODE_INPUT, 0, 0, MG_GPIO_PULL_NONE, 0);  // D+
+    usb_pins_release();
 
     NVIC_SetPriority(USB_UCPD1_2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
     NVIC_EnableIRQ(USB_UCPD1_2_IRQn);
@@ -168,8 +188,8 @@ void rhs_hal_usb_disable(void)
 #if defined(STM32F1)
     RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
     RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
-    gpio_init(PIN('A', 11), GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
-    gpio_init(PIN('A', 12), GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
+    gpio_init(PIN('A', 11), RHS_GPIO_MODE_OUTPUT_PP_50MHZ);  // D-
+    gpio_init(PIN('A', 12), RHS_GPIO_MODE_OUTPUT_PP_50MHZ);  // D+
 
     gpio_write(PIN('A', 11), 0);
     gpio_write(PIN('A', 12), 0);
@@ -182,8 +202,8 @@ void rhs_hal_usb_disable(void)
     {
 #    endif
         RCC->AHB2ENR &= ~RCC_AHB2ENR_OTGFSEN;
-        gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 0);
-        gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PP, MG_GPIO_SPEED_INSANE, MG_GPIO_PULL_NONE, 0);
+        gpio_init(PIN('A', 11), RHS_GPIO_MODE_OUTPUT, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 0);
+        gpio_init(PIN('A', 12), RHS_GPIO_MODE_OUTPUT, RHS_GPIO_OTYPE_PUSH_PULL, RHS_GPIO_SPEED_INSANE, RHS_GPIO_PULL_NONE, 0);
         gpio_write(PIN('A', 11), 0);
         gpio_write(PIN('A', 12), 0);
         NVIC_DisableIRQ(OTG_FS_IRQn);
@@ -198,11 +218,7 @@ void rhs_hal_usb_disable(void)
 #elif defined(STM32G0B1xx)
     RCC->APBRSTR1 |= RCC_APBRSTR1_USBRST;
     RCC->APBENR1 &= ~RCC_APBENR1_USBEN;
-    gpio_init(PIN('A', 11), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
-    gpio_init(PIN('A', 12), MG_GPIO_MODE_OUTPUT, MG_GPIO_OTYPE_PUSH_PULL, MG_GPIO_SPEED_HIGH, MG_GPIO_PULL_NONE, 0);
-
-    gpio_write(PIN('A', 11), 0);
-    gpio_write(PIN('A', 12), 0);
+    usb_pins_drive_low();
 
     NVIC_DisableIRQ(USB_UCPD1_2_IRQn);
 

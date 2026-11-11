@@ -50,7 +50,7 @@ static RHSHalIterrupt rhs_hal_interrupt = {};
 
 const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
 
-#if defined(BMPLC_XL) || defined(BMPLC_L)
+#if defined(BMPLC_XL)
     /* CAN */
     [RHSHalInterruptIdCAN1Rx0] = CAN1_RX0_IRQn,
     [RHSHalInterruptIdCAN1SCE] = CAN1_SCE_IRQn,
@@ -108,7 +108,6 @@ const IRQn_Type rhs_hal_interrupt_irqn[RHSHalInterruptIdMax] = {
     /* UART */
     [RHSHalInterruptIdUsart3] = USART3_IRQn,
 #    elif defined(STM32G0B1xx)
-    [RHSHalInterruptIdEXTI4_15]    = EXTI4_15_IRQn,
     [RHSHalInterruptIdUSB_UCPD1_2] = USB_UCPD1_2_IRQn,
 
 #    endif
@@ -228,7 +227,7 @@ void CAN1_TX_IRQHandler(void)
     rhs_hal_interrupt_call(RHSHalInterruptIdCAN1Tx);
 }
 
-#    if !defined(BMPLC_XL) && !defined(BMPLC_L)
+#    if !defined(BMPLC_XL)
 
 /* CAN 2 RX0 */
 void CAN2_RX0_IRQHandler(void)
@@ -364,10 +363,6 @@ void UART5_IRQHandler(void)
 }
 
 #elif defined(STM32G0B1xx)
-void EXTI4_15_IRQHandler(void)
-{
-    rhs_hal_interrupt_call(RHSHalInterruptIdEXTI4_15);
-}
 
 void USB_UCPD1_2_IRQHandler(void)
 {

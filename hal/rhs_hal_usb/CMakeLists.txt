@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.24)
 project(rhs_hal_usb C)
 set(CMAKE_C_STANDARD 11)
 
-add_library(${PROJECT_NAME} STATIC rhs_hal_usb.c rhs_hal_usb_cdc.c rhs_hal_cdc_net.c)
+add_library(${PROJECT_NAME} STATIC rhs_hal_usb.c rhs_hal_usb_cdc.c)
+
+if(RHS_APPLICATION_USB_CDC_NET OR RHS_APPLICATION_USB_ETH_BRIDGE)
+        target_sources(${PROJECT_NAME} PRIVATE rhs_hal_cdc_net.c)
+endif()
 
 target_include_directories(
         ${PROJECT_NAME} PUBLIC

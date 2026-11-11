@@ -1,6 +1,6 @@
 #include "rhs_hal_rtc.h"
 
-#if defined(BMPLC_XL) || defined(BMPLC_L)
+#if defined(BMPLC_XL)
 #    include "stm32f7xx_ll_rtc.h"
 
 typedef struct

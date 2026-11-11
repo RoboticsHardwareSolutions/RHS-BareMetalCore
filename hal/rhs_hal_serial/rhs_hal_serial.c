@@ -8,7 +8,7 @@
 #include "hal_rs232.h"
 #include "hal_rs485.h"
 
-#if defined(BMPLC_XL) || defined(BMPLC_L)
+#if defined(BMPLC_XL)
 #    include "stm32f7xx_ll_usart.h"
 #    define RHS_INTERFACE_RS232 USART3
 #    define RHS_INTERRUPT_RS232 RHSHalInterruptIdUsart3
@@ -72,7 +72,7 @@ RHSHalSerial* rhs_hal_serial_init(RHSHalSerialId id, uint32_t baud)
         break;
     case RHSHalSerialIdRS485:
         rhs_hal_rs485_init();
-#if defined(BMPLC_L) || defined(BMPLC_XL)
+#if defined(BMPLC_XL)
         rserial_open(&rhs_hal_serial[RHSHalSerialIdRS485].rserial, "UART6", (int) baud, "8N1", FLOW_CTRL_DE, 4000);
 #elif defined(BMPLC_M)
         rserial_open(&rhs_hal_serial[RHSHalSerialIdRS485].rserial, "UART5", (int) baud, "8N1", FLOW_CTRL_DE, 4000);

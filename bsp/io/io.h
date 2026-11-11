@@ -1,7 +1,20 @@
 #pragma once
 #include <stdbool.h>
+#include "rhs_hal_gpio.h"
 
-void rhs_hal_io_init(void);
+void io_init(void);
+
+/**
+ * Reconfigure IN<ch> (0-4) from its default polling input mode into an EXTI
+ * rise+fall interrupt source, invoking `callback(context)` on every edge.
+ * Pin details (port/pin/GPIO specifics) stay encapsulated in io.c -- callers
+ * only ever see a channel number 0-4, same as every other IN/OUT/KEY
+ * accessor in this header.
+ * @param ch       input channel, 0-4
+ * @param callback invoked (from ISR context) on every rising or falling edge
+ * @param context  passed through to `callback` unchanged
+ */
+void io_in_exti_enable(uint8_t ch, RHSGpioExtiCallback callback, void* context);
 
 bool IN0_IS_HIGH(void);
 bool IN1_IS_HIGH(void);

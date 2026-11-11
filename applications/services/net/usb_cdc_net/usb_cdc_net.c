@@ -160,7 +160,7 @@ static CdcNet* usb_cdc_net_alloc(const NetConfig* config)
 
     mg_log_set(MG_LL_ERROR);
 
-    // It is necessary that the mac for usb_cdc_net and usb_eth_bridge be different,
+    // It is necessary that the mac for usb_cdc_net and the usb_bridge Eth target be different,
     // otherwise the system may incorrectly name the interface.
     tud_network_mac_address[5] = 0;
 

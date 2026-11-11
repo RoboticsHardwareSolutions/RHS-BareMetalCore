@@ -29,6 +29,9 @@ void rhs_hal_usb_init(void);
 
 void rhs_hal_usb_disable(void);
 
+/** @return false when rhs_hal_usb_init() left USB off (BMPLC_XL with strap PG10 low: PA11/PA12 belong to CAN1) */
+bool rhs_hal_usb_is_available(void);
+
 /** Restart USB device
  */
 void rhs_hal_usb_reinit(void);

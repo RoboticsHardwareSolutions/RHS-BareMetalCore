@@ -1,5 +1,6 @@
-if(NOT (RHS_SERVICE_ETH_NET OR RHS_SERVICE_USB_CDC_NET OR RHS_SERVICE_USB_ETH_BRIDGE))
-        message("\t\tRHS_SERVICE_ETH_NET / USB_CDC_NET / USB_ETH_BRIDGE  - OFF")
+# The usb_bridge eth target needs the mongoose configuration below too
+if(NOT (RHS_SERVICE_ETH_NET OR RHS_SERVICE_USB_CDC_NET OR (RHS_SERVICE_USB_BRIDGE AND RHS_HAL_ETH)))
+        message("\t\tRHS_SERVICE_ETH_NET / USB_CDC_NET  - OFF")
         return()
 endif()
 
@@ -59,7 +60,6 @@ target_include_directories(
 
 service_option(RHS_SERVICE_USB_CDC_NET usb_cdc_net)
 service_option(RHS_SERVICE_ETH_NET eth_net)
-service_option(RHS_SERVICE_USB_ETH_BRIDGE usb_eth_bridge)
 
 add_subdirectory(net_listeners)
 add_subdirectory(net_utils)

@@ -27,7 +27,8 @@ static void usb_pins_release(void)
 }
 #endif
 
-static RHSMutex* s_usb_mutex = NULL;
+static RHSMutex* s_usb_mutex     = NULL;
+static bool      s_usb_available = false;
 /* Low-level init */
 void rhs_hal_usb_init(void)
 {
@@ -122,6 +123,7 @@ void rhs_hal_usb_init(void)
 #else
 #    error "Unknown platform"
 #endif
+    s_usb_available = true;
     RHS_LOG_I(TAG, "Init OK");
 }
 
@@ -259,6 +261,11 @@ void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface, void* context)
     }
     s_usb_desc = iface;
     rhs_mutex_release(s_usb_mutex);
+}
+
+bool rhs_hal_usb_is_available(void)
+{
+    return s_usb_available;
 }
 
 RHSHalUsbInterface* rhs_hal_usb_get_interface(void)

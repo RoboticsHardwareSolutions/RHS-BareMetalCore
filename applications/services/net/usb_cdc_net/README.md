@@ -243,14 +243,15 @@ ping cdc_net.local
 curl http://cdc_net.local/status
 ```
 
-## Runtime exclusion with usb_eth_bridge
+## Runtime exclusion with the usb_bridge Eth target
 
-The TinyUSB network callbacks are owned by `rhs_hal_usb` and dispatched via `rhs_hal_cdc_net`. Both `usb_cdc_net` and `usb_eth_bridge` may be compiled into the same binary, but only one may be active at a time. To switch between them, stop the current one and start the other:
+The TinyUSB network callbacks are owned by `rhs_hal_usb` and dispatched via `rhs_hal_cdc_net`. Both `usb_cdc_net` and the Eth target of `usb_bridge` may be compiled into the same binary, but only one may be active at a time. To switch between them, stop the current one and start the other:
 
 ```c
 usb_cdc_net_stop(cdc_net);
 cdc_net = NULL;
-bridge = usb_eth_bridge_start(NULL);
+UsbBridgeConfig cfg = {.target = UsbBridgeTargetEth, .mode = UsbBridgeModeBridge};
+bridge = usb_bridge_start(&cfg);
 ```
 
 `usb_cdc_net` and `eth_net` are fully independent and can run simultaneously. Each produces its own `Net*` handle and worker thread.

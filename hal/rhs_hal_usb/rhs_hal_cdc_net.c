@@ -4,7 +4,7 @@
 #include "tusb.h"
 
 /* Defined here — single definition across the whole binary.
- * Both usb_cdc_net and usb_eth_bridge write to this before tusb_init(). */
+ * Both usb_cdc_net and the usb_bridge Eth target write to this before tusb_init(). */
 uint8_t tud_network_mac_address[6] = {0, 2, 0x84, 0x6A, 0x96, 0};
 /* NB!: If first byte is 0x02 (locally administered mode), Android devices will assign an 'usbX' name instead of 'ethX' */
 

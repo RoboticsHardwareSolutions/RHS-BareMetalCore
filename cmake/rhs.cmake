@@ -7,7 +7,6 @@ include(${CMAKE_CURRENT_LIST_DIR}/git_sha.cmake)
 foreach(rename
         "RHS_APPLICATION_ETH_NET:RHS_SERVICE_ETH_NET"
         "RHS_APPLICATION_USB_CDC_NET:RHS_SERVICE_USB_CDC_NET"
-        "RHS_APPLICATION_USB_ETH_BRIDGE:RHS_SERVICE_USB_ETH_BRIDGE"
         "RHS_CDC_NET_IP:RHS_USB_CDC_NET_IP"
         "RHS_CDC_NET_GATEWAY:RHS_USB_CDC_NET_GATEWAY"
         "RHS_CDC_NET_NETMASK:RHS_USB_CDC_NET_NETMASK")
@@ -19,6 +18,19 @@ foreach(rename
         set(${new_name} "${${old_name}}")
     endif()
 endforeach()
+
+# usb_serial_bridge, usb_can_bridge and usb_eth_bridge are targets of usb_bridge now: it is ON when any of them was
+if(NOT DEFINED RHS_SERVICE_USB_BRIDGE)
+    foreach(old_name RHS_SERVICE_USB_SERIAL_BRIDGE RHS_SERVICE_USB_CAN_BRIDGE RHS_SERVICE_USB_ETH_BRIDGE
+            RHS_APPLICATION_USB_ETH_BRIDGE)
+        if(DEFINED ${old_name})
+            message(DEPRECATION "${old_name} is deprecated, use RHS_SERVICE_USB_BRIDGE")
+            if(${old_name})
+                set(RHS_SERVICE_USB_BRIDGE ON)
+            endif()
+        endif()
+    endforeach()
+endif()
 
 set(RHS_OUTPUT_FILE "${CMAKE_BINARY_DIR}/applications.c")
 

@@ -6,7 +6,7 @@ add_subdirectory(loader)
 message("\tSERVICES:")
 service_option(RHS_SERVICE_NOTIFICATION notification)
 service_option(RHS_SERVICE_CAN_OPEN can_open)
-service_option(RHS_SERVICE_USB_SERIAL_BRIDGE usb_serial_bridge)
+service_option(RHS_SERVICE_USB_BRIDGE usb_bridge)
 
-# Network stack, enabled by RHS_SERVICE_ETH_NET / RHS_SERVICE_USB_CDC_NET / RHS_SERVICE_USB_ETH_BRIDGE
+# Network stack, enabled by RHS_SERVICE_ETH_NET / RHS_SERVICE_USB_CDC_NET (mongoose setup also for the usb_bridge eth target)
 add_subdirectory(net)

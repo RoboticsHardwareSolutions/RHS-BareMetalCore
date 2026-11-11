@@ -189,7 +189,6 @@ Common layout and naming rules: [applications/services/README.md](applications/s
 | `cli` | always on | Interactive command-line interface over RTT/UART | [applications/services/cli/README.md](applications/services/cli/README.md) |
 | `loader` | always on | Runs registered tests and start-up hooks | [applications/services/loader/README.md](applications/services/loader/README.md) |
 | `notification` | `RHS_SERVICE_NOTIFICATION` | Sound notification sequences on the speaker | [applications/services/notification/README.md](applications/services/notification/README.md) |
-| `can_open` | `RHS_SERVICE_CAN_OPEN` | CANopen stack integration | [applications/services/can_open/README.md](applications/services/can_open/README.md) |
 | `net` | `RHS_SERVICE_ETH_NET` / `USB_CDC_NET` | Unified networking layer (Mongoose) | [applications/services/net/README.md](applications/services/net/README.md) |
 | `net / eth_net` | `RHS_SERVICE_ETH_NET` | Physical Ethernet via STM32F RMII MAC | [applications/services/net/eth_net/README.md](applications/services/net/eth_net/README.md) |
 | `net / usb_cdc_net` | `RHS_SERVICE_USB_CDC_NET` | USB device network (RNDIS/ECM/NCM) | [applications/services/net/usb_cdc_net/README.md](applications/services/net/usb_cdc_net/README.md) |

@@ -32,6 +32,12 @@ if(NOT DEFINED RHS_SERVICE_USB_BRIDGE)
     endforeach()
 endif()
 
+# Removed services: fail instead of building without them
+if(RHS_SERVICE_CAN_OPEN)
+    message(FATAL_ERROR "RHS_SERVICE_CAN_OPEN: the can_open service (co_stack) is removed, run a CANopen stack in the "
+            "application on top of rhs_hal_can (RHS_HAL_CAN ON)")
+endif()
+
 set(RHS_OUTPUT_FILE "${CMAKE_BINARY_DIR}/applications.c")
 
 # Header includes

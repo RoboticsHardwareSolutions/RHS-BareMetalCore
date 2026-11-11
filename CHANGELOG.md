@@ -6,6 +6,7 @@
 - `rhs_hal_can` on STM32G0B1 (FDCAN1 PB8/PB9 through rcan), in `rhs_hal_can_fdcan.c`; interrupt `RHSHalInterruptIdFDCANIT0`
 - `rhs_hal_cdc_acquire()` / `rhs_hal_cdc_release()`: reserve the USB CDC port
 - `rhs_hal_usb_is_available()`: false on BMPLC_XL with strap PG10 low
+- `rhs_hal_usb_add_mount_callback()` / `rhs_hal_usb_remove_mount_callback()` / `rhs_hal_usb_is_mounted()`: USB mount state (host configured the device, bus not suspended) from the TinyUSB `tud_mount_cb` / `tud_umount_cb` / `tud_suspend_cb` / `tud_resume_cb`; without VBUS sensing a pulled cable is reported as unmounted through suspend; up to 4 subscribers
 - `usb_bridge_check()`: why a bridge cannot start; the CLI `usb` prints it, e.g. `error: eth bridge: not supported on this board: no Ethernet (RHS_HAL_ETH)` on G0B1 or `error: can bridge: ... CAN and USB share SRAM on STM32F103 ...` on BMPLC_M (CAN target there only in app mode)
 
 ### Changed
@@ -15,15 +16,17 @@
 - Services follow one layout and naming scheme, see `applications/services/README.md`: `<name>.h` / `<name>_i.h` / `<name>.c`, entry points `<name>_srv` / `<name>_start_up`, `TAG "<name>"`, one CMakeLists template
 - CMake options `RHS_APPLICATION_ETH_NET` / `USB_CDC_NET` / `USB_ETH_BRIDGE` renamed to `RHS_SERVICE_*`, `RHS_CDC_NET_*` renamed to `RHS_USB_CDC_NET_*` (old names still accepted with a deprecation warning)
 - New `service_option()` CMake helper for optional services
-- **Breaking:** `usb_serial_enable/disable/set_config/get_config/get_state` renamed to `usb_serial_bridge_start/stop/set_config/get_config/get_state`, `UsbSerialConfig/State` to `UsbSerialBridgeConfig/State`, `EthPhyConfig` to `EthNetPhyConfig`, `od_common_defs.h` to `can_open_od.h`, CMake targets `cdc_net` and `can_open_srv` to `usb_cdc_net` and `can_open`
+- **Breaking:** `usb_serial_enable/disable/set_config/get_config/get_state` renamed to `usb_serial_bridge_start/stop/set_config/get_config/get_state`, `UsbSerialConfig/State` to `UsbSerialBridgeConfig/State`, `EthPhyConfig` to `EthNetPhyConfig`, CMake target `cdc_net` to `usb_cdc_net`
 - `net` no longer depends on the rhs checkout path (`CMAKE_SOURCE_DIR/thirdparty/rhs`)
+
+### Removed
+- **Breaking:** `can_open` service (CanFestival `co_stack` glue) and `RHS_SERVICE_CAN_OPEN`, which now stops the configuration with an error: run a CANopen stack (e.g. CANopenNode) in the application on top of `rhs_hal_can`
 
 ### Fixed
 - USB CDC stop hung on STM32F7: the USB clock was disabled before the TinyUSB task ran `tusb_deinit()`, the dwc2 core reset then waited forever
-- `can_open`: events arriving together (e.g. RX and TX) were dropped
 
 ### Documentation
-- README for `cli`, `loader`, `notification`, `can_open`, `usb_bridge` and for the services layout
+- README for `cli`, `loader`, `notification`, `usb_bridge` and for the services layout
 
 ## [0.0.6] - 2026-06-21
 ### Added

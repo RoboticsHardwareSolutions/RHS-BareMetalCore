@@ -1,5 +1,6 @@
 #include <rhs.h>
 #include <rhs_hal.h>
+#include <string.h>
 #if !defined(STM32G0B1xx)
 #    include "old_rhs_hal_gpio.h"
 #endif
@@ -236,6 +237,8 @@ extern void descriptor_switch_mode(tusb_desc_device_t* new_desc,
 
 static RHSHalUsbInterface* s_usb_desc = NULL;
 
+static void usb_mount_set(bool configured, bool suspended);
+
 void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface, void* context)
 {
     if (iface == s_usb_desc)
@@ -246,6 +249,8 @@ void rhs_hal_usb_set_interface(RHSHalUsbInterface* iface, void* context)
     {
         if (s_usb_desc->deinit)
             s_usb_desc->deinit(s_usb_desc->context);
+        // The interface may stop without tusb_deinit(): the host is gone in any case
+        usb_mount_set(false, false);
     }
     if (iface != NULL)
     {
@@ -271,4 +276,116 @@ bool rhs_hal_usb_is_available(void)
 RHSHalUsbInterface* rhs_hal_usb_get_interface(void)
 {
     return s_usb_desc;
+}
+
+/*********************************** MOUNT ************************************/
+
+typedef struct
+{
+    RHSHalUsbMountCallback callback;
+    void*                  context;
+} UsbMountSubscriber;
+
+static UsbMountSubscriber s_mount_subscribers[RHS_HAL_USB_MOUNT_CALLBACKS_MAX];
+static bool               s_usb_configured = false; /* SET_CONFIGURATION from the host, until umount */
+static bool               s_usb_suspended  = false; /* Bus idle: host asleep or cable pulled (no VBUS sensing) */
+static volatile bool      s_usb_mounted    = false; /* Last state given to the subscribers */
+
+/* The subscribers are called outside the critical section */
+static void usb_mount_update(void)
+{
+    UsbMountSubscriber subscribers[RHS_HAL_USB_MOUNT_CALLBACKS_MAX];
+    bool               changed;
+    bool               mounted;
+
+    RHS_CRITICAL_ENTER();
+    mounted       = s_usb_configured && !s_usb_suspended;
+    changed       = mounted != s_usb_mounted;
+    s_usb_mounted = mounted;
+    memcpy(subscribers, s_mount_subscribers, sizeof(subscribers));
+    RHS_CRITICAL_EXIT();
+
+    if (!changed)
+    {
+        return;
+    }
+    RHS_LOG_D(TAG, "%s", mounted ? "Mounted" : "Unmounted");
+    for (size_t i = 0; i < RHS_HAL_USB_MOUNT_CALLBACKS_MAX; i++)
+    {
+        if (subscribers[i].callback != NULL)
+        {
+            subscribers[i].callback(mounted, subscribers[i].context);
+        }
+    }
+}
+
+static void usb_mount_set(bool configured, bool suspended)
+{
+    RHS_CRITICAL_ENTER();
+    s_usb_configured = configured;
+    s_usb_suspended  = suspended;
+    RHS_CRITICAL_EXIT();
+    usb_mount_update();
+}
+
+bool rhs_hal_usb_add_mount_callback(RHSHalUsbMountCallback callback, void* context)
+{
+    rhs_assert(callback);
+    bool added = false;
+
+    RHS_CRITICAL_ENTER();
+    for (size_t i = 0; i < RHS_HAL_USB_MOUNT_CALLBACKS_MAX; i++)
+    {
+        if (s_mount_subscribers[i].callback == NULL)
+        {
+            s_mount_subscribers[i].callback = callback;
+            s_mount_subscribers[i].context  = context;
+            added                           = true;
+            break;
+        }
+    }
+    RHS_CRITICAL_EXIT();
+    return added;
+}
+
+void rhs_hal_usb_remove_mount_callback(RHSHalUsbMountCallback callback, void* context)
+{
+    RHS_CRITICAL_ENTER();
+    for (size_t i = 0; i < RHS_HAL_USB_MOUNT_CALLBACKS_MAX; i++)
+    {
+        if (s_mount_subscribers[i].callback == callback && s_mount_subscribers[i].context == context)
+        {
+            s_mount_subscribers[i].callback = NULL;
+            s_mount_subscribers[i].context  = NULL;
+            break;
+        }
+    }
+    RHS_CRITICAL_EXIT();
+}
+
+bool rhs_hal_usb_is_mounted(void)
+{
+    return s_usb_mounted;
+}
+
+/* TinyUSB device callbacks, run in the TinyUSB task thread. tusb_deinit() calls tud_umount_cb() when configured. */
+void tud_mount_cb(void)
+{
+    usb_mount_set(true, false);
+}
+
+void tud_umount_cb(void)
+{
+    usb_mount_set(false, false);
+}
+
+void tud_suspend_cb(bool remote_wakeup_en)
+{
+    UNUSED(remote_wakeup_en);
+    usb_mount_set(s_usb_configured, true);
+}
+
+void tud_resume_cb(void)
+{
+    usb_mount_set(s_usb_configured, false);
 }

@@ -1,6 +1,8 @@
 #include "can_open.h"
-#include "can_open_srv.h"
+#include "can_open_i.h"
 #include "rtimer.h"
+
+#define TAG "can_open"
 
 static void InitNodes(CO_Data* d, UNS32 id)
 {
@@ -14,7 +16,6 @@ static void can_rx_irq_cb(RHSHalCANId can_id, void* context)
 {
     rhs_assert(context);
 
-    extern FilterId*   filter_list;
     CanOpenApp*        app = context;
     Message            rxm = {0};
     RHSHalCANFrameType frame;
@@ -83,7 +84,7 @@ static void can_sce_irq_cb(RHSHalCANId can_id, RHSHalCANSCEEvent event, void* co
 
 UNS8 GetSDOClientFromNodeId(CO_Data* d, UNS8 nodeId);
 
-CanOpenApp* can_open_app = NULL; /* co_stack and rtimer use callbacks without context. It makes me use this trash */
+CanOpenApp* can_open_app = NULL;
 
 static void can_open_sdo_cb(CO_Data* d, UNS8 nodeId)
 {

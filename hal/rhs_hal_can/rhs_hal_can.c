@@ -1,5 +1,9 @@
-#include "stdbool.h"
+/* rhs_hal_can for the bxCAN peripheral (STM32F1/F4/F7), FDCAN is in rhs_hal_can_fdcan.c */
 #include "rcan.h"
+
+#if defined(RCAN_BACKEND_BXCAN)
+
+#include "stdbool.h"
 #include "rhs.h"
 #include "rhs_hal_can.h"
 #include "old_rhs_hal_gpio.h"
@@ -386,6 +390,8 @@ void rhs_hal_can_init(RHSHalCANId id, uint32_t baud)
     default:
         rhs_crash("No CAN interface");
     }
+    // rcan starts bxCAN without automatic bus-off management: without ABOM the node stays off the bus for good
+    rhs_hal_can[id].rcan.handle.Instance->MCR |= CAN_MCR_ABOM;
 }
 
 void rhs_hal_can_deinit(RHSHalCANId id)
@@ -566,3 +572,5 @@ RHSHalCANStatistic rhs_hal_can_get_statistic(RHSHalCANId id)
     rhs_assert(id < RHSHalCANIdMax);
     return rhs_hal_can[id].statistic;
 }
+
+#endif  // defined(RCAN_BACKEND_BXCAN)

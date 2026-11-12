@@ -4,7 +4,8 @@ set(CMAKE_C_STANDARD 11)
 
 add_library(${PROJECT_NAME} STATIC rhs_hal_usb.c rhs_hal_usb_cdc.c)
 
-if(RHS_APPLICATION_USB_CDC_NET OR RHS_APPLICATION_USB_ETH_BRIDGE)
+# NCM for usb_cdc_net and the eth target of usb_bridge
+if(RHS_SERVICE_USB_CDC_NET OR (RHS_SERVICE_USB_BRIDGE AND RHS_HAL_ETH))
         target_sources(${PROJECT_NAME} PRIVATE rhs_hal_cdc_net.c)
 endif()
 

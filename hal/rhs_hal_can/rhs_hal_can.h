@@ -34,7 +34,7 @@ typedef struct
 typedef enum
 {
     RHSHalCANId1,
-#if !defined(BMPLC_XL) && !defined(BMPLC_M)
+#if !defined(BMPLC_XL) && !defined(BMPLC_M) && !defined(STM32G0B1xx)
     RHSHalCANId2,
 #endif
     RHSHalCANIdMax,
@@ -42,6 +42,8 @@ typedef enum
 
 void* rhs_hal_can_get_handle(RHSHalCANId id);
 
+/** Start the CAN. After bus-off the controller recovers by itself (bxCAN ABOM, FDCAN CCCR.INIT cleared in the ISR)
+ * once the bus is idle for 128 x 11 recessive bits; RHSHalCANSCEEventBusOff is reported to the SCE callback. */
 void rhs_hal_can_init(RHSHalCANId id, uint32_t baud);
 
 void rhs_hal_can_deinit(RHSHalCANId id);

@@ -2,6 +2,36 @@
 # Optimized version for better performance and maintainability
 include(${CMAKE_CURRENT_LIST_DIR}/git_sha.cmake)
 
+################################ DEPRECATED OPTIONS ###########################
+# Old option names are still accepted, so that a renamed option is not silently ignored
+foreach(rename
+        "RHS_APPLICATION_ETH_NET:RHS_SERVICE_ETH_NET"
+        "RHS_APPLICATION_USB_CDC_NET:RHS_SERVICE_USB_CDC_NET"
+        "RHS_CDC_NET_IP:RHS_USB_CDC_NET_IP"
+        "RHS_CDC_NET_GATEWAY:RHS_USB_CDC_NET_GATEWAY"
+        "RHS_CDC_NET_NETMASK:RHS_USB_CDC_NET_NETMASK")
+    string(REPLACE ":" ";" rename "${rename}")
+    list(GET rename 0 old_name)
+    list(GET rename 1 new_name)
+    if(DEFINED ${old_name} AND NOT DEFINED ${new_name})
+        message(DEPRECATION "${old_name} is deprecated, use ${new_name}")
+        set(${new_name} "${${old_name}}")
+    endif()
+endforeach()
+
+# usb_serial_bridge, usb_can_bridge and usb_eth_bridge are targets of usb_bridge now: it is ON when any of them was
+if(NOT DEFINED RHS_SERVICE_USB_BRIDGE)
+    foreach(old_name RHS_SERVICE_USB_SERIAL_BRIDGE RHS_SERVICE_USB_CAN_BRIDGE RHS_SERVICE_USB_ETH_BRIDGE
+            RHS_APPLICATION_USB_ETH_BRIDGE)
+        if(DEFINED ${old_name})
+            message(DEPRECATION "${old_name} is deprecated, use RHS_SERVICE_USB_BRIDGE")
+            if(${old_name})
+                set(RHS_SERVICE_USB_BRIDGE ON)
+            endif()
+        endif()
+    endforeach()
+endif()
+
 set(RHS_OUTPUT_FILE "${CMAKE_BINARY_DIR}/applications.c")
 
 # Header includes
@@ -125,6 +155,23 @@ function(start_up start_func)
         target_link_libraries(rhs PUBLIC ${PROJECT_NAME})
     endif()
 
+endfunction()
+
+# Add an optional service controlled by a RHS_SERVICE_* option
+# Usage: service_option(RHS_SERVICE_<NAME> <subdirectory>)
+# When the option is ON it is exported as a compile definition of rhs and the subdirectory is added
+function(service_option option subdirectory)
+    string(LENGTH "${option}" option_length)
+    math(EXPR padding_length "40 - ${option_length}")
+    string(REPEAT " " ${padding_length} padding)
+
+    if(${option})
+        target_compile_definitions(rhs PUBLIC ${option})
+        message("\t\t${option}${padding}- ON")
+        add_subdirectory(${subdirectory})
+    else()
+        message("\t\t${option}${padding}- OFF")
+    endif()
 endfunction()
 
 # Register a test function

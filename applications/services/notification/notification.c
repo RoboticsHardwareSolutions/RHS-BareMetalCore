@@ -1,5 +1,5 @@
 #include "notification.h"
-#include "notification_app.h"
+#include "notification_i.h"
 #include "notification_messages.h"
 #include "rhs.h"
 #include "rhs_hal.h"
@@ -61,6 +61,14 @@ static void notification_process_notification_message(NotificationApp* app, Noti
     };
 }
 
+void notification_message(NotificationApp* app, const NotificationSequence* sequence)
+{
+    rhs_assert(sequence);
+
+    NotificationAppMessage m = {.type = NotificationLayerMessage, .sequence = sequence};
+    rhs_assert(rhs_message_queue_put(app->queue, &m, RHSWaitForever) == RHSStatusOk);
+}
+
 int32_t notification_srv(void* context)
 {
     NotificationApp* app = notification_app_alloc();
@@ -84,4 +92,5 @@ int32_t notification_srv(void* context)
         // TODO block Feature
     }
     notification_app_free(app);
+    return 0;
 }

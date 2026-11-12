@@ -15,7 +15,7 @@ The active mode is selected at compile time via `tusb_config.h` (see below). NCM
 ### 1. Enable the sub-application
 
 ```cmake
-set(RHS_APPLICATION_USB_CDC_NET ON)
+set(RHS_SERVICE_USB_CDC_NET ON)
 ```
 
 The parent `net/CMakeLists.txt` adds `usb_cdc_net` as a sub-directory automatically.
@@ -24,16 +24,16 @@ The parent `net/CMakeLists.txt` adds `usb_cdc_net` as a sub-directory automatica
 
 | CMake variable          | Default          | Description      |
 |-------------------------|------------------|------------------|
-| `RHS_CDC_NET_IP`        | `192.168.3.100`  | Device IP address |
-| `RHS_CDC_NET_GATEWAY`   | `192.168.3.1`    | Default gateway  |
-| `RHS_CDC_NET_NETMASK`   | `255.255.255.0`  | Network mask     |
+| `RHS_USB_CDC_NET_IP`        | `192.168.3.100`  | Device IP address |
+| `RHS_USB_CDC_NET_GATEWAY`   | `192.168.3.1`    | Default gateway  |
+| `RHS_USB_CDC_NET_NETMASK`   | `255.255.255.0`  | Network mask     |
 
 Override in your toolchain or preset:
 
 ```cmake
-set(RHS_CDC_NET_IP      "192.168.7.2"   CACHE STRING "" FORCE)
-set(RHS_CDC_NET_GATEWAY "192.168.7.1"   CACHE STRING "" FORCE)
-set(RHS_CDC_NET_NETMASK "255.255.255.0" CACHE STRING "" FORCE)
+set(RHS_USB_CDC_NET_IP      "192.168.7.2"   CACHE STRING "" FORCE)
+set(RHS_USB_CDC_NET_GATEWAY "192.168.7.1"   CACHE STRING "" FORCE)
+set(RHS_USB_CDC_NET_NETMASK "255.255.255.0" CACHE STRING "" FORCE)
 ```
 
 After the USB cable is plugged in, the host must be assigned an IP in the same subnet (e.g., `192.168.7.1`) manually or via DHCP if a DHCP server is added.
@@ -93,7 +93,7 @@ The VID/PID is derived automatically from the enabled interface bitmap. When usi
 
 Registers the TinyUSB network interface (taking ownership of the `tud_network_*` callbacks), initialises Mongoose, and starts the worker thread.
 
-- `config`: pass `NULL` to use the compile-time defaults (`RHS_CDC_NET_IP`, etc.). Individual empty fields are filled from compile-time defaults.
+- `config`: pass `NULL` to use the compile-time defaults (`RHS_USB_CDC_NET_IP`, etc.). Individual empty fields are filled from compile-time defaults.
 
 Returns a `Net *` handle valid until `usb_cdc_net_stop()` is called.
 
@@ -111,7 +111,7 @@ Deregisters the TinyUSB callbacks, stops the worker thread, and frees all resour
 Net *net = usb_cdc_net_start(NULL);
 ```
 
-The device will be reachable at `RHS_CDC_NET_IP` once the USB cable is connected and the host assigns itself an IP in the same subnet.
+The device will be reachable at `RHS_USB_CDC_NET_IP` once the USB cable is connected and the host assigns itself an IP in the same subnet.
 
 ### Custom IP address
 
@@ -129,7 +129,7 @@ Net *net = usb_cdc_net_start(&cfg);
 
 ### Creating an application service
 
-1. Add `set(RHS_APPLICATION_USB_CDC_NET ON)` to your toolchain.
+1. Add `set(RHS_SERVICE_USB_CDC_NET ON)` to your toolchain.
 2. Create `my_app/CMakeLists.txt`:
 
 ```cmake
@@ -149,7 +149,7 @@ target_link_libraries(
     PRIVATE
     rhs
     rhs_hal
-    cdc_net
+    usb_cdc_net
 )
 
 service(my_app "my_app" 2048)
@@ -243,14 +243,15 @@ ping cdc_net.local
 curl http://cdc_net.local/status
 ```
 
-## Runtime exclusion with usb_eth_bridge
+## Runtime exclusion with the usb_bridge Eth target
 
-The TinyUSB network callbacks are owned by `rhs_hal_usb` and dispatched via `rhs_hal_cdc_net`. Both `usb_cdc_net` and `usb_eth_bridge` may be compiled into the same binary, but only one may be active at a time. To switch between them, stop the current one and start the other:
+The TinyUSB network callbacks are owned by `rhs_hal_usb` and dispatched via `rhs_hal_cdc_net`. Both `usb_cdc_net` and the Eth target of `usb_bridge` may be compiled into the same binary, but only one may be active at a time. To switch between them, stop the current one and start the other:
 
 ```c
 usb_cdc_net_stop(cdc_net);
 cdc_net = NULL;
-bridge = usb_eth_bridge_start(NULL);
+UsbBridgeConfig cfg = {.target = UsbBridgeTargetEth, .mode = UsbBridgeModeBridge};
+bridge = usb_bridge_start(&cfg);
 ```
 
 `usb_cdc_net` and `eth_net` are fully independent and can run simultaneously. Each produces its own `Net*` handle and worker thread.

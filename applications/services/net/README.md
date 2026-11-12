@@ -1,6 +1,6 @@
 # Module Net
 
-The `net` service provides a unified networking layer for embedded firmware running on STM32 microcontrollers. It wraps the Mongoose event-driven network stack and exposes a simple API for registering HTTP and raw TCP listeners. Three transport back-ends are available as independent sub-applications and can all be compiled into the same binary. `usb_eth_bridge` and `usb_cdc_net` share the USB interface at runtime, so only one of them may be active at a time; switching between them is done by calling the respective `_stop` / `_start` functions.
+The `net` service provides a unified networking layer for embedded firmware running on STM32 microcontrollers. It wraps the Mongoose event-driven network stack and exposes a simple API for registering HTTP and raw TCP listeners. Two transport back-ends are available as independent sub-applications and can both be compiled into the same binary. The USB-to-Ethernet L2 bridge is the Eth target of the `usb_bridge` service (`../usb_bridge`): it shares the USB interface with `usb_cdc_net`, so only one of them may be active at a time.
 
 ## Module tree
 
@@ -10,6 +10,7 @@ net/
 ├── net.h                   # Public API: NetConfig, net_start_http/listener, net_set_config
 ├── net.c                   # Core worker thread and message-queue dispatch
 ├── net_i.h                 # Internal types (Net struct, event queue messages)
+├── net_mg_log.c            # Mongoose log output to RHS log (built into the mongoose target)
 │
 ├── eth_net/                # Transport: physical Ethernet via STM32F RMII MAC
 │   ├── CMakeLists.txt
@@ -22,20 +23,18 @@ net/
 │   ├── usb_cdc_net.h
 │   └── usb_cdc_net.c
 │
-├── usb_eth_bridge/         # Layer-2 bridge: USB CDC-Net <-> physical Ethernet (no IP stack)
-│   ├── CMakeLists.txt
-│   ├── usb_eth_bridge.h
-│   └── usb_eth_bridge.c
-│
 ├── net_listeners/          # Internal: linked-list of active Mongoose connection handlers
+│   ├── CMakeLists.txt
 │   ├── net_listeners.h
 │   └── net_listeners.c
 │
 ├── net_utils/              # IP address string parsing and validation helpers
+│   ├── CMakeLists.txt
 │   ├── net_utils.h
 │   └── net_utils.c
 │
 └── modbus_tcp/             # Modbus TCP server that runs on top of a Net instance
+    ├── CMakeLists.txt
     ├── modbus_tcp.h
     └── modbus_tcp.c
 ```
@@ -46,13 +45,13 @@ Enable any combination of transport back-ends in your CMake configuration:
 
 | CMake option                        | Transport                          |
 |-------------------------------------|------------------------------------|
-| `RHS_APPLICATION_ETH_NET=ON`        | Physical Ethernet (RMII)           |
-| `RHS_APPLICATION_USB_CDC_NET=ON`    | USB device network (RNDIS/ECM/NCM) |
-| `RHS_APPLICATION_USB_ETH_BRIDGE=ON` | Layer-2 USB-to-Ethernet bridge     |
+| `RHS_SERVICE_ETH_NET=ON`        | Physical Ethernet (RMII)           |
+| `RHS_SERVICE_USB_CDC_NET=ON`    | USB device network (RNDIS/ECM/NCM) |
+| `RHS_SERVICE_USB_BRIDGE=ON` + `RHS_HAL_ETH=ON` | Layer-2 USB-to-Ethernet bridge (`usb_bridge` Eth target) |
 
 The `net` core library is built automatically when any of these options is ON. All three options may be enabled simultaneously in the same binary.
 
-The TinyUSB network callbacks (`tud_network_recv_cb`, `tud_network_xmit_cb`, `tud_network_init_cb`) are owned by `rhs_hal_usb` and dispatched via `rhs_hal_cdc_net`. `usb_cdc_net` and `usb_eth_bridge` each register their handlers at runtime using `rhs_hal_cdc_net_set()`. Only one of them may be active at a time; use the respective `_stop` / `_start` pair to switch.
+The TinyUSB network callbacks (`tud_network_recv_cb`, `tud_network_xmit_cb`, `tud_network_init_cb`) are owned by `rhs_hal_usb` and dispatched via `rhs_hal_cdc_net`. `usb_cdc_net` and the Eth target of `usb_bridge` each register their handlers at runtime using `rhs_hal_cdc_net_set()`. Only one of them may be active at a time.
 
 ## Quick examples
 
@@ -92,9 +91,10 @@ net_start_http(net, "http://0.0.0.0:80", my_http_handler, NULL);
 ### USB-to-Ethernet bridge
 
 ```c
-#include "usb_eth_bridge.h"
+#include "usb_bridge.h"
 
-UsbEthBridge *bridge = usb_eth_bridge_start(NULL);
+UsbBridgeConfig cfg = {.target = UsbBridgeTargetEth, .mode = UsbBridgeModeBridge};
+UsbBridge* bridge = usb_bridge_start(&cfg);
 // The device is now a transparent L2 bridge; no IP stack on the MCU.
 ```
 
@@ -138,5 +138,5 @@ net_set_config(net, &new_cfg);   // restarts the network stack
 See the sub-module README files for full configuration and usage details:
 - [eth_net/README.md](eth_net/README.md)
 - [usb_cdc_net/README.md](usb_cdc_net/README.md)
-- [usb_eth_bridge/README.md](usb_eth_bridge/README.md)
+- [../usb_bridge/README.md](../usb_bridge/README.md) (USB-to-Ethernet bridge)
 

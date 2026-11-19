@@ -113,7 +113,14 @@ static char cli_getc(void)
 
     char c = getchar();
 
-    if (c != 0)
+    // A line end ends the command at once: a next command already in the buffer is not glued to it
+    if (c == '\r' || c == '\n')
+    {
+        enter = false;
+        c     = CliSymbolAsciiCR;
+    }
+    // A terminal which sends no line end: the command ends when the buffer runs empty
+    else if (c != 0)
     {
         enter = true;
     }
@@ -188,7 +195,11 @@ void cli_process_input(Cli* app)
     }
     else if (in_chr == CliSymbolAsciiCR)
     {
-        cli_handle_enter(app);
+        // The second half of CRLF is an empty line, not a command
+        if (app->cursor_position > 0)
+        {
+            cli_handle_enter(app);
+        }
     }
     else if ((in_chr >= 0x20 && in_chr < 0x7F))
     {

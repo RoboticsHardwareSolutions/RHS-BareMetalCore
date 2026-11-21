@@ -368,18 +368,13 @@ void cli_command_top(char* args, void* context)
     for (size_t i = 0; i < count; i++)
     {
         RHSThreadListItem* item = rhs_thread_list_at(thread_list, i);
-        char               cpu[8];
+        printf("%-*s  %-9s  %4d  ", name_width, item->name, item->state, (int) item->priority);
+        /* Not snprintf: it would be the only user of it in a Release image */
         if (item->cpu < 1)
-            snprintf(cpu, sizeof(cpu), "<1%%");
+            printf(" <1%%");
         else
-            snprintf(cpu, sizeof(cpu), "%u%%", item->cpu);
-        printf("%-*s  %-9s  %4d  %4s  %5lu\r\n",
-               name_width,
-               item->name,
-               item->state,
-               (int) item->priority,
-               cpu,
-               (unsigned long) item->stack_min_free);
+            printf("%3u%%", item->cpu);
+        printf("  %5lu\r\n", (unsigned long) item->stack_min_free);
     }
 
     // rhs_thread_list_destroy(thread_list);

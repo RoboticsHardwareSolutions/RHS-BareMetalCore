@@ -315,13 +315,41 @@ void cli_command_uid(char* args, void* context)
     );
 }
 
+#define CLI_TOP_INTERVAL_MS (1000U)
+#define CLI_TOP_INTERVAL_MAX_MS (60000U)
+
+/* top [ms]: CPU usage over the interval, measured by two samples, so the first output is valid too */
 void cli_command_top(char* args, void* context)
 {
+    uint32_t interval_ms = CLI_TOP_INTERVAL_MS;
+    if (args != NULL)
+    {
+        /* Not strtoul: it would be the only user of it in a Release image */
+        interval_ms = 0U;
+        for (const char* c = args; interval_ms <= CLI_TOP_INTERVAL_MAX_MS; c++)
+        {
+            if (!isdigit((unsigned char) *c))
+            {
+                if (*c != '\0' || c == args)
+                    interval_ms = 0U;
+                break;
+            }
+            interval_ms = interval_ms * 10U + (uint32_t) (*c - '0');
+        }
+        if (interval_ms == 0U || interval_ms > CLI_TOP_INTERVAL_MAX_MS)
+        {
+            printf("top [1-%u ms]\r\n", CLI_TOP_INTERVAL_MAX_MS);
+            return;
+        }
+    }
+
     static RHSThreadList* thread_list = NULL;
     if (!thread_list)  // FIXME: It must be separate thread
         thread_list = rhs_thread_list_create();
     uint16_t count;
 
+    rhs_thread_enumerate(thread_list);
+    rhs_delay_ms(interval_ms);
     rhs_thread_enumerate(thread_list);
     count = rhs_thread_list_size(thread_list);
 

@@ -203,5 +203,6 @@ void usb_cdc_net_stop(Net* net)
 {
     rhs_assert(net != NULL);
     CdcNet* app = (CdcNet*) net;
-    rhs_hal_usb_set_interface(app->prev_intf, app->prev_intf->context);
+    // Started at boot nothing held the USB before: no interface then
+    rhs_hal_usb_set_interface(app->prev_intf, app->prev_intf ? app->prev_intf->context : NULL);
 }

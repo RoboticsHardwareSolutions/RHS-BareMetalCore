@@ -353,8 +353,17 @@ void cli_command_top(char* args, void* context)
     rhs_thread_enumerate(thread_list);
     count = rhs_thread_list_size(thread_list);
 
-    printf("Total run count: %u\r\n", count);
-    printf("%-32s %-10s %-5s %-6s %-10s\r\n", "Task Name", "State", "Prio", "RunTime", "StackMinFree");
+    /* The name column is as wide as the longest name */
+    int name_width = 4;
+    for (size_t i = 0; i < count; i++)
+    {
+        int len = (int) strlen(rhs_thread_list_at(thread_list, i)->name);
+        if (len > name_width)
+            name_width = len;
+    }
+
+    printf("Tasks: %u, CPU over %lu ms, Stack: min free, words\r\n", count, (unsigned long) interval_ms);
+    printf("%-*s  %-9s  %4s  %4s  %5s\r\n", name_width, "Name", "State", "Prio", "CPU", "Stack");
 
     for (size_t i = 0; i < count; i++)
     {
@@ -364,12 +373,13 @@ void cli_command_top(char* args, void* context)
             snprintf(cpu, sizeof(cpu), "<1%%");
         else
             snprintf(cpu, sizeof(cpu), "%u%%", item->cpu);
-        printf("%-32s %-10s %-3d %-4s %-5ld\r\n",
+        printf("%-*s  %-9s  %4d  %4s  %5lu\r\n",
+               name_width,
                item->name,
                item->state,
-               item->priority,
+               (int) item->priority,
                cpu,
-               (long) item->stack_min_free);
+               (unsigned long) item->stack_min_free);
     }
 
     // rhs_thread_list_destroy(thread_list);

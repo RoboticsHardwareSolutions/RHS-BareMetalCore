@@ -342,7 +342,13 @@ void rhs_hal_gpio_init_ex(const RHSGpioPin* gpio,
             LL_GPIO_SetPinMode(gpio->port, gpio->pin, LL_GPIO_MODE_ALTERNATE);
             break;
         case RHSGpioModeAnalog:
+            // A pull would load the measured signal
+            rhs_assert(pull == RHSGpioPullNo);
             LL_GPIO_SetPinMode(gpio->port, gpio->pin, LL_GPIO_MODE_ANALOG);
+#if !defined(STM32F103xE)
+            // The pull of a previous input mode stays in PUPDR, RHSGpioPullNo below does not clear it
+            LL_GPIO_SetPinPull(gpio->port, gpio->pin, LL_GPIO_PULL_NO);
+#endif
             break;
         default:
             rhs_crash("Incorrect GpioMode");

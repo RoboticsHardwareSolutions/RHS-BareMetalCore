@@ -36,5 +36,8 @@
 #if RHS_HAL_ETH
 #    include "rhs_hal_eth.h"
 #endif
+#if RHS_HAL_ADC
+#    include "rhs_hal_adc.h"
+#endif
 
 void rhs_hal_init(void);

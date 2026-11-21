@@ -331,18 +331,16 @@ void cli_command_top(char* args, void* context)
     for (size_t i = 0; i < count; i++)
     {
         RHSThreadListItem* item = rhs_thread_list_at(thread_list, i);
+        char               cpu[8];
+        if (item->cpu < 1)
+            snprintf(cpu, sizeof(cpu), "<1%%");
+        else
+            snprintf(cpu, sizeof(cpu), "%u%%", item->cpu);
         printf("%-32s %-10s %-3d %-4s %-5ld\r\n",
                item->name,
                item->state,
                item->priority,
-               item->cpu < 1 ? "<1%"
-                             : (
-                                   {
-                                       char buffer[12];
-                                       itoa(item->cpu, buffer, 10);
-                                       strcat(buffer, "%");
-                                       buffer;
-                                   }),
+               cpu,
                (long) item->stack_min_free);
     }
 

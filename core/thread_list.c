@@ -157,17 +157,16 @@ void rhs_thread_list_process(RHSThreadList* instance, uint32_t runtime, uint32_t
         } while (!item && i != count - 1U);
 
         uint32_t item_counter = item->counter_current - item->counter_previous;
-        float    cpu;
-        if (item_counter && item->counter_previous && item->counter_current)
+        uint32_t cpu          = 0U;
+        if (item_counter && item->counter_previous && item->counter_current && runtime_counter)
         {
-            cpu = (float) item_counter / (float) runtime_counter * 100.0f;
-            if (cpu > 200.0f)
-                cpu = 0.0f;
+            /* Integer percents: no soft float on cores without an FPU. Above UINT32_MAX / 100 the counters are large
+             * enough for runtime_counter / 100 to lose nothing visible */
+            cpu = item_counter <= UINT32_MAX / 100U ? item_counter * 100U / runtime_counter
+                                                    : item_counter / (runtime_counter / 100U);
+            if (cpu > 200U)
+                cpu = 0U;
         }
-        else
-        {
-            cpu = 0.0f;
-        }
-        item->cpu = cpu;
+        item->cpu = (uint8_t) cpu;
     }
 }

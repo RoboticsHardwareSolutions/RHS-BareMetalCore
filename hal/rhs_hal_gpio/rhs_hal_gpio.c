@@ -51,7 +51,11 @@ static uint32_t rhs_hal_gpio_invalid_argument_crash(void)
      : ((pin) == (LL_GPIO_PIN_15)) ? prefix## 15 \
                                    : rhs_hal_gpio_invalid_argument_crash())
 
+#if defined(STM32G0B1xx)
+#define GET_EXTI_LINE(pin) (1UL << rhs_hal_gpio_pin_index(pin))
+#else
 #define GET_EXTI_LINE(pin) GPIO_PIN_MAP(pin, LL_EXTI_LINE_)
+#endif
 
 /* Port clock enable: each GPIO port is gated behind its own RCC/bus-enable
  * bit (APB2 IOPxEN on F1, AHB1 GPIOxEN on F7, IOPENR GPIOxEN on G0) that
@@ -75,15 +79,23 @@ static uint32_t rhs_hal_gpio_invalid_argument_crash(void)
                             : rhs_hal_gpio_invalid_argument_crash())
 #define rhs_hal_gpio_enable_port_clock(port) LL_AHB1_GRP1_EnableClock(GPIO_CLOCK_PORT_MAP(port))
 #elif defined(STM32G0B1xx)
-#define GPIO_CLOCK_PORT_MAP(port)                        \
-    (((port) == (GPIOA))   ? LL_IOP_GRP1_PERIPH_GPIOA    \
-     : ((port) == (GPIOB)) ? LL_IOP_GRP1_PERIPH_GPIOB    \
-     : ((port) == (GPIOC)) ? LL_IOP_GRP1_PERIPH_GPIOC    \
-     : ((port) == (GPIOD)) ? LL_IOP_GRP1_PERIPH_GPIOD    \
-     : ((port) == (GPIOE)) ? LL_IOP_GRP1_PERIPH_GPIOE    \
-     : ((port) == (GPIOF)) ? LL_IOP_GRP1_PERIPH_GPIOF    \
-                            : rhs_hal_gpio_invalid_argument_crash())
-#define rhs_hal_gpio_enable_port_clock(port) LL_IOP_GRP1_EnableClock(GPIO_CLOCK_PORT_MAP(port))
+static uint32_t rhs_hal_gpio_port_index(const GPIO_TypeDef* port)
+{
+    uint32_t index = ((uint32_t) port - IOPORT_BASE) / (GPIOB_BASE - GPIOA_BASE);
+    if (index > 5 || index == 4)
+        rhs_hal_gpio_invalid_argument_crash();
+    return index;
+}
+static uint32_t rhs_hal_gpio_pin_index(uint32_t pin)
+{
+    if (pin == 0 || (pin & (pin - 1)) != 0 || pin > LL_GPIO_PIN_15)
+        rhs_hal_gpio_invalid_argument_crash();
+    uint32_t n = 0;
+    while ((pin >>= 1) != 0)
+        n++;
+    return n;
+}
+#define rhs_hal_gpio_enable_port_clock(port) LL_IOP_GRP1_EnableClock(1UL << rhs_hal_gpio_port_index(port))
 #endif
 
 /* Port/line selector for the EXTI-source routing register (AFIO_EXTICR on
@@ -111,35 +123,9 @@ static uint32_t rhs_hal_gpio_invalid_argument_crash(void)
 #define rhs_hal_gpio_set_exti_source(port, pin) \
     LL_SYSCFG_SetEXTISource(EXTI_SRC_PORT_MAP(port), EXTI_SRC_LINE_MAP(pin))
 #elif defined(STM32G0B1xx)
-/* Map GPIO port to EXTI config port (LL_EXTI_CONFIG_PORTx) */
-#define EXTI_SRC_PORT_MAP(port)                 \
-    (((port) == (GPIOA))   ? LL_EXTI_CONFIG_PORTA \
-     : ((port) == (GPIOB)) ? LL_EXTI_CONFIG_PORTB \
-     : ((port) == (GPIOC)) ? LL_EXTI_CONFIG_PORTC \
-     : ((port) == (GPIOD)) ? LL_EXTI_CONFIG_PORTD \
-     : ((port) == (GPIOE)) ? LL_EXTI_CONFIG_PORTE \
-     : ((port) == (GPIOF)) ? LL_EXTI_CONFIG_PORTF \
-                            : rhs_hal_gpio_invalid_argument_crash())
-/* Map pin to EXTI config line (LL_EXTI_CONFIG_LINEy) */
-#define EXTI_SRC_LINE_MAP(pin)                  \
-    (((pin) == (LL_GPIO_PIN_0))    ? LL_EXTI_CONFIG_LINE0  \
-     : ((pin) == (LL_GPIO_PIN_1))  ? LL_EXTI_CONFIG_LINE1  \
-     : ((pin) == (LL_GPIO_PIN_2))  ? LL_EXTI_CONFIG_LINE2  \
-     : ((pin) == (LL_GPIO_PIN_3))  ? LL_EXTI_CONFIG_LINE3  \
-     : ((pin) == (LL_GPIO_PIN_4))  ? LL_EXTI_CONFIG_LINE4  \
-     : ((pin) == (LL_GPIO_PIN_5))  ? LL_EXTI_CONFIG_LINE5  \
-     : ((pin) == (LL_GPIO_PIN_6))  ? LL_EXTI_CONFIG_LINE6  \
-     : ((pin) == (LL_GPIO_PIN_7))  ? LL_EXTI_CONFIG_LINE7  \
-     : ((pin) == (LL_GPIO_PIN_8))  ? LL_EXTI_CONFIG_LINE8  \
-     : ((pin) == (LL_GPIO_PIN_9))  ? LL_EXTI_CONFIG_LINE9  \
-     : ((pin) == (LL_GPIO_PIN_10)) ? LL_EXTI_CONFIG_LINE10 \
-     : ((pin) == (LL_GPIO_PIN_11)) ? LL_EXTI_CONFIG_LINE11 \
-     : ((pin) == (LL_GPIO_PIN_12)) ? LL_EXTI_CONFIG_LINE12 \
-     : ((pin) == (LL_GPIO_PIN_13)) ? LL_EXTI_CONFIG_LINE13 \
-     : ((pin) == (LL_GPIO_PIN_14)) ? LL_EXTI_CONFIG_LINE14 \
-     : ((pin) == (LL_GPIO_PIN_15)) ? LL_EXTI_CONFIG_LINE15 \
-                                   : rhs_hal_gpio_invalid_argument_crash())
-
+#define EXTI_SRC_PORT_MAP(port) rhs_hal_gpio_port_index(port)
+#define EXTI_SRC_LINE_MAP(pin) \
+    (((rhs_hal_gpio_pin_index(pin) & 3U) * 8U) << LL_EXTI_REGISTER_PINPOS_SHFT | (rhs_hal_gpio_pin_index(pin) >> 2))
 #define rhs_hal_gpio_set_exti_source(port, pin) \
     LL_EXTI_SetEXTISource(EXTI_SRC_PORT_MAP(port), EXTI_SRC_LINE_MAP(pin))
 #endif

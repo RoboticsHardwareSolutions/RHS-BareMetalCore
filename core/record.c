@@ -3,8 +3,8 @@
 #include "mutex.h"
 #include "event_flag.h"
 
-#include <m-dict.h>
 #include "m_cstr_dup.h"
+#include <m-dict.h>
 
 #define RHS_RECORD_FLAG_READY (0x1)
 

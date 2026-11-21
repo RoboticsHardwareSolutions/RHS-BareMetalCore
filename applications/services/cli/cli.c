@@ -5,8 +5,8 @@
 #include <stddef.h>
 #include <string.h>
 #include "rhs_version.h"
-#include <m-dict.h>
 #include "core/m_cstr_dup.h"
+#include <m-dict.h>
 
 #define TAG "cli"
 

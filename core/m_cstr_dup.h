@@ -1,4 +1,9 @@
 #pragma once
+#include "check.h"
+
+// Include before any other M*LIB header: an allocation failure in M*LIB goes to rhs_crash, without fprintf(stderr) and
+// abort() in the image
+#define M_RAISE_FATAL(...) rhs_crash("M*LIB fatal")
 #include <m-core.h>
 
 #define M_INIT_DUP(a) ((a) = strdup(""))

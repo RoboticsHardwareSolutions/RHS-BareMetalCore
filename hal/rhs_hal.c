@@ -32,4 +32,7 @@ void rhs_hal_init(void)
 #if RHS_HAL_ETH
     rhs_hal_eth_init();
 #endif
+#if RHS_HAL_ADC
+    rhs_hal_adc_init();
+#endif
 }

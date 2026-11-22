@@ -2,7 +2,7 @@
 
 #include "rhs_hal.h"
 #include "data.h"
-#include "od_common_defs.h"
+#include "can_open_od.h"
 
 #define RECORD_CAN_OPEN "can_open"
 

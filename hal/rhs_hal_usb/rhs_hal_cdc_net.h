@@ -14,7 +14,7 @@ extern RHSHalUsbInterface usb_cdc_enet_desc;
  *
  * Register an instance with rhs_hal_cdc_net_set() to route the three
  * TinyUSB network callbacks to the currently active USB network backend
- * (usb_cdc_net or usb_eth_bridge).  Only one backend may be active at a time.
+ * (usb_cdc_net or the usb_bridge Eth target).  Only one backend may be active at a time.
  */
 typedef struct
 {

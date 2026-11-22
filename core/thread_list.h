@@ -13,7 +13,7 @@ typedef struct RHSThreadListItem
 
     uint32_t counter_previous; /**< Thread previous runtime counter */
     uint32_t counter_current;  /**< Thread current runtime counter */
-    float    cpu;              /**< Thread CPU usage time in percents (including interrupts happened while running) */
+    uint8_t  cpu;              /**< Thread CPU usage time in whole percents (including interrupts happened while running) */
     uint32_t tick;             /**< Thread last seen tick */
 
     struct RHSThreadListItem* next;

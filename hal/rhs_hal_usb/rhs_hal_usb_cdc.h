@@ -17,7 +17,7 @@ typedef enum
 } CdcCtrlLine;
 
 typedef struct
-{   
+{
     void (*tx_callback)(void* context);
     void (*rx_callback)(void* context);
     void (*state_callback)(void* context, CdcState state);
@@ -25,16 +25,24 @@ typedef struct
     void (*line_config_callback)(void* context, cdc_line_coding_t const* config);
 } CdcCallbacks;
 
-extern RHSHalUsbInterface usb_dual_cdc_desc;
-extern RHSHalUsbInterface usb_single_cdc_desc;
+/** USB interface with one CDC port, set by rhs_hal_cdc_acquire() */
+extern RHSHalUsbInterface usb_cdc_desc;
 
-void rhs_hal_cdc_set_callbacks(uint8_t if_num, CdcCallbacks* cb, void* context);
+/** Reserve the CDC port for one user (usb_bridge) and bring USB up as a CDC device.
+ * Callbacks are set separately with rhs_hal_cdc_set_callbacks().
+ * @return false when the port is already reserved */
+bool rhs_hal_cdc_acquire(void);
 
-cdc_line_coding_t* rhs_hal_cdc_get_port_settings(uint8_t if_num);
+/** Clear the callbacks, turn the CDC USB interface off and free the port */
+void rhs_hal_cdc_release(void);
 
-uint8_t rhs_hal_cdc_get_ctrl_line_state(uint8_t if_num);
+void rhs_hal_cdc_set_callbacks(CdcCallbacks* cb, void* context);
+
+cdc_line_coding_t* rhs_hal_cdc_get_port_settings(void);
+
+uint8_t rhs_hal_cdc_get_ctrl_line_state(void);
 
 /** @return Number of bytes accepted by the TX FIFO: less than @p len when it is full */
-uint16_t rhs_hal_cdc_send(uint8_t if_num, uint8_t* buf, uint16_t len);
+uint16_t rhs_hal_cdc_send(const uint8_t* buf, uint16_t len);
 
-int32_t rhs_hal_cdc_receive(uint8_t if_num, uint8_t* buf, uint16_t max_len);
+int32_t rhs_hal_cdc_receive(uint8_t* buf, uint16_t max_len);

@@ -2,7 +2,7 @@
 #include "net_i.h"
 #include "net_listeners.h"
 
-#define TAG "Net"
+#define TAG "net"
 
 static void net_cli_command(char* args, void* context)
 {

@@ -1,5 +1,5 @@
 #include "can_open.h"
-#include "can_open_srv.h"
+#include "can_open_i.h"
 
 /********************** GET FIELD FROM OD **********************/
 

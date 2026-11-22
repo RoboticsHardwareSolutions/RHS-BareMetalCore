@@ -9,7 +9,7 @@ Supported MCUs: STM32F407, STM32F765. Adding support for other STM32 variants re
 ### 1. Enable the sub-application
 
 ```cmake
-set(RHS_APPLICATION_ETH_NET ON)
+set(RHS_SERVICE_ETH_NET ON)
 ```
 
 The parent `net/CMakeLists.txt` will add `eth_net` as a sub-directory automatically.
@@ -46,7 +46,7 @@ set(RHS_ETH_NET_NETMASK "255.255.0.0" CACHE STRING "" FORCE)
 | `MG_ENABLE_PACKED_FS`         | 1                | Use packed (ROM) filesystem |
 | `MG_ARCH`                     | `MG_ARCH_ARMGCC` | FreeRTOS integration |
 
-If your hardware uses a different PHY address or HCLK frequency, pass an `EthPhyConfig` to `eth_net_start()` (see API below).
+If your hardware uses a different PHY address or HCLK frequency, pass an `EthNetPhyConfig` to `eth_net_start()` (see API below).
 
 ### 4. Required libraries
 
@@ -65,7 +65,7 @@ If your hardware uses a different PHY address or HCLK frequency, pass an `EthPhy
 typedef struct {
     uint8_t phy_addr;  // PHY MII bus address
     uint8_t mdc_cr;    // MDC clock divider
-} EthPhyConfig;
+} EthNetPhyConfig;
 
 // Defined in net.h
 typedef struct {
@@ -76,7 +76,7 @@ typedef struct {
 } NetConfig;
 ```
 
-### `Net *eth_net_start(const NetConfig *net_config, const EthPhyConfig *phy_config)`
+### `Net *eth_net_start(const NetConfig *net_config, const EthNetPhyConfig *phy_config)`
 
 Initialises the Ethernet hardware, configures the Mongoose TCP/IP interface, and starts the network worker thread.
 
@@ -115,7 +115,7 @@ NetConfig net_cfg = {
     .mac     = {0x02, 0xDE, 0xAD, 0xBE, 0xEF, 0x01},
 };
 
-EthPhyConfig phy_cfg = {
+EthNetPhyConfig phy_cfg = {
     .phy_addr = 0,
     .mdc_cr   = 4,
 };
@@ -125,7 +125,7 @@ Net *net = eth_net_start(&net_cfg, &phy_cfg);
 
 ### Creating an application service on top of eth_net
 
-0. Set the `eth_net` service in your toolchain `set(RHS_APPLICATION_ETH_NET ON)`
+0. Set the `eth_net` service in your toolchain `set(RHS_SERVICE_ETH_NET ON)`
 1. Create a new folder for your application (e.g., `applications/my_app/`).
 2. Add `add_subdirectory(my_app)` to the parent `CMakeLists.txt`.
 3. Create `my_app/CMakeLists.txt`:

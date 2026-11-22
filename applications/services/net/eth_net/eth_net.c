@@ -13,7 +13,7 @@ typedef struct
 
 static_assert(offsetof(EthNet, net) == 0, "EthNet must be compatible with Net for safe casting");
 
-static void eth_net_init_tcpip(Net* net, const EthPhyConfig* phy_config)
+static void eth_net_init_tcpip(Net* net, const EthNetPhyConfig* phy_config)
 {
     struct mg_tcpip_if*                 ifp    = malloc(sizeof(struct mg_tcpip_if));
     struct mg_tcpip_driver_stm32f_data* driver = malloc(sizeof(struct mg_tcpip_driver_stm32f_data));
@@ -64,7 +64,7 @@ static void eth_net_init_tcpip(Net* net, const EthPhyConfig* phy_config)
     RHS_LOG_I(TAG, "Ethernet, MAC: %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
-static EthNet* eth_net_alloc(const NetConfig* config, const EthPhyConfig* phy_config)
+static EthNet* eth_net_alloc(const NetConfig* config, const EthNetPhyConfig* phy_config)
 {
     EthNet* app = malloc(sizeof(EthNet));
     rhs_assert(app != NULL);
@@ -109,7 +109,7 @@ static void eth_net_free(EthNet* app)
     free(app);
 }
 
-Net* eth_net_start(const NetConfig* net_config, const EthPhyConfig* phy_config)
+Net* eth_net_start(const NetConfig* net_config, const EthNetPhyConfig* phy_config)
 {
     // Net thread will create record with this name and we wait it
     const char* net_name = "rhs_cdc_net";

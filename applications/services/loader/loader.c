@@ -1,7 +1,17 @@
 #include "loader.h"
-#include "loader_i.h"
+#include "rhs.h"
 
 #define TAG "loader"
+
+typedef struct
+{
+    uint8_t type;
+} LoaderMessage;
+
+struct Loader
+{
+    RHSMessageQueue* queue;
+};
 
 static Loader* loader_alloc(void)
 {
@@ -10,7 +20,7 @@ static Loader* loader_alloc(void)
     return loader;
 }
 
-int32_t loader_service(void* context)
+int32_t loader_srv(void* context)
 {
     Loader* loader = loader_alloc();
 

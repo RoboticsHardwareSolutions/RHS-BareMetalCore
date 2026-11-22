@@ -5,8 +5,8 @@
 #include <stddef.h>
 #include <string.h>
 #include "rhs_version.h"
-#include <m-dict.h>
 #include "core/m_cstr_dup.h"
+#include <m-dict.h>
 
 #define TAG "cli"
 
@@ -113,7 +113,14 @@ static char cli_getc(void)
 
     char c = getchar();
 
-    if (c != 0)
+    // A line end ends the command at once: a next command already in the buffer is not glued to it
+    if (c == '\r' || c == '\n')
+    {
+        enter = false;
+        c     = CliSymbolAsciiCR;
+    }
+    // A terminal which sends no line end: the command ends when the buffer runs empty
+    else if (c != 0)
     {
         enter = true;
     }
@@ -188,7 +195,11 @@ void cli_process_input(Cli* app)
     }
     else if (in_chr == CliSymbolAsciiCR)
     {
-        cli_handle_enter(app);
+        // The second half of CRLF is an empty line, not a command
+        if (app->cursor_position > 0)
+        {
+            cli_handle_enter(app);
+        }
     }
     else if ((in_chr >= 0x20 && in_chr < 0x7F))
     {
@@ -304,35 +315,66 @@ void cli_command_uid(char* args, void* context)
     );
 }
 
+#define CLI_TOP_INTERVAL_MS (1000U)
+#define CLI_TOP_INTERVAL_MAX_MS (60000U)
+
+/* top [ms]: CPU usage over the interval, measured by two samples, so the first output is valid too */
 void cli_command_top(char* args, void* context)
 {
+    uint32_t interval_ms = CLI_TOP_INTERVAL_MS;
+    if (args != NULL)
+    {
+        /* Not strtoul: it would be the only user of it in a Release image */
+        interval_ms = 0U;
+        for (const char* c = args; interval_ms <= CLI_TOP_INTERVAL_MAX_MS; c++)
+        {
+            if (!isdigit((unsigned char) *c))
+            {
+                if (*c != '\0' || c == args)
+                    interval_ms = 0U;
+                break;
+            }
+            interval_ms = interval_ms * 10U + (uint32_t) (*c - '0');
+        }
+        if (interval_ms == 0U || interval_ms > CLI_TOP_INTERVAL_MAX_MS)
+        {
+            printf("top [1-%u ms]\r\n", CLI_TOP_INTERVAL_MAX_MS);
+            return;
+        }
+    }
+
     static RHSThreadList* thread_list = NULL;
     if (!thread_list)  // FIXME: It must be separate thread
         thread_list = rhs_thread_list_create();
     uint16_t count;
 
     rhs_thread_enumerate(thread_list);
+    rhs_delay_ms(interval_ms);
+    rhs_thread_enumerate(thread_list);
     count = rhs_thread_list_size(thread_list);
 
-    printf("Total run count: %u\r\n", count);
-    printf("%-32s %-10s %-5s %-6s %-10s\r\n", "Task Name", "State", "Prio", "RunTime", "StackMinFree");
+    /* The name column is as wide as the longest name */
+    int name_width = 4;
+    for (size_t i = 0; i < count; i++)
+    {
+        int len = (int) strlen(rhs_thread_list_at(thread_list, i)->name);
+        if (len > name_width)
+            name_width = len;
+    }
+
+    printf("Tasks: %u, CPU over %lu ms, Stack: min free, words\r\n", count, (unsigned long) interval_ms);
+    printf("%-*s  %-9s  %4s  %4s  %5s\r\n", name_width, "Name", "State", "Prio", "CPU", "Stack");
 
     for (size_t i = 0; i < count; i++)
     {
         RHSThreadListItem* item = rhs_thread_list_at(thread_list, i);
-        printf("%-32s %-10s %-3d %-4s %-5ld\r\n",
-               item->name,
-               item->state,
-               item->priority,
-               item->cpu < 1 ? "<1%"
-                             : (
-                                   {
-                                       char buffer[12];
-                                       itoa(item->cpu, buffer, 10);
-                                       strcat(buffer, "%");
-                                       buffer;
-                                   }),
-               (long) item->stack_min_free);
+        printf("%-*s  %-9s  %4d  ", name_width, item->name, item->state, (int) item->priority);
+        /* Not snprintf: it would be the only user of it in a Release image */
+        if (item->cpu < 1)
+            printf(" <1%%");
+        else
+            printf("%3u%%", item->cpu);
+        printf("  %5lu\r\n", (unsigned long) item->stack_min_free);
     }
 
     // rhs_thread_list_destroy(thread_list);
@@ -355,7 +397,7 @@ void cli_info(char* args, void* context)
     PRINT_ALL_VERSIONS();
 }
 
-int32_t cli_service(void* context)
+int32_t cli_srv(void* context)
 {
     Cli* app = cli_alloc();
     rhs_record_create(RECORD_CLI, app);
@@ -375,6 +417,8 @@ int32_t cli_service(void* context)
     {
         cli_process_input(app);
     }
+
+    return 0;
 }
 
 /**

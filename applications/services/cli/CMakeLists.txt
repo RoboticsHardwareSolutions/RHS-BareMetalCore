@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.24)
 project(cli C)
 set(CMAKE_C_STANDARD 11)
 
-add_library(${PROJECT_NAME} STATIC cli_app.c)
+add_library(${PROJECT_NAME} STATIC
+        cli.c
+)
 
 target_include_directories(
         ${PROJECT_NAME} PUBLIC
@@ -17,4 +19,4 @@ target_link_libraries(
         mlib
 )
 
-service(cli_service "cli" 4096)
+service(cli_srv "cli" 4096)

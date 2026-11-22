@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.24)
-project(can_open_srv C)
+project(can_open C)
 set(CMAKE_C_STANDARD 11)
 
-add_library(${PROJECT_NAME} STATIC can_open_srv.c can_open_srv_i.c can_open_ctrl_dev.c od_common_defs.c can_open_cli.c)
+add_library(${PROJECT_NAME} STATIC
+        can_open.c
+        can_open_cli.c
+        can_open_od.c
+        can_open_pdo.c
+        can_open_stack.c
+)
 
 target_include_directories(
         ${PROJECT_NAME} PUBLIC
@@ -21,4 +27,4 @@ target_link_libraries(
         cli
 )
 
-service(can_open_service "can_open" 2048)
+service(can_open_srv "can_open" 2048)

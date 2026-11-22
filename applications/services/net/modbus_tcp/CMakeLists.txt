@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.24)
-project(modbus_tcp)
+project(modbus_tcp C)
+set(CMAKE_C_STANDARD 11)
 
-add_library(${PROJECT_NAME} modbus_tcp.c)
+add_library(${PROJECT_NAME} STATIC
+        modbus_tcp.c
+)
 
 target_include_directories(
         ${PROJECT_NAME} PUBLIC

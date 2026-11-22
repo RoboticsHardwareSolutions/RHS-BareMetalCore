@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.24)
 project(notification C)
 set(CMAKE_C_STANDARD 11)
 
-add_library(${PROJECT_NAME} STATIC notification_app.c notification_app_api.c notification_messages_notes.c notification_messages.c)
+add_library(${PROJECT_NAME} STATIC
+        notification.c
+        notification_messages.c
+        notification_messages_notes.c
+)
 
 target_include_directories(
         ${PROJECT_NAME} PUBLIC
@@ -11,10 +15,9 @@ target_include_directories(
 
 target_link_libraries(
         ${PROJECT_NAME}
-
         PRIVATE
         rhs
         rhs_hal
 )
 
-service(notification_srv "notification_srv" 1024)
+service(notification_srv "notification" 1024)

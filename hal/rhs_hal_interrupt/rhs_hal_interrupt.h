@@ -82,6 +82,8 @@ typedef enum
     RHSHalInterruptIdDMA1Channel3,
 #    elif defined(STM32G0B1xx)
     RHSHalInterruptIdUSB_UCPD1_2,
+    /* FDCAN1 and FDCAN2 interrupt line 0, shared with TIM16 */
+    RHSHalInterruptIdFDCANIT0,
 
 #    endif
 #endif

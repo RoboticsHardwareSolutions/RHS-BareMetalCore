@@ -1,41 +1,39 @@
 cmake_minimum_required(VERSION 3.24)
-project(cdc_net C)
+project(usb_cdc_net C)
 set(CMAKE_C_STANDARD 11)
 
-# cdc_net configuration options
-if(NOT DEFINED RHS_CDC_NET_IP)
-    set(RHS_CDC_NET_IP "192.168.0.100" CACHE STRING "Static IP address for cdc_net service")
+if(NOT TARGET tinyusb)
+        message(FATAL_ERROR "usb_cdc_net requires tinyusb")
 endif()
 
-if(NOT DEFINED RHS_CDC_NET_GATEWAY)
-    set(RHS_CDC_NET_GATEWAY "192.168.0.1" CACHE STRING "Gateway address for cdc_net service")
-endif()
+set(RHS_USB_CDC_NET_IP "192.168.0.100" CACHE STRING "Static IP address for usb_cdc_net service")
+set(RHS_USB_CDC_NET_GATEWAY "192.168.0.1" CACHE STRING "Gateway address for usb_cdc_net service")
+set(RHS_USB_CDC_NET_NETMASK "255.255.255.0" CACHE STRING "Network mask for usb_cdc_net service")
+message("\t\t\tIP: ${RHS_USB_CDC_NET_IP}")
+message("\t\t\tGateway: ${RHS_USB_CDC_NET_GATEWAY}")
+message("\t\t\tNetmask: ${RHS_USB_CDC_NET_NETMASK}")
 
-if(NOT DEFINED RHS_CDC_NET_NETMASK)
-    set(RHS_CDC_NET_NETMASK "255.255.255.0" CACHE STRING "Network mask for cdc_net service")
-endif()
+add_library(${PROJECT_NAME} STATIC
+        usb_cdc_net.c
+)
 
-add_library(${PROJECT_NAME} STATIC usb_cdc_net.c)
-
-target_compile_definitions(${PROJECT_NAME} PUBLIC CDC_NET_IP_STRING="${RHS_CDC_NET_IP}")
-target_compile_definitions(${PROJECT_NAME} PUBLIC CDC_NET_GW_STRING="${RHS_CDC_NET_GATEWAY}")
-target_compile_definitions(${PROJECT_NAME} PUBLIC CDC_NET_MASK_STRING="${RHS_CDC_NET_NETMASK}")
+target_compile_definitions(
+        ${PROJECT_NAME}
+        PUBLIC
+        USB_CDC_NET_IP_STRING="${RHS_USB_CDC_NET_IP}"
+        USB_CDC_NET_GW_STRING="${RHS_USB_CDC_NET_GATEWAY}"
+        USB_CDC_NET_MASK_STRING="${RHS_USB_CDC_NET_NETMASK}"
+)
 
 target_include_directories(
         ${PROJECT_NAME} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 
-# Check if tinyusb and mongoose targets are available
-if(NOT TARGET tinyusb)
-        message(FATAL_ERROR "tinyusb and mongoose libraries must be available to build usb_cdc_net")
-endif()
-
-# Configure Mongoose options
 target_compile_definitions(
         mongoose
         PUBLIC
-        -DMG_IO_SIZE=512
+        MG_IO_SIZE=512
 )
 
 target_link_libraries(

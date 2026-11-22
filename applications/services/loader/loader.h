@@ -1,3 +1,5 @@
+#pragma once
+
 #include "stdint.h"
 
 #define RECORD_LOADER "loader"

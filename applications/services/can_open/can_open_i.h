@@ -6,8 +6,6 @@
 #include "timers_driver.h"
 #include "cli.h"
 
-#define TAG "CanOpen App"
-
 #define EVENT_FLAG_SDO (1 << 0)
 
 #define MAX_OD 3  // FIXME one day...
@@ -50,3 +48,13 @@ typedef struct FilterId
     uint16_t         id;
     struct FilterId* next;
 } FilterId;
+
+/* co_stack and rtimer use callbacks without context, so the instance is global (can_open_stack.c) */
+extern CanOpenApp* can_open_app;
+
+/* CAN IDs printed by the "can_open" CLI command (can_open_cli.c) */
+extern FilterId* filter_list;
+
+int canSend(CAN_PORT port, Message const* m);
+
+void can_open_cli(char* args, void* context);

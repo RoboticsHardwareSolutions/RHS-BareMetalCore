@@ -2,7 +2,7 @@
 #include <string.h>
 #include "rhs.h"
 
-#define TAG "modbus"
+#define TAG "modbus_tcp"
 
 static void handle_modbus_pdu(struct mg_connection* c, uint8_t* buf, size_t len, void* context)
 {

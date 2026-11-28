@@ -3,10 +3,24 @@
 
 #define TAG "can_open"
 
-FilterId* filter_list = NULL;
+/* Unbounded: on BMPLC_M, real hardware testing showed ~39 entries exhausts the
+ * whole FreeRTOS heap (each node + allocator overhead is a sizeable fraction of
+ * the little headroom left after boot), starving every other task's malloc/new.
+ * One CLI feature should not be able to take down the rest of the system, so cap
+ * it well under that observed ceiling regardless of how much heap is free. */
+#define CAN_OPEN_FILTER_LIST_MAX 24
+
+FilterId* filter_list       = NULL;
+static size_t filter_list_count = 0;
 
 static void add_filter_id(uint16_t id)
 {
+    if (filter_list_count >= CAN_OPEN_FILTER_LIST_MAX)
+    {
+        RHS_LOG_E(TAG, "Filter list full (max %u), id 0x%03X not added", CAN_OPEN_FILTER_LIST_MAX, id);
+        return;
+    }
+
     FilterId* new_node = (FilterId*) malloc(sizeof(FilterId));
     if (new_node == NULL)
     {
@@ -16,6 +30,7 @@ static void add_filter_id(uint16_t id)
     new_node->id   = id;
     new_node->next = filter_list;
     filter_list    = new_node;
+    filter_list_count++;
     RHS_LOG_I(TAG, "Added to view id 0x%03X", id);
 }
 
@@ -29,6 +44,7 @@ static void remove_filter_id(uint16_t id)
             FilterId* to_delete = *current;
             *current            = (*current)->next;
             free(to_delete);
+            filter_list_count--;
             RHS_LOG_I(TAG, "Removed from view id 0x%03X", id);
             return;
         }
@@ -45,6 +61,7 @@ static void clear_filter_list()
         filter_list         = filter_list->next;
         free(to_delete);
     }
+    filter_list_count = 0;
     RHS_LOG_I(TAG, "Cleared filter list");
 }
 

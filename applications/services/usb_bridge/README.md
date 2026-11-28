@@ -67,7 +67,7 @@ Each target is a `UsbBridgeBackend` (`usb_bridge_i.h`): `usb_bridge_can.c` (SLCA
 
 | Command | Answer |
 |---|---|
-| `Sn` (0..8: 10k, 20k, 50k, 100k, 125k, 250k, 500k, 800k, 1M) | `\r`, `\a` when the channel is open |
+| `Sn` (0..8: 10k, 20k, 50k, 100k, 125k, 250k, 500k, 750k, 1M -- the standard Lawicel/python-can table) | `\r`, `\a` when the channel is open |
 | `O` | `\r`, starts the physical CAN (not in App mode); `\a` when already open |
 | `C` | `\r`, also when already closed |
 | `tiiildd..` / `Tiiiiiiiildd..` / `riiil` / `Riiiiiiiil` | `z\r` / `Z\r`, `\a` when closed or the CAN has no free mailbox |
@@ -78,6 +78,24 @@ Each target is a `UsbBridgeBackend` (`usb_bridge_i.h`): `usb_bridge_can.c` (SLCA
 
 Frames go to the host only while the channel is open. The answer to a command comes before frames the application
 sends from its callback.
+
+### Bitrate limitations
+
+`O` opens cleanly at any of the 9 standard rates (`rhs_hal_can_init()`/`rcan_start()` reports a clean error
+instead of crashing when no exact bit-timing exists for a rate on this peripheral's clock -- see
+`rhs_hal_can.c`). Two rates are known to not interoperate with every adapter even though both sides open
+without error:
+
+- **10000 bps**: no exact integer (prescaler, BS1, BS2) solution exists for this rate on BMPLC_XL's bxCAN
+  peripheral clock (`rcan_timing.c`'s search space, verified against the real PCLK1).
+- **750000 bps**: BMPLC_XL computes an exact solution, but some third-party adapters' own bit-timing tables are
+  themselves approximate at this rate (e.g. CANable 2.0's slcan firmware hard-codes a timing explicitly marked
+  `// THIS IS VERY INACCURATE!!! FIXME` in its own source for S7) -- the two sides' actual bit rates differ by
+  enough that they never ACK each other (`CAN0 Acknowledgment error`, `tec` climbing to 128).
+
+Both show up as the channel opening fine but no frame ever crossing the bus. Confirmed on real hardware with a
+CANable 2.0 adapter; test coverage (`test_usb_bridge_can_bridge_bitrates.py`) excludes these two rates for that
+reason -- see its module docstring.
 
 ## CLI
 
@@ -99,13 +117,23 @@ error: can bridge: not supported on this board: CAN and USB share SRAM on STM32F
 ## Tests
 
 `user_tests/usb_bridge_test`: `slcan_test` (on-target unit tests of `slcan.c`, `RHS_TEST_USB_BRIDGE`) and the App
-mode echo application `usb_bridge_echo` (`RHS_TEST_USB_BRIDGE_APP`) with host tests in `testbench/`
-(`test_usb_bridge_can_app.py`, `test_usb_bridge_serial_app.py`, `test_usb_bridge_cli.py`), see
-`testbench/usb_bridge_hw.py`:
+mode echo application `usb_bridge_echo` (`RHS_TEST_USB_BRIDGE_APP`) with host tests in `testbench/`:
+
+- `test_usb_bridge_can_app.py` / `test_usb_bridge_serial_app.py` -- App mode, both boards
+- `test_usb_bridge_cli.py` -- CLI/unsupported-target reporting, both boards
+- `test_usb_bridge_can_bridge.py` / `test_usb_bridge_can_both.py` -- CAN Bridge / Both (BridgeApp) end-to-end
+  against the bench's `[iface.canbus]` adapter, BMPLC_XL only
+- `test_usb_bridge_can_bridge_frames.py` -- exhaustive CAN frame-shape matrix (std/ext ID, data/RTR, every DLC),
+  BMPLC_XL only
+- `test_usb_bridge_can_bridge_bitrates.py` -- sweep of the standard SLCAN bitrates this bench pairing
+  interoperates with (see "Bitrate limitations" above), BMPLC_XL only
+- `test_usb_bridge_can_bridge_stress.py` -- empirical throughput/burst/latency characterization, BMPLC_XL only
+
+See `testbench/usb_bridge_hw.py`'s module docstring for the full fixture/env-var reference.
 
 ```
-# board on the desk
-USB_BRIDGE_PORT=auto JLINK_SERIAL=772440188 MCU=STM32G0B1KC uv run pytest user_tests/usb_bridge_test/testbench/
-# HIL stand: power and USB of the PLC through io_hub, firmware flashed by the fixture
-PLC_TYPE=BMPLC_XL PLC_BIN=bmplc.bin USB_BRIDGE_PORT=auto uv run pytest user_tests/usb_bridge_test/testbench/
+# board on the desk (USB_BRIDGE_PORT is the PLC's own CDC port, an explicit /dev/cu.* path -- no auto-detection)
+USB_BRIDGE_PORT=/dev/cu.usbmodemXXXX JLINK_SERIAL=772440188 MCU=STM32G0B1KC uv run pytest user_tests/usb_bridge_test/testbench/
+# HIL stand: power and USB of the PLC through io_hub, firmware flashed by the fixture, port resolved by usb_location
+PLC_TYPE=BMPLC_XL PLC_BIN=bmplc.bin uv run pytest user_tests/usb_bridge_test/testbench/
 ```

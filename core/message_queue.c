@@ -29,6 +29,7 @@ RHSMessageQueue* rhs_message_queue_alloc(uint32_t msg_count, uint32_t msg_size)
     rhs_assert((rhs_kernel_is_irq_or_masked() == 0U) && (msg_count > 0U) && (msg_size > 0U));
 
     RHSMessageQueue* instance = malloc(sizeof(RHSMessageQueue) + msg_count * msg_size);
+    rhs_assert(instance);
 
     // 3 things happens here:
     // - create queue

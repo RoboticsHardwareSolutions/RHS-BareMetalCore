@@ -161,15 +161,21 @@ void* rhs_hal_can_get_handle(RHSHalCANId id)
     return &rhs_hal_can[id].rcan.handle;
 }
 
-void rhs_hal_can_init(RHSHalCANId id, uint32_t baud)
+bool rhs_hal_can_init(RHSHalCANId id, uint32_t baud)
 {
     rhs_assert(id == RHSHalCANId1);
     rhs_assert(rhs_hal_can[id].enabled == false);
 
-    rhs_assert(rcan_start(&rhs_hal_can[id].rcan, (uint32_t) FDCAN1, baud) == true);
+    if (!rcan_start(&rhs_hal_can[id].rcan, (uint32_t) FDCAN1, baud))
+    {
+        // No valid bit-timing exists for `baud` on this peripheral's clock -- a clean, recoverable
+        // configuration failure, not a programming error, so the caller decides how to report it.
+        return false;
+    }
     rhs_hal_can[id].enabled = true;
     // Bus-off recovery in can_isr(), also without an SCE callback
     can_activate(id, FDCAN_IT_BUS_OFF, 0);
+    return true;
 }
 
 void rhs_hal_can_deinit(RHSHalCANId id)

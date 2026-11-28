@@ -5,7 +5,7 @@
 
 static const char hex_digits[] = "0123456789ABCDEF";
 
-static const uint32_t bitrates[] = {10000, 20000, 50000, 100000, 125000, 250000, 500000, 800000, 1000000};
+static const uint32_t bitrates[] = {10000, 20000, 50000, 100000, 125000, 250000, 500000, 750000, 1000000};
 
 static int hex_value(char c)
 {

@@ -370,28 +370,35 @@ void* rhs_hal_can_get_handle(RHSHalCANId id)
     return &rhs_hal_can[id].rcan.handle;
 }
 
-void rhs_hal_can_init(RHSHalCANId id, uint32_t baud)
+bool rhs_hal_can_init(RHSHalCANId id, uint32_t baud)
 {
     rhs_assert(rhs_hal_can[id].enabled == false);
 
+    bool started = false;
     switch (id)
     {
     case RHSHalCANId1:
-        rhs_assert(rcan_start(&rhs_hal_can[id].rcan, (uint32_t) CAN1, baud) == true);
-        rhs_hal_can[id].enabled = true;
+        started = rcan_start(&rhs_hal_can[id].rcan, (uint32_t) CAN1, baud);
         break;
 #if !defined(BMPLC_XL) && !defined(BMPLC_M)
     case RHSHalCANId2:
-        rhs_assert(rcan_start(&rhs_hal_can[id].rcan, (uint32_t) CAN2, baud) == true);
-        rhs_hal_can[id].enabled = true;
+        started = rcan_start(&rhs_hal_can[id].rcan, (uint32_t) CAN2, baud);
         break;
 #endif
     case RHSHalCANIdMax:
     default:
         rhs_crash("No CAN interface");
     }
+    if (!started)
+    {
+        // No valid bit-timing exists for `baud` on this peripheral's clock -- a clean, recoverable
+        // configuration failure, not a programming error, so the caller decides how to report it.
+        return false;
+    }
+    rhs_hal_can[id].enabled = true;
     // rcan starts bxCAN without automatic bus-off management: without ABOM the node stays off the bus for good
     rhs_hal_can[id].rcan.handle.Instance->MCR |= CAN_MCR_ABOM;
+    return true;
 }
 
 void rhs_hal_can_deinit(RHSHalCANId id)

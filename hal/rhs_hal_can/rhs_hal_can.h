@@ -43,8 +43,9 @@ typedef enum
 void* rhs_hal_can_get_handle(RHSHalCANId id);
 
 /** Start the CAN. After bus-off the controller recovers by itself (bxCAN ABOM, FDCAN CCCR.INIT cleared in the ISR)
- * once the bus is idle for 128 x 11 recessive bits; RHSHalCANSCEEventBusOff is reported to the SCE callback. */
-void rhs_hal_can_init(RHSHalCANId id, uint32_t baud);
+ * once the bus is idle for 128 x 11 recessive bits; RHSHalCANSCEEventBusOff is reported to the SCE callback.
+ * Returns false (does not crash) if no valid bit-timing exists for `baud` on this peripheral's clock. */
+bool rhs_hal_can_init(RHSHalCANId id, uint32_t baud);
 
 void rhs_hal_can_deinit(RHSHalCANId id);
 

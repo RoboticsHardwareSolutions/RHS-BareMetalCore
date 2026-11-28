@@ -82,17 +82,21 @@ static void can_sce_isr(RHSHalCANId id, RHSHalCANSCEEvent event, void* context)
     usb_bridge_notify(bridge, UsbBridgeEvtDeviceError);
 }
 
-static void can_start(UsbBridge* bridge)
+static bool can_start(UsbBridge* bridge)
 {
     UsbBridgeCan* can = can_ctx(bridge);
     if (!usb_bridge_has_device(bridge) || can->running)
     {
-        return;
+        return true;
     }
-    rhs_hal_can_init(CAN_CHANNEL, bridge->st.baudrate);
+    if (!rhs_hal_can_init(CAN_CHANNEL, bridge->st.baudrate))
+    {
+        return false;
+    }
     rhs_hal_can_async_rx_start(CAN_CHANNEL, can_rx_isr, bridge);
     rhs_hal_can_async_sce(CAN_CHANNEL, can_sce_isr, bridge);
     can->running = true;
+    return true;
 }
 
 static void can_stop(UsbBridge* bridge)
@@ -185,9 +189,12 @@ static void slcan_handle(UsbBridge* bridge, const SlcanCmd* cmd)
         }
         else
         {
-            can_start(bridge);
-            can->status_flags = 0;
-            bridge->st.open   = true;
+            ok = can_start(bridge);
+            if (ok)
+            {
+                can->status_flags = 0;
+                bridge->st.open   = true;
+            }
         }
         break;
     case SlcanCmdClose:

@@ -202,7 +202,7 @@ void co_start_node(CanOpenApp* app, CO_Data* d, uint8_t node_id, RHSHalCANId id,
 {
     rhs_assert(app->counter_od < MAX_OD);
 
-    rhs_hal_can_init(id, baud);
+    rhs_assert(rhs_hal_can_init(id, baud));
     rhs_hal_can_async_rx_start(id, can_rx_irq_cb, app);
     rhs_hal_can_async_sce(id, can_sce_irq_cb, app);
 
